@@ -1,3 +1,4 @@
-[{"file_name": "dataset/file_0.txt",
+[{"file_name": "dataset/goal.txt",
+"program": "dataset/program.txt",
 "env_path": "dataset/example_graph.json",
 "goal": "relax_watch_tv"}]

@@ -1,9 +1,13 @@
-import gym
-import vh_graph
 import json
 import pdb
-from models.single_agent import SingleAgent
-import torch
+from environment import Environment
+from single_agent import SingleAgent
+
+
+class DataPoint():
+    def __init__(self, env, program):
+        self.env = env
+        self.program = program
 
 def read_problem(file_problem):
     # This should go in a dataset class
@@ -15,45 +19,58 @@ def read_problem(file_problem):
         goal_file = problem['file_name']
         graph_file = problem['env_path']
         goal_name = problem['goal']
+        program_file = problem['program']
 
         with open(goal_file, 'r') as f:
             goal_str = f.read()
+
+        with open(program_file, 'r') as f:
+            program = f.readlines()
+
 
         problems_dataset.append(
             {
                 'goal': goal_str,
                 'graph_file': graph_file,
-                'goal_name': goal_name
+                'goal_name': goal_name,
+                'program': program
             }
         )
     return problems_dataset
 
 
-def train(envs):
-
+def train(datapoints):
     # Think how to handle this with multiple envs. One agent multiple envs?
-    curr_env = envs[0]
+
     num_rollouts = 5
-    # need to reuse the policy between the agents
-    agent = SingleAgent(curr_env, curr_env.task, 0)
-    for it in range(num_rollouts):
-        observations = agent.get_observations()
-        # Decide object
-        instr = agent.get_instruction(observations)
-        r, states, infos = curr_env.step(instr)
+    num_epochs = 10
+    for epoch in range(num_epochs):
+        for dp in datapoints:
+            curr_env = dp.env
+            agent = curr_env.agents[0]
+            for it in range(num_rollouts):
+                # Decide object
+                observations = agent.get_observations()
+                instr_info = agent.get_instruction(observations)
 
-    pdb.set_trace()
+                instr = instr_info['instruction']
+                r, states, infos = curr_env.env.step(instr)
+                agent.policy_net.update_info(instr_info, r)
 
+            loss = agent.policy_net.bc_loss(dp.program)
+        pdb.set_trace()
 
 
 
 def test():
     problems = read_problem('dataset/example_problem.json')
-    problem = problems[0]
-    env = gym.make('vh_graph-v0')
-    env.reset(problem['graph_file'], problem['goal'])
-    env.to_pomdp()
-    train([env])
+    dps = []
+    for problem in problems:
+        graph_file, goal, program = problem['graph_file'], problem['goal'], problem['program']
+        env = Environment(graph_file, goal, 2)
+        dp = DataPoint(env, program)
+        dps.append(dp)
+    train(dps)
 
     pdb.set_trace()
 

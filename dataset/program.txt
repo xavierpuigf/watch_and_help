@@ -1,0 +1,5 @@
+[walk] <dining_room> (201)
+[walk] <television> (248)
+[switchon] <television> (248)
+[walk] <bench> (228)
+[sit] <bench> (228)
