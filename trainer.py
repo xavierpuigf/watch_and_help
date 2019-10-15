@@ -40,7 +40,9 @@ def train(envs):
         observations = agent.get_observations()
         # Decide object
         instr = agent.get_instruction(observations)
-        pdb.set_trace()
+        r, states, infos = curr_env.step(instr)
+
+    pdb.set_trace()
 
 
 
