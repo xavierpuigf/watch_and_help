@@ -21,6 +21,7 @@ def read_problem(file_problem):
 
         with open(program_file, 'r') as f:
             program = f.readlines()
+            program = [x.strip() for x in program]
 
 
         problems_dataset.append(

@@ -1,1 +1,0 @@
-Namespace(action_dim=100, agent_dim=100, dataset_file='dataset/example_problem.json', log_dir='logdir', num_epochs=10, num_rollouts=5, object_dim=100, relation_dim=100, state_dim=100)

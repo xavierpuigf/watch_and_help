@@ -2,7 +2,77 @@ import json
 import argparse
 from datetime import datetime
 import os
+import pdb
+import re
+import math
 
+def parse_prog(prog):
+    program = []
+    actions = []
+    o1 = []
+    o2 = []
+    for progstring in prog:
+        params = []
+
+        patt_action = r'^\[(\w+)\]'
+        patt_params = r'\<(.+?)\>\s*\((.+?)\)'
+
+        action_match = re.search(patt_action, progstring.strip())
+        action_string = action_match.group(1).upper()
+
+        param_match = re.search(patt_params, action_match.string[action_match.end(1):])
+        while param_match:
+            params.append((param_match.group(1), int(param_match.group(2))))
+            param_match = re.search(patt_params, param_match.string[param_match.end(2):])
+
+        program.append((action_string, params))
+        actions.append(action_string)
+        if len(params) > 0:
+            o1.append(params[0])
+        else:
+            o1.append(None)
+        if len(params) > 1:
+            o2.append(params[1])
+        else:
+            o2.append(None)
+
+    return actions, o1, o2
+
+
+def LCS(X, Y):
+    # find the length of the strings
+    m = len(X)
+    n = len(Y)
+
+    # declaring the array for storing the dp values
+    L = [[None] * (n + 1) for i in range(m + 1)]
+
+    """Following steps build L[m + 1][n + 1] in bottom up fashion 
+    Note: L[i][j] contains length of LCS of X[0..i-1] 
+    and Y[0..j-1]"""
+    for i in range(m + 1):
+        for j in range(n + 1):
+            if i == 0 or j == 0:
+                L[i][j] = 0
+            elif X[i - 1] == Y[j - 1]:
+                L[i][j] = L[i - 1][j - 1] + 1
+            else:
+                L[i][j] = max(L[i - 1][j], L[i][j - 1])
+
+                # L[m][n] contains the length of LCS of X[0..n-1] & Y[0..m-1]
+    return L[m][n]*1./max(m,n)
+
+
+# end of function lcs
+
+def computeLCS(gt_program, pred_program):
+    gt_prog = parse_prog(gt_program)
+    pred_prog = parse_prog(pred_program)
+    action = LCS(gt_prog[0], pred_prog[0])
+    obj1 = LCS(gt_prog[1], pred_prog[1])
+    obj2 = LCS(gt_prog[2], pred_prog[2])
+    instr = LCS(gt_program, pred_program)
+    return action, obj1, obj2, instr
 
 class DictObjId:
     def __init__(self, elements=None):
@@ -65,11 +135,14 @@ def setup():
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
-    parser.add_argument('--num_epochs', default=10, type=int)
+    parser.add_argument('--num_epochs', default=50, type=int)
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
+    parser.add_argument('--print_freq', default=5, type=int)
+    # Chkpts
 
+    parser.add_argument('--load_path', default=None, type=str)
     args = parser.parse_args()
     helper = Helper(args)
     return helper

@@ -1,7 +1,7 @@
 import torch
 import pdb
 from torch import distributions, nn
-import re
+import utils
 
 
 class SinglePolicy(torch.nn.Module):
@@ -88,7 +88,7 @@ class SinglePolicy(torch.nn.Module):
         action_space = agent_info['action_space']
         saved_log_probs = agent_info['saved_log_probs']
         num_steps = len(action_space)
-        actions, o1, o2 = self.parse_prog(program)
+        actions, o1, o2 = utils.parse_prog(program)
         action_candidates = [x[1] for x in action_space]
         obj1_candidates = [[(node['class_name'], node['id']) if node is not None else None for node in x[0]] for x in action_space]
         if len(action_space[0]) > 2:
@@ -100,9 +100,12 @@ class SinglePolicy(torch.nn.Module):
 
         # Obtain the candidates and find the matching index
         # Loss o1
-        losses = []
+        losses, losses_object1, losses_object2, losses_action = [], [], [], []
         for it in range(num_steps):
             loss = torch.zeros([1])
+            loss_object1 = torch.zeros([1])
+            loss_object2 = torch.zeros([1])
+            loss_action = torch.zeros([1])
             gt_action, gt_o1, gt_o2 = actions[it], o1[it], o2[it]
             index_action = [it for it,x in enumerate(action_candidates[it]) if x.upper() == gt_action]
             index_o1 = [it for it, x in enumerate(obj1_candidates[it]) if x == gt_o1]
@@ -112,15 +115,31 @@ class SinglePolicy(torch.nn.Module):
             index_o2 = index_o2[0] if len(index_o2) > 0 else None
             if len(action_candidates[it]) > 1 and index_action is not None:
                 loss += -saved_log_probs[it][1] # action
+                loss_action += -saved_log_probs[it][1]
+                #print('action_loss', -saved_log_probs[it][1])
             if len(obj1_candidates[it]) > 1 and index_o1 is not None:
                 loss += -saved_log_probs[it][0] # object1
+                loss_object1 += -saved_log_probs[it][0]
+                print(loss_object1)
+            else:
+                if it == 0:
+                    pdb.set_trace()
+                #print('o1', -saved_log_probs[it][0])
             if len(obj2_candidates[it]) > 1 and index_o2 is not None:
                 loss += -saved_log_probs[it][2] # object2
+                loss_object2 +=  -saved_log_probs[it][2]
+                #print('o2')
             losses.append(loss)
-
+            losses_object1.append(loss_object1)
+            losses_object2.append(loss_object2)
+            losses_action.append(loss_action)
+        #print(losses)
         losses = torch.cat(losses)
+        losses_o1 = torch.cat(losses_object1)
+        losses_o2 = torch.cat(losses_object2)
+        losses_action = torch.cat(losses_action)
 
-        return losses.sum()
+        return losses.mean(), losses_action.mean(), losses_o1.mean(), losses_o2.mean()
 
     def pg_loss(self, labels, agent_info):
         rewards = agent_info['rewards']
@@ -133,35 +152,3 @@ class SinglePolicy(torch.nn.Module):
             policy_loss.append(-log_prob*reward)
         return torch.cat(policy_loss).sum()
 
-    def parse_prog(self, prog):
-        program = []
-        actions = []
-        o1 = []
-        o2 = []
-        for progstring in prog:
-            params = []
-
-            patt_action = r'^\[(\w+)\]'
-            patt_params = r'\<(.+?)\>\s*\((.+?)\)'
-
-            action_match = re.search(patt_action, progstring.strip())
-            action_string = action_match.group(1).upper()
-
-
-            param_match = re.search(patt_params, action_match.string[action_match.end(1):])
-            while param_match:
-                params.append((param_match.group(1), int(param_match.group(2))))
-                param_match = re.search(patt_params, param_match.string[param_match.end(2):])
-
-            program.append((action_string, params))
-            actions.append(action_string)
-            if len(params) > 0:
-                o1.append(params[0])
-            else:
-                o1.append(None)
-            if len(params) > 1:
-                o2.append(params[1])
-            else:
-                o2.append(None)
-
-        return actions, o1, o2
