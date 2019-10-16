@@ -112,8 +112,10 @@ class Helper:
 
     def setup(self):
         param_name = 'default'
-        tstampname = str(datetime.now())
-        self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, tstampname)
+        fname = str(datetime.now())
+        if self.args.debug:
+            fname = 'debug'
+        self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
         os.makedirs(self.dir_name, exist_ok=True)
         with open('{}/args.txt'.format(self.dir_name), 'w+') as f:
             args_str = str(self.args)
@@ -140,8 +142,10 @@ def setup():
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
     parser.add_argument('--print_freq', default=5, type=int)
-    # Chkpts
+    parser.add_argument('--debug', action='store_true')
 
+
+    # Chkpts
     parser.add_argument('--load_path', default=None, type=str)
     args = parser.parse_args()
     helper = Helper(args)

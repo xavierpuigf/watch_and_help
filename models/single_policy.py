@@ -36,11 +36,19 @@ class SinglePolicy(torch.nn.Module):
         return self.SinglePolicyActivations(self.helper)
 
     def get_action(self, actions, agent, object_selected):
+        is_cuda = next(self.parameters()).is_cuda
+
         # Returns a distribution of actions based on the policy
         action_ids = torch.tensor([self.dataset.action_dict.get_id(action) for action in actions])
+        if is_cuda:
+            action_ids = action_ids.cuda()
         action_embeddings = self.action_embedding(action_ids)
-        embed_character = self.object_embedding(torch.tensor(self.dataset.object_dict.get_id('character')))
-        #print(agent.policy_net)
+        char_id = torch.tensor(self.dataset.object_dict.get_id('character'))
+        if is_cuda:
+            char_id = char_id.cuda()
+        embed_character = self.object_embedding(char_id)
+
+
         embed_character_o1 = self.objectchar(
             torch.cat([embed_character, agent.activation_info.object_embedding[object_selected]], 0))[None, :]
         agent.activation_info.action_embedding = action_embeddings
@@ -50,6 +58,9 @@ class SinglePolicy(torch.nn.Module):
         return distr, actions
 
     def get_first_obj(self, observations, agent): # Inside the environment
+        is_cuda = next(self.parameters()).is_cuda
+
+
         # Obtain the node names
         candidates = observations['nodes'] + [None]
         node_names = [node['class_name'] if type(node) == dict else None for node in candidates]
@@ -57,15 +68,24 @@ class SinglePolicy(torch.nn.Module):
 
         node_name_ids = torch.tensor(
             [self.dataset.object_dict.get_id(node_name) for node_name in node_names]).to(dtype=torch.long)
+
+        if is_cuda:
+            node_name_ids = node_name_ids.cuda()
+
         node_embeddings = self.object_embedding(node_name_ids)
         agent.activation_info.object_embedding = node_embeddings
 
-        node_character = self.object_embedding(torch.tensor(self.dataset.object_dict.get_id('character')))
+        char_id = torch.tensor(self.dataset.object_dict.get_id('character'))
+        if is_cuda:
+            char_id = char_id.cuda()
+
+        node_character = self.object_embedding(char_id)
         logit_attention = (node_embeddings*node_character[None, :]).sum(1)
         distr = distributions.categorical.Categorical(logits=logit_attention)
         return distr, candidates
 
     def get_second_obj(self, triples, agent, object_selected, action_selected): # Inside the environment
+        is_cuda = next(self.parameters()).is_cuda
 
         candidates = triples['nodes'] + [None]
         node_names = [node['class_name'] if type(node) == dict else None for node in candidates]
@@ -87,6 +107,7 @@ class SinglePolicy(torch.nn.Module):
 
         action_space = agent_info['action_space']
         saved_log_probs = agent_info['saved_log_probs']
+        is_cuda = saved_log_probs[0][0].is_cuda
         num_steps = len(action_space)
         actions, o1, o2 = utils.parse_prog(program)
         action_candidates = [x[1] for x in action_space]
@@ -106,6 +127,14 @@ class SinglePolicy(torch.nn.Module):
             loss_object1 = torch.zeros([1])
             loss_object2 = torch.zeros([1])
             loss_action = torch.zeros([1])
+
+            if is_cuda:
+                loss = loss.cuda()
+                loss_object1 = loss_object1.cuda()
+                loss_object2 = loss_object2.cuda()
+                loss_action = loss_action.cuda()
+
+
             gt_action, gt_o1, gt_o2 = actions[it], o1[it], o2[it]
             index_action = [it for it,x in enumerate(action_candidates[it]) if x.upper() == gt_action]
             index_o1 = [it for it, x in enumerate(obj1_candidates[it]) if x == gt_o1]
@@ -113,6 +142,8 @@ class SinglePolicy(torch.nn.Module):
             index_action = index_action[0] if len(index_action) > 0 else None
             index_o1 = index_o1[0] if len(index_o1) > 0 else None
             index_o2 = index_o2[0] if len(index_o2) > 0 else None
+
+
             if len(action_candidates[it]) > 1 and index_action is not None:
                 loss += -saved_log_probs[it][1] # action
                 loss_action += -saved_log_probs[it][1]
@@ -120,7 +151,7 @@ class SinglePolicy(torch.nn.Module):
             if len(obj1_candidates[it]) > 1 and index_o1 is not None:
                 loss += -saved_log_probs[it][0] # object1
                 loss_object1 += -saved_log_probs[it][0]
-                print(loss_object1)
+                # print(loss_object1)
             else:
                 if it == 0:
                     pdb.set_trace()
@@ -138,7 +169,6 @@ class SinglePolicy(torch.nn.Module):
         losses_o1 = torch.cat(losses_object1)
         losses_o2 = torch.cat(losses_object2)
         losses_action = torch.cat(losses_action)
-
         return losses.mean(), losses_action.mean(), losses_o1.mean(), losses_o2.mean()
 
     def pg_loss(self, labels, agent_info):
