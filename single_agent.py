@@ -1,38 +1,35 @@
 from models.single_policy import SinglePolicy
-from torch import distributions
+
 import torch
 import pdb
 
+
 class SingleAgent():
-    def __init__(self, env, goal, agent_id):
+    def __init__(self, env, goal, agent_id, policy=None):
         self.env = env
         self.goal = goal
         self.agent_id = agent_id
-        self.policy_net = SinglePolicy()
+        self.policy_net = policy
+        if policy is not None:
+            self.activation_info = policy.activation_info()
         self.beliefs = None
 
+        self.agent_info = {
+            'saved_log_probs': [],
+            'indices': [],
+            'action_space': [],
+            'rewards': []
+        }
+
     def reset(self):
-        # TODO: check how do we reset the agent if the environment
-        # is actually shared
-        pass
+        self.agent_info = {
+            'saved_log_probs': [],
+            'indices': [],
+            'action_space': [],
+            'rewards': []
+        }
 
-    def get_action(self, actions):
-        # Returns a distribution of actions based on the policy
-        logits = torch.tensor([1.]*len(actions))
-        distr = distributions.categorical.Categorical(logits=logits)
-        return distr, actions
 
-    def get_first_obj(self, observations): # Inside the environment
-        candidates = observations['nodes'] + [None]
-        logits = torch.tensor([1.]*len(candidates))
-        distr = distributions.categorical.Categorical(logits=logits)
-        return distr, candidates
-
-    def get_second_obj(self, triples): # Inside the environment
-        candidates = [x[1] for x in triples]
-        logits = torch.tensor([1.]*len(candidates))
-        distr = distributions.categorical.Categorical(logits=logits)
-        return distr, candidates
 
     def get_beliefs(self):
         return self.beliefs
@@ -43,12 +40,21 @@ class SingleAgent():
     def get_observations(self):
         return self.env.get_observations()
 
+    def update_info(self, info, reward):
+        logs = info['log_probs']
+        indices = info['indices']
+        action_space = info['action_space']
+        self.agent_info['saved_log_probs'].append(logs)
+        self.agent_info['indices'].append(indices)
+        self.agent_info['action_space'].append(action_space)
+        self.agent_info['rewards'].append(reward)
+
     def get_instruction(self, observations):
         indices = []
         space = []
         log_probs = []
 
-        distr_o1, candidates_o1 = self.get_first_obj(observations)
+        distr_o1, candidates_o1 = self.policy_net.get_first_obj(observations, self)
         obj1_id = distr_o1.sample()
         object_1_selected = candidates_o1[obj1_id]
         space.append(candidates_o1)
@@ -63,7 +69,7 @@ class SingleAgent():
         if candidates_o1[obj1_id] is None:
             actions_unique.append(None)
 
-        distr_a1, candidates_action = self.get_action(actions_unique)
+        distr_a1, candidates_action = self.policy_net.get_action(actions_unique, self, obj1_id)
         action_id = distr_a1.sample()
         space.append(candidates_action)
         indices.append(action_id)
@@ -77,7 +83,7 @@ class SingleAgent():
             id_triple = 0
 
         else:
-            distr_triple, candidates_tripl = self.get_second_obj(action_candidates_tripl)
+            distr_triple, candidates_tripl = self.policy_net.get_second_obj(action_candidates_tripl, self)
             id_triple = distr_triple.sample()
             space.append(candidates_tripl)
             indices.append(id_triple)
