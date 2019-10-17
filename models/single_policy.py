@@ -62,9 +62,9 @@ class SinglePolicy(torch.nn.Module):
 
 
         # Obtain the node names
-        candidates = observations['nodes'] + [None]
-        node_names = [node['class_name'] if type(node) == dict else None for node in candidates]
-        node_names = [x for x in node_names if x != 'character']
+        candidates = [node for node in observations['nodes'] if node['class_name'] != 'character']
+        candidates = candidates + [None, 'stop']
+        node_names = [node['class_name'] if type(node) == dict else node for node in candidates]
 
         node_name_ids = torch.tensor(
             [self.dataset.object_dict.get_id(node_name) for node_name in node_names]).to(dtype=torch.long)
@@ -74,6 +74,7 @@ class SinglePolicy(torch.nn.Module):
 
         node_embeddings = self.object_embedding(node_name_ids)
         agent.activation_info.object_embedding = node_embeddings
+
 
         char_id = torch.tensor(self.dataset.object_dict.get_id('character'))
         if is_cuda:
@@ -88,7 +89,7 @@ class SinglePolicy(torch.nn.Module):
         is_cuda = next(self.parameters()).is_cuda
 
         candidates = triples['nodes'] + [None]
-        node_names = [node['class_name'] if type(node) == dict else None for node in candidates]
+        node_names = [node['class_name'] if type(node) == dict else node for node in candidates]
         node_name_ids = torch.tensor([self.dataset.object_dict.get_id(node_name) for node_name in node_names])
         node_embeddings = self.object_embedding(node_name_ids)
         pdb.set_trace()
@@ -108,10 +109,10 @@ class SinglePolicy(torch.nn.Module):
         action_space = agent_info['action_space']
         saved_log_probs = agent_info['saved_log_probs']
         is_cuda = saved_log_probs[0][0].is_cuda
-        num_steps = len(action_space)
+        num_steps = min(len(program), len(action_space))
         actions, o1, o2 = utils.parse_prog(program)
         action_candidates = [x[1] for x in action_space]
-        obj1_candidates = [[(node['class_name'], node['id']) if node is not None else None for node in x[0]] for x in action_space]
+        obj1_candidates = [[(node['class_name'], node['id']) if type(node) == dict else None for node in x[0]] for x in action_space]
         if len(action_space[0]) > 2:
             # Assumption here is that all the actions will have the same #args
             # not necessarily true though
@@ -122,6 +123,7 @@ class SinglePolicy(torch.nn.Module):
         # Obtain the candidates and find the matching index
         # Loss o1
         losses, losses_object1, losses_object2, losses_action = [], [], [], []
+        mlosses, mlosses_object1, mlosses_object2, mlosses_action = [], [], [], []
         for it in range(num_steps):
             loss = torch.zeros([1])
             loss_object1 = torch.zeros([1])
@@ -143,33 +145,63 @@ class SinglePolicy(torch.nn.Module):
             index_o1 = index_o1[0] if len(index_o1) > 0 else None
             index_o2 = index_o2[0] if len(index_o2) > 0 else None
 
-
+            valid_triple, valid_action, valid_o1, valid_o2 = False, False, False, False
             if len(action_candidates[it]) > 1 and index_action is not None:
+                valid_triple = True
                 loss += -saved_log_probs[it][1] # action
                 loss_action += -saved_log_probs[it][1]
-                #print('action_loss', -saved_log_probs[it][1])
+                valid_action = True
+
             if len(obj1_candidates[it]) > 1 and index_o1 is not None:
+                valid_triple = True
+                valid_o1 = True
                 loss += -saved_log_probs[it][0] # object1
                 loss_object1 += -saved_log_probs[it][0]
-                # print(loss_object1)
-            else:
-                if it == 0:
-                    pdb.set_trace()
-                #print('o1', -saved_log_probs[it][0])
+
             if len(obj2_candidates[it]) > 1 and index_o2 is not None:
+                valid_triple = True
+                valid_o2 = True
                 loss += -saved_log_probs[it][2] # object2
                 loss_object2 +=  -saved_log_probs[it][2]
-                #print('o2')
+
             losses.append(loss)
             losses_object1.append(loss_object1)
             losses_object2.append(loss_object2)
             losses_action.append(loss_action)
+            mlosses.append(valid_triple)
+            mlosses_object1.append(valid_o1)
+            mlosses_object2.append(valid_o2)
+            mlosses_action.append(valid_action)
+
+
         #print(losses)
         losses = torch.cat(losses)
         losses_o1 = torch.cat(losses_object1)
         losses_o2 = torch.cat(losses_object2)
         losses_action = torch.cat(losses_action)
-        return losses.mean(), losses_action.mean(), losses_o1.mean(), losses_o2.mean()
+
+        mlosses = torch.tensor(mlosses).float()
+        mlosses_o1 = torch.tensor(mlosses_object1).float()
+        mlosses_o2 = torch.tensor(mlosses_object2).float()
+        mlosses_action = torch.tensor(mlosses_action).float()
+
+        if is_cuda:
+            mlosses = mlosses.cuda()
+            mlosses_o1 = mlosses_o1.cuda()
+            mlosses_o2 = mlosses_o2.cuda()
+            mlosses_action = mlosses_action.cuda()
+
+        mlosses /= mlosses.sum()
+        mlosses_o1 /= mlosses_o1.sum()
+        mlosses_o2 /= mlosses_o2.sum()
+        mlosses_action /= mlosses_action.sum()
+
+        loss = (losses * mlosses).sum()
+        loss_action = (losses_action * mlosses_action).sum()
+        loss_o1 = (losses_o1 * mlosses_o1).sum()
+        loss_o2 = (losses_o2 * mlosses_o2).sum()
+
+        return loss, loss_action, loss_o1, loss_o2
 
     def pg_loss(self, labels, agent_info):
         rewards = agent_info['rewards']

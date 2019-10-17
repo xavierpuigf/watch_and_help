@@ -37,6 +37,8 @@ def test(dataset, helper, policy_net):
             instr = instr_info['instruction']
             r, states, infos = curr_env.env.step(instr)
             instructions.append(instr)
+            if instr == '[stop]':
+                break
         print('PRED:')
         print('\n'.join(instructions))
 
@@ -80,6 +82,8 @@ def train(dataset, helper):
                 instructions.append(instr)
                 r, states, infos = curr_env.env.step(instr)
                 agent.update_info(instr_info, r)
+                if instr == '[stop]':
+                    break
 
             loss, aloss, o1loss, o2loss = agent.policy_net.bc_loss(program, agent.agent_info)
 

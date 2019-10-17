@@ -23,6 +23,8 @@ def read_problem(file_problem):
             program = f.readlines()
             program = [x.strip() for x in program]
 
+        program = [program[0]]
+        # program.append('[stop]')
 
         problems_dataset.append(
             {
@@ -111,4 +113,5 @@ class EnvDataset(Dataset):
                 graph = json.load(f)
             object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
         object_names = list(set(object_names))
+        object_names += ['stop']
         return object_names
