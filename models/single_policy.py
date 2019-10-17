@@ -53,9 +53,9 @@ class SinglePolicy(torch.nn.Module):
             torch.cat([embed_character, agent.activation_info.object_embedding[object_selected]], 0))[None, :]
         agent.activation_info.action_embedding = action_embeddings
         logits = (action_embeddings*embed_character_o1).sum(1)
-        distr = distributions.categorical.Categorical(logits=logits)
+        #distr = distributions.categorical.Categorical(logits=logits)
 
-        return distr, actions
+        return logits, actions
 
     def get_first_obj(self, observations, agent): # Inside the environment
         is_cuda = next(self.parameters()).is_cuda
@@ -82,8 +82,7 @@ class SinglePolicy(torch.nn.Module):
 
         node_character = self.object_embedding(char_id)
         logit_attention = (node_embeddings*node_character[None, :]).sum(1)
-        distr = distributions.categorical.Categorical(logits=logit_attention)
-        return distr, candidates
+        return logit_attention, candidates
 
     def get_second_obj(self, triples, agent, object_selected, action_selected): # Inside the environment
         is_cuda = next(self.parameters()).is_cuda
@@ -97,22 +96,23 @@ class SinglePolicy(torch.nn.Module):
 
         node_character = self.object_embedding(self.dataset.object_dict.get_id('character'))
         logit_attention = (node_embeddings * node_character[None, :]).sum(1)
-        distr = distributions.categorical.Categorical(logits=logit_attention)
-        return distr, candidates
+        #distr = distributions.categorical.Categorical(logits=logit_attention)
+        return logit_attention, candidates
 
     def forward(self, observations):
         return []
 
     def bc_loss(self, program, agent_info):
         # Computes crossentropy loss between actions taken and gt actions
-
         action_space = agent_info['action_space']
         saved_log_probs = agent_info['saved_log_probs']
         is_cuda = saved_log_probs[0][0].is_cuda
+
+
         num_steps = min(len(program), len(action_space))
         actions, o1, o2 = utils.parse_prog(program)
         action_candidates = [x[1] for x in action_space]
-        obj1_candidates = [[(node['class_name'], node['id']) if type(node) == dict else None for node in x[0]] for x in action_space]
+        obj1_candidates = [[(node['class_name'], node['id']) if type(node) == dict else node for node in x[0]] for x in action_space]
         if len(action_space[0]) > 2:
             # Assumption here is that all the actions will have the same #args
             # not necessarily true though
@@ -145,24 +145,28 @@ class SinglePolicy(torch.nn.Module):
             index_o1 = index_o1[0] if len(index_o1) > 0 else None
             index_o2 = index_o2[0] if len(index_o2) > 0 else None
 
+            # Hack, we always want to run action 2
+            if gt_o2 is None:
+                index_o2 = None
+
             valid_triple, valid_action, valid_o1, valid_o2 = False, False, False, False
-            if len(action_candidates[it]) > 1 and index_action is not None:
+            if index_action is not None:
                 valid_triple = True
-                loss += -saved_log_probs[it][1] # action
-                loss_action += -saved_log_probs[it][1]
+                loss += -saved_log_probs[it][1][index_action] # action
+                loss_action += -saved_log_probs[it][1][index_action]
                 valid_action = True
 
-            if len(obj1_candidates[it]) > 1 and index_o1 is not None:
+            if index_o1 is not None:
                 valid_triple = True
                 valid_o1 = True
-                loss += -saved_log_probs[it][0] # object1
-                loss_object1 += -saved_log_probs[it][0]
+                loss += -saved_log_probs[it][0][index_o1] # object1
+                loss_object1 += -saved_log_probs[it][0][index_o1]
 
-            if len(obj2_candidates[it]) > 1 and index_o2 is not None:
+            if index_o2 is not None:
                 valid_triple = True
                 valid_o2 = True
-                loss += -saved_log_probs[it][2] # object2
-                loss_object2 +=  -saved_log_probs[it][2]
+                loss += -saved_log_probs[it][2][index_o2] # object2
+                loss_object2 += -saved_log_probs[it][2][index_o2]
 
             losses.append(loss)
             losses_object1.append(loss_object1)
@@ -204,13 +208,17 @@ class SinglePolicy(torch.nn.Module):
         return loss, loss_action, loss_o1, loss_o2
 
     def pg_loss(self, labels, agent_info):
+
         rewards = agent_info['rewards']
         saved_log_probs = agent_info['saved_log_probs']
+        indices = agent_info['indices']
         num_step = len(rewards)
         policy_loss = []
         for it in num_step:
             reward = rewards[it]
-            log_prob = saved_log_probs[it]
+
+            index = indices[it][0]
+            log_prob = saved_log_probs[it][0][index]
             policy_loss.append(-log_prob*reward)
         return torch.cat(policy_loss).sum()
 

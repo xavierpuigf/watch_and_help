@@ -137,11 +137,11 @@ def setup():
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
-    parser.add_argument('--num_epochs', default=50, type=int)
+    parser.add_argument('--num_epochs', default=100, type=int)
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
-    parser.add_argument('--print_freq', default=5, type=int)
+    parser.add_argument('--print_freq', default=10, type=int)
     parser.add_argument('--debug', action='store_true')
 
 
