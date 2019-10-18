@@ -75,15 +75,19 @@ def computeLCS(gt_program, pred_program):
     return action, obj1, obj2, instr
 
 class DictObjId:
-    def __init__(self, elements=None):
-        self.el2id = {'other': 0}
-        self.id2el = ['other']
+    def __init__(self, elements=None, include_other=True):
+        self.el2id = {}
+        self.id2el = []
+        self.include_other = include_other
+        if include_other:
+            self.el2id = {'other': 0}
+            self.id2el = ['other']
         if elements:
             for element in elements:
                 self.add(element)
 
     def get_el(self, id):
-        if id < len(self.id2el):
+        if self.include_other and id >= len(self.id2el):
             return self.id2el[0]
         else:
             return self.id2el[id]
@@ -92,7 +96,10 @@ class DictObjId:
         if el in self.el2id.keys():
             return self.el2id[el]
         else:
-            return 0
+            if self.include_other:
+                return 0
+            else:
+                return self.el2id[el]
 
     def add(self, el):
         if el not in self.el2id.keys():
@@ -136,7 +143,7 @@ def setup():
     parser.add_argument('--agent_dim', default=100, type=int)
 
     # Training params
-    parser.add_argument('--num_rollouts', default=5, type=int)
+    parser.add_argument('--num_rollouts', default=2, type=int)
     parser.add_argument('--num_epochs', default=100, type=int)
 
     # Logging

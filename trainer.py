@@ -52,7 +52,8 @@ def test(dataset, helper, policy_net):
 def train(dataset, helper):
     # Think how to handle this with multiple envs. One agent multiple envs?
     # Here we set the policy and the env
-    policy_net = SinglePolicy(dataset, helper).cuda()
+    policy_net = SinglePolicy(dataset, helper)
+    # policy_net = policy_net.cuda()
     envs = []
     for dp in dataset:
         graph_file, goal, program = dp
@@ -84,9 +85,8 @@ def train(dataset, helper):
                 agent.update_info(instr_info, r)
                 if instr == '[stop]':
                     break
-
             loss, aloss, o1loss, o2loss = agent.policy_net.bc_loss(program, agent.agent_info)
-
+            #pdb.set_trace()
             if epoch % helper.args.print_freq:
                 lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS(program, instructions)
                 print('Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
@@ -98,7 +98,7 @@ def train(dataset, helper):
             loss.backward()
             optimizer.step()
     test(dataset, helper, policy_net)
-    pdb.set_trace()
+    #pdb.set_trace()
 
 
 def start():

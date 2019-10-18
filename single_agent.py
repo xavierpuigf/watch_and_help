@@ -54,16 +54,13 @@ class SingleAgent():
         indices = []
         space = []
         log_probs = []
-
         logit_o1, candidates_o1 = self.policy_net.get_first_obj(observations, self)
+        # pdb.set_trace()
         distr_o1 = distributions.categorical.Categorical(logits=logit_o1)
 
         node_names = [x['class_name'] if type(x) == dict else x for x in candidates_o1]
-        # print('----')
-        # for it, nn in enumerate(node_names):
-        #     ll = distr_o1.log_prob(torch.tensor([it]).cuda()).data.cpu().numpy()
-        #     print('{}: {}'.format(nn, ll))
 
+        # pdb.set_trace()
         obj1_id = distr_o1.sample()
         object_1_selected = candidates_o1[obj1_id]
         space.append(candidates_o1)
@@ -71,11 +68,13 @@ class SingleAgent():
         log_probs.append(logit_o1)
 
         # Decide action
+
         action_candidates_tripl = self.env.get_action_space(obj1=object_1_selected, structured_actions=True)
+
         actions_unique = list(set([x[0] for x in action_candidates_tripl]))
 
         # If the object is None consider the none action, that means stop
-        if candidates_o1[obj1_id] != 'stop':
+        if candidates_o1[obj1_id]['class_name'] != 'stop':
             logits_action, candidates_action = self.policy_net.get_action(actions_unique, self, obj1_id)
             distr_a1 = distributions.categorical.Categorical(logits=logits_action)
             action_id = distr_a1.sample()
@@ -91,6 +90,7 @@ class SingleAgent():
                 id_triple = 0 # There is no third object
 
             else:
+                print(action_candidates_tripl)
                 logits_triple, candidates_tripl = self.policy_net.get_second_obj(action_candidates_tripl, self)
                 distr_triple = distributions.categorical(logits=logits_triple)
                 id_triple = distr_triple.sample()
