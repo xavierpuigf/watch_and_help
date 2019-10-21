@@ -26,8 +26,8 @@ class SinglePolicy(torch.nn.Module):
 
 
         self.action_embedding = nn.Embedding(len(dataset.action_dict), helper.args.action_dim)
-        # self.state_embedding = networks.StateRepresentation(helper, dataset)
 
+        # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
 
         # Combine char and object selected
@@ -66,9 +66,11 @@ class SinglePolicy(torch.nn.Module):
 
 
         # Obtain the node names
-        observations['nodes'] = observations['nodes'] + [self.node_None, self.node_Stop]
+        # TODO: We should include the node None as well
+        observations['nodes'] = observations['nodes'] + [self.node_Stop]
 
         node_embeddings, char_embedding = self.state_embedding(observations)
+
         agent.activation_info.state = {'node_embeddings': node_embeddings,
                                        'char_embedding': char_embedding
                                       }
@@ -109,17 +111,14 @@ class SinglePolicy(torch.nn.Module):
         saved_log_probs = agent_info['saved_log_probs']
         is_cuda = saved_log_probs[0][0].is_cuda
 
-
         num_steps = min(len(program), len(action_space))
+
+        # GT action
         actions, o1, o2 = utils.parse_prog(program)
-        action_candidates = [x[1] for x in action_space]
+        action_candidates = [x[1] if len(x) > 1 else ['None'] for x in action_space]
         obj1_candidates = [[(node['class_name'], node['id']) for node in x[0]] for x in action_space]
-        if len(action_space[0]) > 2:
-            # Assumption here is that all the actions will have the same #args
-            # not necessarily true though
-            obj2_candidates = [[(node['class_name'], node['id']) for node in x[1]] for x in action_space]
-        else:
-            obj2_candidates = [[None] for _ in range(num_steps)]
+        obj2_candidates = [[(node['class_name'], node['id']) for node in x[2]] if len(x) > 2 else [None] for x in action_space]
+
 
         # Obtain the candidates and find the matching index
         # Loss o1
@@ -178,8 +177,6 @@ class SinglePolicy(torch.nn.Module):
             mlosses_object2.append(valid_o2)
             mlosses_action.append(valid_action)
 
-
-        #print(losses)
         losses = torch.cat(losses)
         losses_o1 = torch.cat(losses_object1)
         losses_o2 = torch.cat(losses_object2)
@@ -196,10 +193,11 @@ class SinglePolicy(torch.nn.Module):
             mlosses_o2 = mlosses_o2.cuda()
             mlosses_action = mlosses_action.cuda()
 
-        mlosses /= mlosses.sum()
-        mlosses_o1 /= mlosses_o1.sum()
-        mlosses_o2 /= mlosses_o2.sum()
-        mlosses_action /= mlosses_action.sum()
+
+        mlosses /= (mlosses.sum()+1e-8)
+        mlosses_o1 /= (mlosses_o1.sum()+1e-8)
+        mlosses_o2 /= (mlosses_o2.sum()+1e-8)
+        mlosses_action /= (mlosses_action.sum()+1e-8)
 
         loss = (losses * mlosses).sum()
         loss_action = (losses_action * mlosses_action).sum()

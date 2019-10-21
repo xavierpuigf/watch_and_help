@@ -35,10 +35,11 @@ def test(dataset, helper, policy_net):
             instr_info = agent.get_instruction(observations)
 
             instr = instr_info['instruction']
-            r, states, infos = curr_env.env.step(instr)
             instructions.append(instr)
             if instr == '[stop]':
                 break
+            r, states, infos = curr_env.env.step(instr)
+
         print('PRED:')
         print('\n'.join(instructions))
 
@@ -74,17 +75,23 @@ def train(dataset, helper):
             curr_env = envs[it]
             agent = curr_env.agents[0]
             instructions = []
-            for it2 in range(num_rollouts):
+            do_stop = False
+            it2 = 0
+            while it2 < num_rollouts and not do_stop:
                 # Decide object
                 observations = agent.get_observations()
                 instr_info = agent.get_instruction(observations)
 
                 instr = instr_info['instruction']
                 instructions.append(instr)
-                r, states, infos = curr_env.env.step(instr)
-                agent.update_info(instr_info, r)
                 if instr == '[stop]':
-                    break
+                    # TODO: this should be the actual reward
+                    r = 0
+                    do_stop = True
+                else:
+                    r, states, infos = curr_env.env.step(instr)
+                agent.update_info(instr_info, r)
+                it2 += 1
             loss, aloss, o1loss, o2loss = agent.policy_net.bc_loss(program, agent.agent_info)
             #pdb.set_trace()
             if epoch % helper.args.print_freq:

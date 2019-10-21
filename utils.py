@@ -143,8 +143,8 @@ def setup():
     parser.add_argument('--agent_dim', default=100, type=int)
 
     # Training params
-    parser.add_argument('--num_rollouts', default=2, type=int)
-    parser.add_argument('--num_epochs', default=100, type=int)
+    parser.add_argument('--num_rollouts', default=5, type=int)
+    parser.add_argument('--num_epochs', default=1000, type=int)
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)

@@ -67,14 +67,14 @@ class SingleAgent():
         indices.append(obj1_id)
         log_probs.append(logit_o1)
 
-        # Decide action
 
-        action_candidates_tripl = self.env.get_action_space(obj1=object_1_selected, structured_actions=True)
-
-        actions_unique = list(set([x[0] for x in action_candidates_tripl]))
 
         # If the object is None consider the none action, that means stop
+
         if candidates_o1[obj1_id]['class_name'] != 'stop':
+            # Decide action
+            action_candidates_tripl = self.env.get_action_space(obj1=object_1_selected, structured_actions=True)
+            actions_unique = list(set([x[0] for x in action_candidates_tripl]))
             logits_action, candidates_action = self.policy_net.get_action(actions_unique, self, obj1_id)
             distr_a1 = distributions.categorical.Categorical(logits=logits_action)
             action_id = distr_a1.sample()

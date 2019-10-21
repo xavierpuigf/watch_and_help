@@ -40,7 +40,7 @@ class GCNN(nn.Module):
                                        edge_graph_embed], dim=2)
             new_embed = self.combi_layers[i](node_and_edge.view(bs*num_edges, -1)).view(bs, num_edges, -1)
 
-            node_embedding = torch.zeros(node_embedding.shape)
+            # node_embedding = torch.zeros(node_embedding.shape)
 
             node_embedding = node_embedding.scatter_add(1, final_node[:, :, None].repeat(1, 1, new_embed.shape[-1]), new_embed)
         return node_embedding
@@ -74,6 +74,10 @@ class ClassNameStateRepresentation(nn.Module):
         return state_embedding, None
 
 
+
+##### State Representations ####
+
+
 class StateRepresentation(nn.Module):
     def __init__(self, helper, dataset):
         super().__init__()
@@ -98,10 +102,6 @@ class StateRepresentation(nn.Module):
         return node_embeddings, char_embedding
 
 
-
-
-
-
 class GraphStateRepresentation(nn.Module):
     def __init__(self, helper, dataset):
         super().__init__()
@@ -116,25 +116,23 @@ class GraphStateRepresentation(nn.Module):
         # Convert observations into a tensor. This should probably go out of this function...
         # Node ids to model id
         node_ids = [node['id'] for node in observations['nodes']]
-        node_names = [node['class_name'] for node in observations['nodes']]
         idgraph2idmodel = utils.DictObjId(node_ids, include_other=False)
-        num_nodes = len(observations['nodes'])
         num_edges = len(observations['edges'])
-        nodes_connected = np.zeros((num_edges, 2))
-        edges_connecting = np.zeros((num_edges))
+        nodes_connected = np.zeros((num_edges, 2)).astype(np.int32)
+        edges_connecting = np.zeros((num_edges)).astype(np.int32)
         for it, edge in enumerate(observations['edges']):
             nodes_connected[it, 0] = idgraph2idmodel.get_id(edge['from_id'])
             nodes_connected[it, 1] = idgraph2idmodel.get_id(edge['to_id'])
-            edges_connecting[it] = self.dataset.relation_dict.get_id(edge['relation_type'])
-
-        nodes_connected = torch.tensor(nodes_connected)[None, :] # We do it batched here
-        edge_types = torch.tensor(edges_connecting)[None, :] # We do it batched here
+            edges_connecting[it] = self.dataset.relation_dict.get_id(edge['relation_type'].lower())
+        nodes_connected = torch.tensor(nodes_connected)[None, :].long() # We do it batched here
+        edge_types = torch.tensor(edges_connecting)[None, :].long() # We do it batched here
 
         # node representation
         initial_node_repr = self.vector_repr(observations)[0]
         node_embeddings = self.graph_encoding(initial_node_repr[None, :], nodes_connected, edge_types)
-        node_embeddings = node_embeddings[0] # We do single batches...
+
+        # We do single batches...
+        node_embeddings = node_embeddings[0]
         char_it = [it for it,x in enumerate(observations['nodes']) if x['class_name'] == 'character'][0]
-        state_embedding = node_embeddings[char_it]
-        pdb.set_trace()
+        state_embedding = node_embeddings[char_it][None, :]
         return node_embeddings, state_embedding
