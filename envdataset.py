@@ -152,9 +152,19 @@ class EnvDataset(Dataset):
 
     def prepare_data(self, problem):
         '''
-        Given a problem with an intial env, returns a set of tenso describing the problem
-        :param problem:
+        Given a problem with an intial env, returns a set of tensor describing the environment
+        :param problem: dictionary with 'program' having the GT prog and 'graph_file' with the inital graph
+                        if graphs_file exists, it will use that as the sequence of graphs, otherwise, it will create it
+                        with the env.
         :return:
+            class_names: [max_steps, max_nodes]: tensor with the id corresponding to the class name of every object
+            object_ids: [max_steps, max_nodes]: tensor with the id of every object
+            state_nodes: [max_steps, max_nodes, num_states]: binary tensor [i,j,k] = 1 if object j in step i has state k
+            edges: [max_steps, max_edges, 2]
+            edge_types: [max_steps, max_edges, 1]
+            visible_mask: [max_steps, max_nodes] which nodes are visible at each step
+            mask_edges: [max_steps, max_edges] which edges are valid
+            ids_used: dict with a mapping from object ids to model ids
         '''
         program = problem['program']
         if 'graphs_file' not in problem.keys():
