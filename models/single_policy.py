@@ -111,7 +111,7 @@ class SinglePolicy(torch.nn.Module):
     def forward(self, observations):
 
         # Obtain the initial node representations
-        class_names, states, edges, edge_types, visibility, mask_edges = observations
+        class_names, class_ids, states, edges, edge_types, visibility, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
         num_nodes = node_repr.shape[-2]
 

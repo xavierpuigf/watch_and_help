@@ -26,8 +26,8 @@ def read_problem(file_problem):
             program = f.readlines()
             program = [x.strip() for x in program]
 
-        program = [program[0]]
-        # program.append('[stop]')
+        # program = [program[0]]
+        #program.append('[stop]')
 
         problems_dataset.append(
             {
@@ -108,8 +108,8 @@ class EnvDataset(Dataset):
 
     def __getitem__(self, idx):
         problem = self.problems_dataset[idx]
-        state_info = self.prepare_data(problem)
-        program_info = self.prepare_program(problem['program'])
+        state_info, ids_used = self.prepare_data(problem)
+        program_info = self.prepare_program(problem['program'], ids_used)
         return state_info, program_info
 
 
@@ -126,17 +126,18 @@ class EnvDataset(Dataset):
         return object_names
 
 
-    def prepare_program(self, program):
+    def prepare_program(self, program, ids_used):
         actions, o1, o2 = utils.parse_prog(program)
+        # pdb.set_trace()
         action_ids = np.array([self.action_dict.get_id(action) for action in actions])
-        ob1 = np.array([ob[1] if ob is not None else self.max_nodes-1 for ob in o1])
-        ob2 = np.array([ob[1] if ob is not None else self.max_nodes-1 for ob in o2])
+        ob1 = np.array([ids_used[ob[1]] if ob is not None else self.max_nodes-1 for ob in o1])
+        ob2 = np.array([ids_used[ob[1]] if ob is not None else self.max_nodes-1 for ob in o2])
         a = np.zeros(self.max_steps).astype(np.int64)
         o1 = np.zeros(self.max_steps).astype(np.int64)
         o2 = np.zeros(self.max_steps).astype(np.int64)
-        a[action_ids.shape[0]] = action_ids
-        o1[action_ids.shape[0]] = ob1
-        o2[action_ids.shape[0]] = ob2
+        a[:action_ids.shape[0]] = action_ids
+        o1[:action_ids.shape[0]] = ob1
+        o2[:action_ids.shape[0]] = ob2
         mask_steps = np.zeros(self.max_steps)
         mask_steps[:action_ids.shape[0]] = 1
         return a, o1, o2, mask_steps
@@ -154,14 +155,17 @@ class EnvDataset(Dataset):
             curr_env = gym.make('vh_graph-v0')
             curr_env.reset(graph_file, goal)
             curr_env.to_pomdp()
+            state = curr_env.get_observations()
             program = problem['program']
             ids_used = {}
             info = []
-            for instr in program:
+            info.append(self.process_graph(state, ids_used))
+            for instr in program[:-1]:
                 r, states, infos = curr_env.step(instr)
                 info.append(self.process_graph(states, ids_used))
 
-        class_names, state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
+        class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
+        object_ids = np.concatenate([np.expand_dims(x, 0) for x in object_ids])
         class_names = np.concatenate([np.expand_dims(x, 0) for x in class_names])
         state_nodes = np.concatenate([np.expand_dims(x, 0) for x in state_nodes])
         edges = np.concatenate([np.expand_dims(x, 0) for x in edges])
@@ -173,6 +177,8 @@ class EnvDataset(Dataset):
         # Pad to max steps
         remain = self.max_steps - len(program)
         class_names = np.pad(class_names, ((0, remain), (0,0)), 'constant').astype(np.int64)
+        object_ids = np.pad(object_ids, ((0, remain), (0, 0)), 'constant').astype(np.int64)
+
         state_nodes = np.pad(state_nodes, ((0, remain), (0,0), (0,0)), 'constant').astype(np.int64)
         edges = np.pad(edges, ((0, remain), (0, 0), (0,0)), 'constant').astype(np.int64)
         edge_types = np.pad(edge_types, ((0, remain), (0, 0)), 'constant').astype(np.int64)
@@ -180,7 +186,7 @@ class EnvDataset(Dataset):
         visible_mask = np.pad(visible_mask, ((0, remain), (0, 0)), 'constant').astype(np.float32)
         mask_edges = np.pad(mask_edges, ((0, remain), (0, 0)), 'constant').astype(np.float32)
 
-        return class_names, state_nodes, edges, edge_types, visible_mask, mask_edges
+        return (class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges), ids_used
 
     def process_graph(self, state, ids_used):
         '''
@@ -198,16 +204,18 @@ class EnvDataset(Dataset):
 
         id_nodes = [x['id'] for x in state['nodes']]
         class_nodes = [x['class_name'] for x in state['nodes']]
-        class_node_ids = [self.action_dict.get_id(cname) for cname in class_nodes]
+        class_node_ids = [self.object_dict.get_id(cname) for cname in class_nodes]
         for id in id_nodes:
             if id not in ids_used.keys():
                 ids_used[id] = len(ids_used.keys())
 
         ids_in_model = [ids_used[id] for id in id_nodes]
         class_name_ids = np.zeros(self.max_nodes)
+        object_ids = np.zeros(self.max_nodes)
 
         # Populate node_names [max_nodes]
         class_name_ids[ids_in_model] = class_node_ids
+        object_ids[ids_in_model] = id_nodes
 
         # Populate state one hot [max_nodes, num_states]: one_hot
         num_states = len(self.state_dict)
@@ -235,4 +243,4 @@ class EnvDataset(Dataset):
         visible_mask = np.zeros((self.max_nodes))
         visible_mask[ids_in_model] = 1
 
-        return class_name_ids, state_nodes, edges, edge_types, visible_mask, mask_edges
+        return class_name_ids, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges

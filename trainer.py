@@ -2,6 +2,7 @@ import json
 import pdb
 import torch
 import utils
+import numpy as np
 import argparse
 from envdataset import EnvDataset
 from environment import Environment
@@ -45,6 +46,7 @@ def test(dataset, helper, policy_net):
 
         print('GT')
         print('\n'.join(program))
+        pdb.set_trace()
         lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS(program, instructions)
         print('LCSaction {:.2f}. LCSo1 {:.2f}. LCSo2 {:.2f}. LCStriplet {:.2f}'.format(
             lcs_action, lcs_o1, lcs_o2, lcs_triple))
@@ -82,7 +84,34 @@ def train(dataset, helper):
 
 
             loss, aloss, o1loss, o2loss = bc_loss(program, logits)
+
+            # action, o1, o2 indices
+            pred_action = torch.argmax(action_logits, -1)
+            pred_o1 = torch.argmax(action_logits, -1)
+            pred_o2 = torch.argmax(action_logits, -1)
+
+            object_ids = state[1]
+            object_names = state[0]
+
+            object_names_pred_1 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o1]
+            object_ids_pred_1 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o1]
+            object_names_pred_2 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o2]
+            object_ids_pred_2 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o2]
+
+            object_names_gt_1 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[1]]
+            object_ids_gt_1 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[1]]
+            object_names_gt_2 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[2]]
+            object_ids_gt_2 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[2]]
+
+            pred_instr = obtain_list_instr(pred_action, object_names_pred_1, object_ids_pred_1,
+                                           object_names_pred_2, object_ids_pred_2, dataset)
+            gt_instr = obtain_list_instr(program[0], object_names_gt_1, object_ids_gt_1,
+                                         object_names_gt_2, object_ids_gt_2, dataset)
+
+            lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
+            pdb.set_trace()
             print(loss)
+            pdb.set_trace()
             #pdb.set_trace()
             # if epoch % helper.args.print_freq:
             #     lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS(program, instructions)
@@ -96,6 +125,30 @@ def train(dataset, helper):
             optimizer.step()
     test(dataset, helper, policy_net)
     #pdb.set_trace()
+
+
+def obtain_list_instr(actions, o1_names, o1_ids, o2_names, o2_ids, dataset):
+    # Split by batch
+    actions = torch.unbind(actions.cpu().data, 0)
+    o1_names = torch.unbind(o1_names.cpu().data, 0)
+    o1_ids = torch.unbind(o1_ids.cpu().data, 0)
+    o2_names = torch.unbind(o2_names.cpu().data, 0)
+    o2_ids = torch.unbind(o2_ids.cpu().data, 0)
+
+    num_batches = len(actions)
+    programs = []
+    for it in range(num_batches):
+        o1 = zip(list(o1_names[it].numpy()), list(o1_ids[it].numpy()))
+        o2 = zip(list(o2_names[it].numpy()), list(o2_ids[it].numpy()))
+
+        action_list = [dataset.action_dict.get_el(x) for x in list(actions[it].numpy())]
+        object_1_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o1]
+        object_2_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o2]
+
+
+        programs.append((action_list, object_1_list, object_2_list))
+    return programs
+
 
 def bc_loss(program, logits):
     criterion = torch.nn.CrossEntropyLoss(reduction='none')

@@ -67,7 +67,7 @@ class ClassNameStateRepresentation(nn.Module):
                                                torch.nn.ReLU(),
                                                torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
     def forward(self, observations):
-        class_names, states, edges, edge_types, visibility, mask_edges = observations
+        class_names, obj_ids, states, edges, edge_types, visibility, mask_edges = observations
 
         node_name_embedding = self.object_embedding(class_names)
         state_embedding = self.state_embedding(states.float())
@@ -94,7 +94,7 @@ class GraphStateRepresentation(nn.Module):
         self.gru = nn.GRUCell(self.out_fts, self.out_fts, bias=False)
 
     def forward(self, observations):
-        class_names, states, edge_values, edge_types, visibility, mask_edges = observations
+        class_names, obj_ids, states, edge_values, edge_types, visibility, mask_edges = observations
         # Obtain the initial node representation [bs, timesteps, num_nodes, node_dim]
         initial_node_repr = self.initial_node_repr(observations)
 

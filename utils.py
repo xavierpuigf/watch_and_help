@@ -2,6 +2,7 @@ import json
 import argparse
 from datetime import datetime
 import os
+import numpy as np
 import pdb
 import re
 import math
@@ -64,10 +65,22 @@ def LCS(X, Y):
 
 
 # end of function lcs
+def computeLCS_multiple(gt_programs, pred_programs):
+    lcs_action = []
+    lcs_o1 = []
+    lcs_o2 = []
+    lcs_instr = []
+    for it in range(len(gt_programs)):
+        lcsa, o1, o2, instr = computeLCS(gt_programs[it], pred_programs[it])
+        lcs_action.append(lcsa)
+        lcs_o1.append(o2)
+        lcs_o2.append(o2)
+        lcs_instr.append(instr)
+    return np.mean(lcs_action), np.mean(lcs_o1), np.mean(lcs_o2), np.mean(lcs_instr)
 
-def computeLCS(gt_program, pred_program):
-    gt_prog = parse_prog(gt_program)
-    pred_prog = parse_prog(pred_program)
+def computeLCS(gt_prog, pred_prog):
+    gt_program = list(zip(gt_prog[0], gt_prog[1], gt_prog[2]))
+    pred_program = list(zip(pred_prog[0], pred_prog[1], pred_prog[2]))
     action = LCS(gt_prog[0], pred_prog[0])
     obj1 = LCS(gt_prog[1], pred_prog[1])
     obj2 = LCS(gt_prog[2], pred_prog[2])
@@ -93,6 +106,7 @@ class DictObjId:
             return self.id2el[id]
 
     def get_id(self, el):
+        el = el.lower()
         if el in self.el2id.keys():
             return self.el2id[el]
         else:
@@ -102,6 +116,7 @@ class DictObjId:
                 return self.el2id[el]
 
     def add(self, el):
+        el = el.lower()
         if el not in self.el2id.keys():
             num_elems = len(self.id2el)
             self.el2id[el] = num_elems
