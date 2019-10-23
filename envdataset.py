@@ -156,7 +156,12 @@ class EnvDataset(Dataset):
         :param problem:
         :return:
         '''
-        if 'graphs' not in problem.keys():
+        program = problem['program']
+        if 'graphs_file' not in problem.keys():
+            init_graph = problem['graph_file']
+            graphs_file_name = problem['graph_file'][:-5] + '_multiple' + '.json'
+
+
             graph_file = problem['graph_file']
             goal = problem['goal']
             graphs = []
@@ -164,15 +169,27 @@ class EnvDataset(Dataset):
             curr_env.reset(graph_file, goal)
             curr_env.to_pomdp()
             state = curr_env.get_observations()
-            program = problem['program']
-            ids_used = {}
-            info = []
-            info.append(self.process_graph(state, ids_used))
 
-            # The last instruction is the stop
+
+            graphs = [state]
             for instr in program[:-1]:
-                r, states, infos = curr_env.step(instr)
-                info.append(self.process_graph(states, ids_used))
+                _, states, infos = curr_env.step(instr)
+                graphs.append(states)
+
+            with open(graphs_file_name, 'w+') as f:
+                f.write(json.dumps(graphs, indent=4))
+            problem['graphs_file'] = graphs_file_name
+
+        else:
+            # load graphs
+            with open(problem['graphs_file'], 'r') as f:
+                graphs = json.load(f)
+
+        ids_used = {}
+        info = []
+        # The last instruction is the stop
+        for state in graphs:
+            info.append(self.process_graph(state, ids_used))
 
         class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
         object_ids = np.concatenate([np.expand_dims(x, 0) for x in object_ids])

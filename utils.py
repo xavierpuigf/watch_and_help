@@ -71,20 +71,31 @@ def computeLCS_multiple(gt_programs, pred_programs):
     lcs_o2 = []
     lcs_instr = []
     for it in range(len(gt_programs)):
+
         lcsa, o1, o2, instr = computeLCS(gt_programs[it], pred_programs[it])
         lcs_action.append(lcsa)
-        lcs_o1.append(o2)
+        lcs_o1.append(o1)
         lcs_o2.append(o2)
         lcs_instr.append(instr)
     return np.mean(lcs_action), np.mean(lcs_o1), np.mean(lcs_o2), np.mean(lcs_instr)
 
 def computeLCS(gt_prog, pred_prog):
+    if 'stop' in gt_prog[0]:
+        stop_index_gt = [it for it, x in enumerate(gt_prog[0]) if x == 'stop'][0]
+        gt_prog = [x[:stop_index_gt] for x in gt_prog]
+
+    if 'stop' in pred_prog[0]:
+        stop_index_pred = [it for it, x in enumerate(pred_prog[0]) if x == 'stop'][0]
+        pred_prog = [x[:stop_index_pred] for x in pred_prog]
+
+
     gt_program = list(zip(gt_prog[0], gt_prog[1], gt_prog[2]))
     pred_program = list(zip(pred_prog[0], pred_prog[1], pred_prog[2]))
     action = LCS(gt_prog[0], pred_prog[0])
     obj1 = LCS(gt_prog[1], pred_prog[1])
     obj2 = LCS(gt_prog[2], pred_prog[2])
     instr = LCS(gt_program, pred_program)
+
     return action, obj1, obj2, instr
 
 class DictObjId:
@@ -163,7 +174,7 @@ def setup():
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
-    parser.add_argument('--print_freq', default=10, type=int)
+    parser.add_argument('--print_freq', default=20, type=int)
     parser.add_argument('--debug', action='store_true')
 
 
@@ -183,8 +194,8 @@ def pretty_print_program(program):
     instructions = []
     for instr in program_joint:
         action, o1, o2 = instr
-        o1s = '<{}> ()'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
-        o2s = '<{}> ()'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+        o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
+        o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
         instr_str = '[{}] {} {}'.format(action, o1s, o2s)
         instructions.append(instr_str)
     return '\n'.join(instructions)

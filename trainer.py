@@ -88,8 +88,8 @@ def train(dataset, helper):
 
             # Obtain the prediction
             pred_action = torch.argmax(action_logits, -1)
-            pred_o1 = torch.argmax(action_logits, -1)
-            pred_o2 = torch.argmax(action_logits, -1)
+            pred_o1 = torch.argmax(o1_logits, -1)
+            pred_o2 = torch.argmax(o2_logits, -1)
 
             object_ids = state[1]
             object_names = state[0]
@@ -109,17 +109,20 @@ def train(dataset, helper):
             gt_instr = obtain_list_instr(program[0], object_names_gt_1, object_ids_gt_1,
                                          object_names_gt_2, object_ids_gt_2, dataset)
 
-            lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
-            if epoch % helper.args.print_freq:
-                print(utils.pretty_print_program(pred_instr[0]))
-                print('Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
-                      'ActionLCS {:.2f}. O2LCS {:.2f}. O2LCS {:.2f}. TripletLCS {:.2f}'.format(
-                    loss.data, aloss.data, o1loss.data, o2loss.data,
-                    lcs_action, lcs_o1, lcs_o2, lcs_triple))
             # agent.reset()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        if epoch % helper.args.print_freq == 0:
+            lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
+            print(utils.pretty_print_program(pred_instr[0]))
+            print('Epoch:{}. Iter {}.  Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
+                  'ActionLCS {:.2f}. O1LCS {:.2f}. O2LCS {:.2f}. TripletLCS {:.2f}'.format(
+                epoch, it,
+                loss.data, aloss.data, o1loss.data, o2loss.data,
+                lcs_action, lcs_o1, lcs_o2, lcs_triple))
+
     test(dataset, helper, policy_net)
     #pdb.set_trace()
 
@@ -166,7 +169,7 @@ def bc_loss(program, logits):
     m_loss_action = ((loss_action * mask).sum(1)/mask.sum(1)).mean()
     m_loss_o1 = ((loss_o1 * mask).sum(1) / mask.sum(1)).mean()
     m_loss_o2 = ((loss_o2 * mask).sum(1) / mask.sum(1)).mean()
-    total_loss = m_loss_action # + m_loss_o1 + m_loss_o2
+    total_loss = m_loss_action + m_loss_o1 + m_loss_o2
     return total_loss, m_loss_action, m_loss_o1, m_loss_o2
 
 def start():
