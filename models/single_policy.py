@@ -23,10 +23,16 @@ class SinglePolicy(torch.nn.Module):
 
         self.helper = helper
         self.dataset = dataset
+        self.repr_dim = 100
 
+        num_actions = len(dataset.action_dict)
 
-        self.action_embedding = nn.Embedding(len(dataset.action_dict), helper.args.action_dim)
+        self.fc_action = nn.Sequential(torch.nn.Linear(self.repr_dim, helper.args.object_dim),
+                                       torch.nn.ReLU(),
+                                       torch.nn.Linear(self.repr_dim, num_actions))
 
+        self.fc_o1 = nn.Linear(self.repr_dim*2, 1)
+        self.fc_o2 = nn.Linear(self.repr_dim*2, 1)
         # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
 
@@ -103,9 +109,26 @@ class SinglePolicy(torch.nn.Module):
         # return logit_attention, candidates
 
     def forward(self, observations):
-        return []
+
+        # Obtain the initial node representations
+        class_names, states, edges, edge_types, visibility, mask_edges = observations
+        node_repr, global_repr = self.state_embedding(observations)
+        num_nodes = node_repr.shape[-2]
+
+        concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
+        action_logits = self.fc_action(global_repr)
+        node_1_logits = self.fc_o1(concat_nodes).squeeze(-1)
+        node_2_logits = self.fc_o2(concat_nodes).squeeze(-1)
+
+        # Mask out
+        node_1_logits = node_1_logits * visibility + (1-visibility) * -1e6
+        node_2_logits = node_1_logits * visibility + (1-visibility) * -1e6
+        # Predict actions according to the global representation
+
+        return action_logits, node_1_logits, node_2_logits
 
     def bc_loss(self, program, agent_info):
+        # Deprecated
         # Computes crossentropy loss between actions taken and gt actions
         action_space = agent_info['action_space']
         saved_log_probs = agent_info['saved_log_probs']
