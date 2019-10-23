@@ -27,7 +27,7 @@ def read_problem(file_problem):
             program = [x.strip() for x in program]
 
         # program = [program[0]]
-        #program.append('[stop]')
+        program.append('[stop]')
 
         problems_dataset.append(
             {
@@ -93,8 +93,8 @@ class EnvDataset(Dataset):
         self.relations = ['inside', 'close', 'facing', 'on']
         self.objects = self.getobjects()
 
-        self.action_dict = DictObjId(self.actions)
-        self.object_dict = DictObjId(self.objects)
+        self.action_dict = DictObjId(self.actions + ['stop'])
+        self.object_dict = DictObjId(self.objects + ['stop', 'no_obj'])
         self.relation_dict = DictObjId(self.relations)
         self.state_dict = DictObjId(self.states)
         self.num_items = len(self.problems_dataset)
@@ -102,6 +102,9 @@ class EnvDataset(Dataset):
         self.max_nodes = 300
         self.max_edges = 500
         self.max_steps = 10
+
+        self.node_stop = ('stop', -2)
+        self.node_none = ('no_obj', -1)
 
     def __len__(self):
         return self.num_items
@@ -128,10 +131,15 @@ class EnvDataset(Dataset):
 
     def prepare_program(self, program, ids_used):
         actions, o1, o2 = utils.parse_prog(program)
-        # pdb.set_trace()
+
+        # If there is a stop action, modify the object to be the stop_node
+        for it, action in enumerate(actions):
+            if action == 'STOP':
+                o1[it] = self.node_stop
+                o2[it] = self.node_stop
         action_ids = np.array([self.action_dict.get_id(action) for action in actions])
-        ob1 = np.array([ids_used[ob[1]] if ob is not None else self.max_nodes-1 for ob in o1])
-        ob2 = np.array([ids_used[ob[1]] if ob is not None else self.max_nodes-1 for ob in o2])
+        ob1 = np.array([ids_used[ob[1]] if ob is not None else ids_used[self.node_none[1]] for ob in o1])
+        ob2 = np.array([ids_used[ob[1]] if ob is not None else ids_used[self.node_none[1]] for ob in o2])
         a = np.zeros(self.max_steps).astype(np.int64)
         o1 = np.zeros(self.max_steps).astype(np.int64)
         o2 = np.zeros(self.max_steps).astype(np.int64)
@@ -160,6 +168,8 @@ class EnvDataset(Dataset):
             ids_used = {}
             info = []
             info.append(self.process_graph(state, ids_used))
+
+            # The last instruction is the stop
             for instr in program[:-1]:
                 r, states, infos = curr_env.step(instr)
                 info.append(self.process_graph(states, ids_used))
@@ -201,9 +211,13 @@ class EnvDataset(Dataset):
         '''
 
         # Build tensor of class_ids
-
         id_nodes = [x['id'] for x in state['nodes']]
         class_nodes = [x['class_name'] for x in state['nodes']]
+
+        # Include the Stop and None nodes
+        id_nodes += [self.node_stop[1], self.node_none[1]]
+        class_nodes += [self.node_stop[0], self.node_none[0]]
+
         class_node_ids = [self.object_dict.get_id(cname) for cname in class_nodes]
         for id in id_nodes:
             if id not in ids_used.keys():

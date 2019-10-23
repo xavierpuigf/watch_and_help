@@ -79,13 +79,14 @@ def train(dataset, helper):
         for it, dp in enumerate(data_loader):
 
             state, program = dp
-            action_logits, o1_logits, o2_logits = policy_net(state)
+            action_logits, o1_logits, o2_logits, repr = policy_net(state)
             logits = action_logits, o1_logits, o2_logits
 
-
+            #action_logits[0,0,:].sum().backward()
+            #pdb.set_trace()
             loss, aloss, o1loss, o2loss = bc_loss(program, logits)
 
-            # action, o1, o2 indices
+            # Obtain the prediction
             pred_action = torch.argmax(action_logits, -1)
             pred_o1 = torch.argmax(action_logits, -1)
             pred_o2 = torch.argmax(action_logits, -1)
@@ -109,16 +110,12 @@ def train(dataset, helper):
                                          object_names_gt_2, object_ids_gt_2, dataset)
 
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
-            pdb.set_trace()
-            print(loss)
-            pdb.set_trace()
-            #pdb.set_trace()
-            # if epoch % helper.args.print_freq:
-            #     lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS(program, instructions)
-            #     print('Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
-            #           'LCSaction {:.2f}. LCSo1 {:.2f}. LCSo2 {:.2f}. LCStriplet {:.2f}'.format(
-            #         loss.data, aloss.data, o1loss.data, o2loss.data,
-            #         lcs_action, lcs_o1, lcs_o2, lcs_triple))
+            if epoch % helper.args.print_freq:
+                print(utils.pretty_print_program(pred_instr[0]))
+                print('Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
+                      'ActionLCS {:.2f}. O2LCS {:.2f}. O2LCS {:.2f}. TripletLCS {:.2f}'.format(
+                    loss.data, aloss.data, o1loss.data, o2loss.data,
+                    lcs_action, lcs_o1, lcs_o2, lcs_triple))
             # agent.reset()
             optimizer.zero_grad()
             loss.backward()
@@ -163,15 +160,14 @@ def bc_loss(program, logits):
     l_a, l_o1, l_o2 = logits
 
     bs = gt_a.shape[0]
-
     loss_action = criterion(l_a.view(-1, l_a.shape[-1]), gt_a.view(-1)).view(bs, -1)
     loss_o1 = criterion(l_o1.view(-1, l_o1.shape[-1]), gt_o1.view(-1)).view(bs, -1)
     loss_o2 = criterion(l_o2.view(-1, l_o2.shape[-1]), gt_o2.view(-1)).view(bs, -1)
-    m_loss_action = (loss_action * mask).sum(1)/mask.sum(1)
-    m_loss_o1 = (loss_o1 * mask).sum(1) / mask.sum(1)
-    m_loss_o2 = (loss_o2 * mask).sum(1) / mask.sum(1)
-    total_loss = m_loss_action + m_loss_o1 + m_loss_o2
-    return total_loss, loss_action, loss_o1, loss_o2
+    m_loss_action = ((loss_action * mask).sum(1)/mask.sum(1)).mean()
+    m_loss_o1 = ((loss_o1 * mask).sum(1) / mask.sum(1)).mean()
+    m_loss_o2 = ((loss_o2 * mask).sum(1) / mask.sum(1)).mean()
+    total_loss = m_loss_action # + m_loss_o1 + m_loss_o2
+    return total_loss, m_loss_action, m_loss_o1, m_loss_o2
 
 def start():
     helper = utils.setup()

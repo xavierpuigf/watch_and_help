@@ -172,3 +172,19 @@ def setup():
     args = parser.parse_args()
     helper = Helper(args)
     return helper
+
+
+def pretty_print_program(program):
+
+    program_joint = list(zip(*program))
+    final_instr = [it for it, x in enumerate(program_joint) if x[0] == 'stop']
+    if len(final_instr) > 0:
+        program_joint = program_joint[:final_instr[0]]
+    instructions = []
+    for instr in program_joint:
+        action, o1, o2 = instr
+        o1s = '<{}> ()'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
+        o2s = '<{}> ()'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+        instr_str = '[{}] {} {}'.format(action, o1s, o2s)
+        instructions.append(instr_str)
+    return '\n'.join(instructions)

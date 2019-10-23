@@ -46,6 +46,14 @@ class SinglePolicy(torch.nn.Module):
                                         torch.nn.ReLU(),
                                         torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
 
+        # Debug:
+        self.interm_grad = None
+
+        def debug_var(x):
+            print('Backward')
+            self.interm_grad = x
+        self.debug_var = debug_var
+
     def activation_info(self):
         return self.SinglePolicyActivations(self.helper)
 
@@ -122,10 +130,10 @@ class SinglePolicy(torch.nn.Module):
 
         # Mask out
         node_1_logits = node_1_logits * visibility + (1-visibility) * -1e6
-        node_2_logits = node_1_logits * visibility + (1-visibility) * -1e6
+        node_2_logits = node_2_logits * visibility + (1-visibility) * -1e6
         # Predict actions according to the global representation
 
-        return action_logits, node_1_logits, node_2_logits
+        return action_logits, node_1_logits, node_2_logits, node_repr
 
     def bc_loss(self, program, agent_info):
         # Deprecated
