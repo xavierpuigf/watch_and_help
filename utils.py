@@ -159,7 +159,7 @@ def setup():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_file', default='dataset/example_problem.json', type=str)
+    parser.add_argument('--dataset_folder', default='dataset/', type=str)
 
     # Model params
     parser.add_argument('--action_dim', default=100, type=int)

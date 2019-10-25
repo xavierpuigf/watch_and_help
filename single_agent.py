@@ -51,6 +51,7 @@ class SingleAgent():
         self.agent_info['rewards'].append(reward)
 
     def get_instruction(self, observations):
+        # Uses the policy net to sample the actions, it does so
         indices = []
         space = []
         log_probs = []

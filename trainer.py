@@ -174,7 +174,7 @@ def bc_loss(program, logits):
 
 def start():
     helper = utils.setup()
-    dataset = EnvDataset(helper.args.dataset_file)
+    dataset = EnvDataset(helper.args.dataset_folder)
     train(dataset, helper)
 
     pdb.set_trace()

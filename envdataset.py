@@ -7,7 +7,8 @@ import gym
 import utils
 import numpy as np
 
-def read_problem(file_problem):
+def read_problem(folder_problem):
+    file_problem = '{}/info.json'.format(folder_problem)
     # This should go in a dataset class
     with open(file_problem, 'r') as f:
         problems = json.load(f)
@@ -15,12 +16,11 @@ def read_problem(file_problem):
     problems_dataset = []
     for problem in problems:
         goal_file = problem['file_name']
-        graph_file = problem['env_path']
+        graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
         goal_name = problem['goal']
-        program_file = problem['program']
+        program_file = '{}/programs/{}'.format(folder_problem, problem['program'])
 
-        with open(goal_file, 'r') as f:
-            goal_str = f.read()
+        goal_str = '(and (on television[248]) (sitting character[65] bench[228]))'
 
         with open(program_file, 'r') as f:
             program = f.readlines()
@@ -41,9 +41,9 @@ def read_problem(file_problem):
 
 
 class EnvDataset(Dataset):
-    def __init__(self, dataset_file):
-        self.dataset_file = dataset_file
-        self.problems_dataset = read_problem(dataset_file)
+    def __init__(self, dataset_folder):
+        self.dataset_folder = dataset_folder
+        self.problems_dataset = read_problem(dataset_folder)
 
         self.actions = [
             "Walk",  # Same as Run
