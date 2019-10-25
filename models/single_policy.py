@@ -27,16 +27,18 @@ class SinglePolicy(torch.nn.Module):
 
         num_actions = len(dataset.action_dict)
 
-        self.fc_action = nn.Sequential(torch.nn.Linear(self.repr_dim, helper.args.object_dim),
+        self.fc_action = nn.Sequential(torch.nn.Linear(self.repr_dim * 2, helper.args.object_dim),
                                        torch.nn.ReLU(),
                                        torch.nn.Linear(self.repr_dim, num_actions))
 
-        self.fc_o1 = nn.Linear(self.repr_dim*2, 1)
-        self.fc_o2 = nn.Linear(self.repr_dim*2, 1)
+        self.fc_o1 = nn.Linear(self.repr_dim*3, 1)
+        self.fc_o2 = nn.Linear(self.repr_dim*3, 1)
         # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
-
-        # Combine char and object selected
+	
+	self.goal_embedding = nn.Linear(helper.args.goal_dim, self.repr_dim)
+       
+	 # Combine char and object selected
         self.objectchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim*2, helper.args.object_dim),
                                      torch.nn.ReLU(),
                                      torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
@@ -116,15 +118,16 @@ class SinglePolicy(torch.nn.Module):
         # #distr = distributions.categorical.Categorical(logits=logit_attention)
         # return logit_attention, candidates
 
-    def forward(self, observations):
+    def forward(self, observations, goals):
 
         # Obtain the initial node representations
         class_names, class_ids, states, edges, edge_types, visibility, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
+        goal_repr = self.goal_embedding(goals)
         num_nodes = node_repr.shape[-2]
 
-        concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
-        action_logits = self.fc_action(global_repr)
+        concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1), goal_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
+        action_logits = self.fc_action(global_repr, goal_repr)
         node_1_logits = self.fc_o1(concat_nodes).squeeze(-1)
         node_2_logits = self.fc_o2(concat_nodes).squeeze(-1)
 

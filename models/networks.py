@@ -91,7 +91,7 @@ class GraphStateRepresentation(nn.Module):
         self.in_fts = 100
         self.out_fts = 100
         self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, 3, len(dataset.relation_dict))# GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
-        self.gru = nn.GRUCell(self.out_fts, self.out_fts, bias=False)
+	self.mlp = nn.Linear(self.out_fts, self.out_fts)
 
     def forward(self, observations):
         class_names, obj_ids, states, edge_values, edge_types, visibility, mask_edges = observations
@@ -108,17 +108,8 @@ class GraphStateRepresentation(nn.Module):
 
         node_representations = []
         # goal_representation TODO: ser here
-        h_0_node = torch.zeros(init_nodes[0].shape)
-
-        if initial_node_repr.is_cuda:
-            h_0_node = h_0_node.cuda()
-
-        h_t = h_0_node
-
-        h_t_flat = h_t.view(-1, h_t.shape[-1])
         for it in range(len(init_nodes)):
-            node_representation_step_flat = self.gru(init_nodes[it].view(-1, self.out_fts), h_t_flat)
-            h_t_flat = node_representation_step_flat
+            node_representation_step_flat = self.mlp(init_nodes[it].view(-1, self.out_fts))
             node_representation_step = node_representation_step_flat.view(
                 bs, -1, node_representation_step_flat.shape[-1])
             node_repr = self.graph_encoding(node_representation_step, edges_tsp[it], edge_types[it], mask_edges[it])
