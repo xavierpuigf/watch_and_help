@@ -74,7 +74,7 @@ def train(dataset, helper):
     # num_rollouts = helper.args.num_rollouts
     num_epochs = helper.args.num_epochs
 
-    data_loader = data.DataLoader(dataset)
+    data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size, shuffle=True, num_workers=4)
     for epoch in range(num_epochs):
         for it, dp in enumerate(data_loader):
 
@@ -174,7 +174,7 @@ def bc_loss(program, logits):
 
 def start():
     helper = utils.setup()
-    dataset = EnvDataset(helper.args.dataset_folder)
+    dataset = EnvDataset(helper.args)
     train(dataset, helper)
 
     pdb.set_trace()

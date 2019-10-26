@@ -1,10 +1,11 @@
 from utils import DictObjId
 import json
 import pdb
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import vh_graph
 import gym
 import utils
+from tqdm import tqdm
 import numpy as np
 
 def read_problem(folder_problem):
@@ -17,6 +18,8 @@ def read_problem(folder_problem):
     for problem in problems:
         graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
         goal_name = problem['goal']
+        if '.txt' not in problem['program']:
+            problem['program'] = problem['program'] + '.txt'
         program_file = '{}/programs/{}'.format(folder_problem, problem['program'])
 
         if 'file_name' in problem.keys():
@@ -45,9 +48,9 @@ def read_problem(folder_problem):
 
 
 class EnvDataset(Dataset):
-    def __init__(self, dataset_file):
-        self.dataset_file = dataset_file
-        self.problems_dataset = read_problem(dataset_file)
+    def __init__(self, args):
+        self.dataset_file = args.dataset_folder
+        self.problems_dataset = read_problem(self.dataset_file)
 
         self.actions = [
             "Walk",  # Same as Run
@@ -103,9 +106,9 @@ class EnvDataset(Dataset):
         self.state_dict = DictObjId(self.states)
         self.num_items = len(self.problems_dataset)
 
-        self.max_nodes = 300
-        self.max_edges = 500
-        self.max_steps = 10
+        self.max_nodes = args.max_nodes #300
+        self.max_edges = args.max_edges #500
+        self.max_steps = args.max_steps # 10
 
         self.node_stop = ('stop', -2)
         self.node_none = ('no_obj', -1)
@@ -159,7 +162,7 @@ class EnvDataset(Dataset):
     def getobjects(self):
         print('Getting objects...')
         object_names = []
-        for prob in self.problems_dataset:
+        for prob in tqdm(self.problems_dataset):
             with open(prob['graph_file'], 'r') as f:
                 graph = json.load(f)
             object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
@@ -237,7 +240,16 @@ class EnvDataset(Dataset):
 
             goal = problem['goal']
             curr_env = gym.make('vh_graph-v0')
-            curr_env.reset(init_graph, goal)
+
+            if goal[0] != '(':
+                fnode = full_init_env['nodes'][0]
+                nnode = '{}[{}]'.format(fnode['class_name'], fnode['id'])
+
+                goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
+                print(goal_name)
+            else:
+                goal_name = goal
+            curr_env.reset(init_graph, goal_name)
             curr_env.to_pomdp()
             state = curr_env.get_observations()
 
