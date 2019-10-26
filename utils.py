@@ -159,7 +159,7 @@ def setup():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_file', default='dataset/example_problem.json', type=str)
+    parser.add_argument('--dataset_folder', default='dataset/', type=str)
 
     # Model params
     parser.add_argument('--action_dim', default=100, type=int)
@@ -167,6 +167,7 @@ def setup():
     parser.add_argument('--relation_dim', default=100, type=int)
     parser.add_argument('--state_dim', default=100, type=int)
     parser.add_argument('--agent_dim', default=100, type=int)
+    parser.add_argument('--num_goals', default=3, type=int)
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)

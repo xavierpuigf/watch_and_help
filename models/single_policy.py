@@ -4,6 +4,16 @@ from torch import distributions, nn
 import utils
 from . import networks
 
+class GoalEmbed(torch.nn.Module):
+    def __init__(self, num_goals, out_dim):
+        super(GoalEmbed, self).__init__()
+        self.num_goals = num_goals
+        self.out_dim = out_dim
+        self.goal_type_embed = nn.Embedding(self.num_goals, self.out_dim)
+
+    def forward(self, goals):
+        goal_id, goal_classnode_id, goal_node_id = goals
+        return self.goal_type_embed(goal_id)
 
 class SinglePolicy(torch.nn.Module):
     class SinglePolicyActivations:
@@ -35,10 +45,10 @@ class SinglePolicy(torch.nn.Module):
         self.fc_o2 = nn.Linear(self.repr_dim*3, 1)
         # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
-	
-	self.goal_embedding = nn.Linear(helper.args.goal_dim, self.repr_dim)
-       
-	 # Combine char and object selected
+
+        self.goal_embedding = GoalEmbed(helper.args.num_goals, self.repr_dim)
+
+        # Combine char and object selected
         self.objectchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim*2, helper.args.object_dim),
                                      torch.nn.ReLU(),
                                      torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
@@ -121,13 +131,19 @@ class SinglePolicy(torch.nn.Module):
     def forward(self, observations, goals):
 
         # Obtain the initial node representations
+        num_steps = observations[0].shape[1]
         class_names, class_ids, states, edges, edge_types, visibility, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
         goal_repr = self.goal_embedding(goals)
+        goal_repr = goal_repr.unsqueeze(-2).repeat(1, num_steps, 1)
+
         num_nodes = node_repr.shape[-2]
 
-        concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1), goal_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
-        action_logits = self.fc_action(global_repr, goal_repr)
+        concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1),
+                                             goal_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
+
+        global_and_goal = torch.cat([goal_repr, global_repr], 2)
+        action_logits = self.fc_action(global_and_goal)
         node_1_logits = self.fc_o1(concat_nodes).squeeze(-1)
         node_2_logits = self.fc_o2(concat_nodes).squeeze(-1)
 
@@ -138,107 +154,7 @@ class SinglePolicy(torch.nn.Module):
 
         return action_logits, node_1_logits, node_2_logits, node_repr
 
-    def bc_loss(self, program, agent_info):
-        # Deprecated
-        # Computes crossentropy loss between actions taken and gt actions
-        action_space = agent_info['action_space']
-        saved_log_probs = agent_info['saved_log_probs']
-        is_cuda = saved_log_probs[0][0].is_cuda
 
-        num_steps = min(len(program), len(action_space))
-
-        # GT action
-        actions, o1, o2 = utils.parse_prog(program)
-        action_candidates = [x[1] if len(x) > 1 else ['None'] for x in action_space]
-        obj1_candidates = [[(node['class_name'], node['id']) for node in x[0]] for x in action_space]
-        obj2_candidates = [[(node['class_name'], node['id']) for node in x[2]] if len(x) > 2 else [None] for x in action_space]
-
-
-        # Obtain the candidates and find the matching index
-        # Loss o1
-        losses, losses_object1, losses_object2, losses_action = [], [], [], []
-        mlosses, mlosses_object1, mlosses_object2, mlosses_action = [], [], [], []
-        for it in range(num_steps):
-            loss = torch.zeros([1])
-            loss_object1 = torch.zeros([1])
-            loss_object2 = torch.zeros([1])
-            loss_action = torch.zeros([1])
-
-            if is_cuda:
-                loss = loss.cuda()
-                loss_object1 = loss_object1.cuda()
-                loss_object2 = loss_object2.cuda()
-                loss_action = loss_action.cuda()
-
-
-            gt_action, gt_o1, gt_o2 = actions[it], o1[it], o2[it]
-            index_action = [it for it,x in enumerate(action_candidates[it]) if x.upper() == gt_action]
-            index_o1 = [it for it, x in enumerate(obj1_candidates[it]) if x == gt_o1]
-            index_o2 = [it for it, x in enumerate(obj2_candidates[it]) if x == gt_o2]
-            index_action = index_action[0] if len(index_action) > 0 else None
-            index_o1 = index_o1[0] if len(index_o1) > 0 else None
-            index_o2 = index_o2[0] if len(index_o2) > 0 else None
-
-            # Hack, we always want to run action 2
-            if gt_o2 is None:
-                index_o2 = None
-
-            valid_triple, valid_action, valid_o1, valid_o2 = False, False, False, False
-            if index_action is not None:
-                valid_triple = True
-                loss += -saved_log_probs[it][1][index_action] # action
-                loss_action += -saved_log_probs[it][1][index_action]
-                valid_action = True
-
-            if index_o1 is not None:
-                valid_triple = True
-                valid_o1 = True
-                loss += -saved_log_probs[it][0][index_o1] # object1
-                loss_object1 += -saved_log_probs[it][0][index_o1]
-
-            if index_o2 is not None:
-                valid_triple = True
-                valid_o2 = True
-                loss += -saved_log_probs[it][2][index_o2] # object2
-                loss_object2 += -saved_log_probs[it][2][index_o2]
-
-            losses.append(loss)
-            losses_object1.append(loss_object1)
-            losses_object2.append(loss_object2)
-            losses_action.append(loss_action)
-            mlosses.append(valid_triple)
-            mlosses_object1.append(valid_o1)
-            mlosses_object2.append(valid_o2)
-            mlosses_action.append(valid_action)
-
-        losses = torch.cat(losses)
-        losses_o1 = torch.cat(losses_object1)
-        losses_o2 = torch.cat(losses_object2)
-        losses_action = torch.cat(losses_action)
-
-        mlosses = torch.tensor(mlosses).float()
-        mlosses_o1 = torch.tensor(mlosses_object1).float()
-        mlosses_o2 = torch.tensor(mlosses_object2).float()
-        mlosses_action = torch.tensor(mlosses_action).float()
-
-        if is_cuda:
-            mlosses = mlosses.cuda()
-            mlosses_o1 = mlosses_o1.cuda()
-            mlosses_o2 = mlosses_o2.cuda()
-            mlosses_action = mlosses_action.cuda()
-
-
-        mlosses /= (mlosses.sum()+1e-8)
-        mlosses_o1 /= (mlosses_o1.sum()+1e-8)
-        mlosses_o2 /= (mlosses_o2.sum()+1e-8)
-        mlosses_action /= (mlosses_action.sum()+1e-8)
-
-        loss = (losses * mlosses).sum()
-        loss_action = (losses_action * mlosses_action).sum()
-        loss_o1 = (losses_o1 * mlosses_o1).sum()
-        loss_o2 = (losses_o2 * mlosses_o2).sum()
-
-        return loss, loss_action, loss_o1, loss_o2
 
     def pg_loss(self, labels, agent_info):
 

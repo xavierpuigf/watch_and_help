@@ -91,7 +91,7 @@ class GraphStateRepresentation(nn.Module):
         self.in_fts = 100
         self.out_fts = 100
         self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, 3, len(dataset.relation_dict))# GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
-	self.mlp = nn.Linear(self.out_fts, self.out_fts)
+        self.mlp = nn.Linear(self.out_fts, self.out_fts)
 
     def forward(self, observations):
         class_names, obj_ids, states, edge_values, edge_types, visibility, mask_edges = observations

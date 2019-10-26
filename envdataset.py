@@ -7,20 +7,24 @@ import gym
 import utils
 import numpy as np
 
-def read_problem(file_problem):
+def read_problem(folder_problem):
     # This should go in a dataset class
+    file_problem = '{}/info.json'.format(folder_problem)
     with open(file_problem, 'r') as f:
         problems = json.load(f)
 
     problems_dataset = []
     for problem in problems:
-        goal_file = problem['file_name']
-        graph_file = problem['env_path']
+        graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
         goal_name = problem['goal']
-        program_file = problem['program']
+        program_file = '{}/programs/{}'.format(folder_problem, problem['program'])
 
-        with open(goal_file, 'r') as f:
-            goal_str = f.read()
+        if 'file_name' in problem.keys():
+            goal_file = '{}/{}'.format(folder_problem, problem['file_name'])
+            with open(goal_file, 'r') as f:
+                goal_str = f.read()
+        else:
+            goal_str = goal_name
 
         with open(program_file, 'r') as f:
             program = f.readlines()
@@ -109,11 +113,46 @@ class EnvDataset(Dataset):
     def __len__(self):
         return self.num_items
 
+    def prepare_goal(self, goal_str, ids_used, class_names):
+        '''
+
+        :param goal_str: the goal specification
+        :param ids_used: the mapping from object ids in graph and model ids
+        :return:
+        '''
+        if goal_str.lower().startswith('findnode'):
+            # subgoal
+            node_id = int(goal_str.split('_')[-1])
+            id_in_model = ids_used[node_id]
+            goal_id = 0
+            goal_class = class_names[0, id_in_model]
+            # This could be in the future all the nodes in the graph with the given id
+            goal_id = node_id  # no obj
+
+        elif goal_str.lower().startswith('findclass'):
+            # subgoal
+            class_name = goal_str.split('_')[-1]
+            goal_id = 1
+            goal_class = self.object_dict.get_id(class_name)
+            # This could be in the future all the nodes in the graph with the given id
+            goal_node = ids_used[-1]  # no obj
+
+        else:
+            # goal, we will need to figure out hot to handle
+            goal_id = 2
+            goal_class = self.object_dict.get_id('no_obj')
+            goal_node = ids_used[-1] # no obj
+
+
+        return goal_id, goal_class, goal_node
+
     def __getitem__(self, idx):
         problem = self.problems_dataset[idx]
         state_info, ids_used = self.prepare_data(problem)
         program_info = self.prepare_program(problem['program'], ids_used)
-        return state_info, program_info
+        class_names = state_info[0]
+        goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names)
+        return state_info, program_info, goal_info
 
 
 
@@ -127,7 +166,6 @@ class EnvDataset(Dataset):
         object_names = list(set(object_names))
         object_names += ['stop']
         return object_names
-
 
     def prepare_program(self, program, ids_used):
         actions, o1, o2 = utils.parse_prog(program)
@@ -151,12 +189,14 @@ class EnvDataset(Dataset):
         return a, o1, o2, mask_steps
 
     def prepare_data(self, problem):
+        # TODO: clas_names, object_ids can eliminate the temporal dimension
         '''
         Given a problem with an intial env, returns a set of tensor describing the environment
         :param problem: dictionary with 'program' having the GT prog and 'graph_file' with the inital graph
                         if graphs_file exists, it will use that as the sequence of graphs, otherwise, it will create it
                         with the env.
         :return:
+
             class_names: [max_steps, max_nodes]: tensor with the id corresponding to the class name of every object
             object_ids: [max_steps, max_nodes]: tensor with the id of every object
             state_nodes: [max_steps, max_nodes, num_states]: binary tensor [i,j,k] = 1 if object j in step i has state k
@@ -166,17 +206,38 @@ class EnvDataset(Dataset):
             mask_edges: [max_steps, max_edges] which edges are valid
             ids_used: dict with a mapping from object ids to model ids
         '''
+
+        # Build a priori the node names and node ids, for both seen and unseeen objects
         program = problem['program']
+        init_graph = problem['graph_file']
+        ids_used = {}
+        # Load the full graph and get the ids of objects
+        with open(init_graph, 'r') as f:
+            full_init_env = json.load(f)
+            full_init_env = full_init_env['init_graph']
+
+        num_nodes = len(full_init_env['nodes'])
+        class_namenode_ids, id_nodes = [], []
+        for it, node in enumerate(full_init_env['nodes']):
+            ids_used[node['id']] = it
+            id_nodes.append(node['id'])
+            class_namenode_ids.append(self.object_dict.get_id(node['class_name']))
+
+        class_names = np.zeros(self.max_nodes)
+        object_ids = np.zeros(self.max_nodes)
+
+        # Populate node_names [max_nodes]
+        class_names[:num_nodes] = class_namenode_ids
+        object_ids[:num_nodes] = id_nodes
+
         if 'graphs_file' not in problem.keys():
-            init_graph = problem['graph_file']
-            graphs_file_name = problem['graph_file'][:-5] + '_multiple' + '.json'
+            # Run the graph to get the info of the episode
+            graphs_file_name = init_graph[:-5] + '_multiple' + '.json'
 
 
-            graph_file = problem['graph_file']
             goal = problem['goal']
-            graphs = []
             curr_env = gym.make('vh_graph-v0')
-            curr_env.reset(graph_file, goal)
+            curr_env.reset(init_graph, goal)
             curr_env.to_pomdp()
             state = curr_env.get_observations()
 
@@ -195,13 +256,17 @@ class EnvDataset(Dataset):
             with open(problem['graphs_file'], 'r') as f:
                 graphs = json.load(f)
 
-        ids_used = {}
         info = []
         # The last instruction is the stop
         for state in graphs:
             info.append(self.process_graph(state, ids_used))
 
-        class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
+        state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
+
+        # Hack - they should not count on time
+        object_ids = [object_ids]*len(state_nodes)
+        class_names = [class_names]*len(state_nodes)
+
         object_ids = np.concatenate([np.expand_dims(x, 0) for x in object_ids])
         class_names = np.concatenate([np.expand_dims(x, 0) for x in class_names])
         state_nodes = np.concatenate([np.expand_dims(x, 0) for x in state_nodes])
@@ -230,9 +295,9 @@ class EnvDataset(Dataset):
         :param states: dictionary with the state
         :param ids_used: ids of nodes already used. Dictionary to id in the model
         :return:
-            class_name_ids: [max_nodes] class_name
             state_nodes: [max_nodes, num_states]
             edges: [max_edges, 3]
+            edge_types: [max_edges]
             visible_mask: [max_nodes] with 1 if visible
             mask_edge: [max_edges]
         '''
@@ -245,18 +310,13 @@ class EnvDataset(Dataset):
         id_nodes += [self.node_stop[1], self.node_none[1]]
         class_nodes += [self.node_stop[0], self.node_none[0]]
 
-        class_node_ids = [self.object_dict.get_id(cname) for cname in class_nodes]
         for id in id_nodes:
             if id not in ids_used.keys():
                 ids_used[id] = len(ids_used.keys())
 
         ids_in_model = [ids_used[id] for id in id_nodes]
-        class_name_ids = np.zeros(self.max_nodes)
-        object_ids = np.zeros(self.max_nodes)
 
-        # Populate node_names [max_nodes]
-        class_name_ids[ids_in_model] = class_node_ids
-        object_ids[ids_in_model] = id_nodes
+
 
         # Populate state one hot [max_nodes, num_states]: one_hot
         num_states = len(self.state_dict)
@@ -284,4 +344,4 @@ class EnvDataset(Dataset):
         visible_mask = np.zeros((self.max_nodes))
         visible_mask[ids_in_model] = 1
 
-        return class_name_ids, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges
+        return state_nodes, edges, edge_types, visible_mask, mask_edges

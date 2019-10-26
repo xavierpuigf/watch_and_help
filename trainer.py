@@ -26,7 +26,7 @@ def test(dataset, helper, policy_net):
     num_rollouts = helper.args.num_rollouts
 
     for it, dp in enumerate(dataset):
-        graph_file, goal, program = dp
+        graph_file, program, goal = dp
         curr_env = envs[it]
         agent = curr_env.agents[0]
         instructions = []
@@ -78,8 +78,8 @@ def train(dataset, helper):
     for epoch in range(num_epochs):
         for it, dp in enumerate(data_loader):
 
-            state, program = dp
-            action_logits, o1_logits, o2_logits, repr = policy_net(state)
+            state, program, goal = dp
+            action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
             logits = action_logits, o1_logits, o2_logits
 
             #action_logits[0,0,:].sum().backward()
@@ -174,7 +174,7 @@ def bc_loss(program, logits):
 
 def start():
     helper = utils.setup()
-    dataset = EnvDataset(helper.args.dataset_file)
+    dataset = EnvDataset(helper.args.dataset_folder)
     train(dataset, helper)
 
     pdb.set_trace()
