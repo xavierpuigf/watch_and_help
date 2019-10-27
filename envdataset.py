@@ -16,7 +16,7 @@ def read_problem(folder_problem):
         problems = json.load(f)
 
     problems_dataset = []
-    for problem in problems:
+    for id_problem, problem in enumerate(problems):
         graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
         goal_name = problem['goal']
         if '.txt' not in problem['program']:
@@ -41,6 +41,7 @@ def read_problem(folder_problem):
             continue
         problems_dataset.append(
             {
+                'id': id_problem,
                 'goal': goal_str,
                 'graph_file': graph_file,
                 'goal_name': goal_name,
@@ -243,10 +244,9 @@ class EnvDataset(Dataset):
         # Populate node_names [max_nodes]
         class_names[:num_nodes] = class_namenode_ids
         object_ids[:num_nodes] = id_nodes
-
         if 'graphs_file' not in problem.keys():
             # Run the graph to get the info of the episode
-            graphs_file_name = init_graph[:-5] + '_multiple' + '.json'
+            graphs_file_name = init_graph[:-5] + '_multiple_{}.json'.format(problem['id'])
 
             if not os.path.isfile(graphs_file_name):
                 goal = problem['goal']
@@ -265,6 +265,7 @@ class EnvDataset(Dataset):
 
                 graphs = [state]
                 try:
+                    print(len(program))
                     for instr in program[:-1]:
 
                         _, states, infos = curr_env.step(instr)
@@ -274,10 +275,12 @@ class EnvDataset(Dataset):
                         f.write(json.dumps(graphs, indent=4))
                     problem['graphs_file'] = graphs_file_name
                 except:
+                    print('Error')
                     pdb.set_trace()
             else:
                 problem['graphs_file'] = graphs_file_name
                 with open(problem['graphs_file'], 'r') as f:
+
                     graphs = json.load(f)
         else:
             # load graphs
@@ -285,6 +288,7 @@ class EnvDataset(Dataset):
                 graphs = json.load(f)
 
         info = []
+        print(len(program), len(graphs), program)
         # The last instruction is the stop
         for state in graphs:
             info.append(self.process_graph(state, ids_used))
