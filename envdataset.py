@@ -248,35 +248,37 @@ class EnvDataset(Dataset):
             # Run the graph to get the info of the episode
             graphs_file_name = init_graph[:-5] + '_multiple' + '.json'
 
+            if not os.path.isfile(graphs_file_name):
+                goal = problem['goal']
+                curr_env = gym.make('vh_graph-v0')
 
-            goal = problem['goal']
-            curr_env = gym.make('vh_graph-v0')
+                if goal[0] != '(':
+                    fnode = full_init_env['nodes'][0]
+                    nnode = '{}[{}]'.format(fnode['class_name'], fnode['id'])
+                    goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
+                else:
+                    goal_name = goal
+                curr_env.reset(init_graph, goal_name)
+                curr_env.to_pomdp()
+                state = curr_env.get_observations()
 
-            if goal[0] != '(':
-                fnode = full_init_env['nodes'][0]
-                nnode = '{}[{}]'.format(fnode['class_name'], fnode['id'])
 
-                goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
-                print(goal_name)
+                graphs = [state]
+                try:
+                    for instr in program[:-1]:
+
+                        _, states, infos = curr_env.step(instr)
+                        graphs.append(states)
+
+                    with open(graphs_file_name, 'w+') as f:
+                        f.write(json.dumps(graphs, indent=4))
+                    problem['graphs_file'] = graphs_file_name
+                except:
+                    pdb.set_trace()
             else:
-                goal_name = goal
-            curr_env.reset(init_graph, goal_name)
-            curr_env.to_pomdp()
-            state = curr_env.get_observations()
-
-
-            graphs = [state]
-            try:
-                for instr in program[:-1]:
-
-                    _, states, infos = curr_env.step(instr)
-                    graphs.append(states)
-
-                with open(graphs_file_name, 'w+') as f:
-                    f.write(json.dumps(graphs, indent=4))
                 problem['graphs_file'] = graphs_file_name
-            except:
-                pdb.set_trace()
+                with open(problem['graphs_file'], 'r') as f:
+                    graphs = json.load(f)
         else:
             # load graphs
             with open(problem['graphs_file'], 'r') as f:
