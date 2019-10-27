@@ -130,7 +130,7 @@ class EnvDataset(Dataset):
             goal_id = 0
             goal_class = class_names[0, id_in_model]
             # This could be in the future all the nodes in the graph with the given id
-            goal_id = node_id  # no obj
+            goal_node = node_id  # no obj
 
         elif goal_str.lower().startswith('findclass'):
             # subgoal
