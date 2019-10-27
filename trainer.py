@@ -94,16 +94,23 @@ def train(dataset, helper):
 
             object_ids = state[1]
             object_names = state[0]
+            object_names_pred_1 = object_names[np.arange(object_names.shape[0])[:, None],
+                                               np.arange(object_names.shape[1])[None, :], pred_o1]
+            object_ids_pred_1 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                           np.arange(object_names.shape[1])[None, :], pred_o1]
+            object_names_pred_2 = object_names[np.arange(object_names.shape[0])[:, None],
+                                               np.arange(object_names.shape[1])[None, :], pred_o2]
+            object_ids_pred_2 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                           np.arange(object_names.shape[1])[None, :], pred_o2]
 
-            object_names_pred_1 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o1]
-            object_ids_pred_1 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o1]
-            object_names_pred_2 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o2]
-            object_ids_pred_2 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), pred_o2]
-
-            object_names_gt_1 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[1]]
-            object_ids_gt_1 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[1]]
-            object_names_gt_2 = object_names[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[2]]
-            object_ids_gt_2 = object_ids[np.arange(object_names.shape[0]), np.arange(object_names.shape[1]), program[2]]
+            object_names_gt_1 = object_names[np.arange(object_names.shape[0])[:, None],
+                                             np.arange(object_names.shape[1])[None, :], program[1]]
+            object_ids_gt_1 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                         np.arange(object_names.shape[1])[None, :], program[1]]
+            object_names_gt_2 = object_names[np.arange(object_names.shape[0])[:, None],
+                                             np.arange(object_names.shape[1])[None, :], program[2]]
+            object_ids_gt_2 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                         np.arange(object_names.shape[1])[None, :], program[2]]
 
             pred_instr = obtain_list_instr(pred_action, object_names_pred_1, object_ids_pred_1,
                                            object_names_pred_2, object_ids_pred_2, dataset)
