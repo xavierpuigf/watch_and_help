@@ -7,6 +7,7 @@ import gym
 import utils
 from tqdm import tqdm
 import numpy as np
+import os
 
 def read_problem(folder_problem):
     # This should go in a dataset class
@@ -130,7 +131,7 @@ class EnvDataset(Dataset):
             goal_id = 0
             goal_class = class_names[0, id_in_model]
             # This could be in the future all the nodes in the graph with the given id
-            goal_id = node_id  # no obj
+            goal_node = node_id  # no obj
 
         elif goal_str.lower().startswith('findclass'):
             # subgoal
@@ -161,12 +162,20 @@ class EnvDataset(Dataset):
 
     def getobjects(self):
         print('Getting objects...')
-        object_names = []
-        for prob in tqdm(self.problems_dataset):
-            with open(prob['graph_file'], 'r') as f:
-                graph = json.load(f)
-            object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
-        object_names = list(set(object_names))
+        object_file_name = '{}/obj_names.json'.format(self.dataset_file)
+
+        if not os.path.isfile(object_file_name):
+            object_names = []
+            for prob in tqdm(self.problems_dataset):
+                with open(prob['graph_file'], 'r') as f:
+                    graph = json.load(f)
+                object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
+            object_names = list(set(object_names))
+            with open(object_file_name, 'w+') as f:
+                f.write(json.dumps(object_names))
+        else:
+            with open(object_file_name, 'r') as f:
+                object_names = json.load(f)
         object_names += ['stop']
         return object_names
 
@@ -255,14 +264,17 @@ class EnvDataset(Dataset):
 
 
             graphs = [state]
-            for instr in program[:-1]:
-                _, states, infos = curr_env.step(instr)
-                graphs.append(states)
+            try:
+                for instr in program[:-1]:
 
-            with open(graphs_file_name, 'w+') as f:
-                f.write(json.dumps(graphs, indent=4))
-            problem['graphs_file'] = graphs_file_name
+                    _, states, infos = curr_env.step(instr)
+                    graphs.append(states)
 
+                with open(graphs_file_name, 'w+') as f:
+                    f.write(json.dumps(graphs, indent=4))
+                problem['graphs_file'] = graphs_file_name
+            except:
+                pdb.set_trace()
         else:
             # load graphs
             with open(problem['graphs_file'], 'r') as f:

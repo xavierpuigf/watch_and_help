@@ -73,8 +73,9 @@ def train(dataset, helper):
     #
     # num_rollouts = helper.args.num_rollouts
     num_epochs = helper.args.num_epochs
+    do_shuffle = not helper.args.debug
 
-    data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size, shuffle=True, num_workers=4)
+    data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size, shuffle=do_shuffle, num_workers=0)
     for epoch in range(num_epochs):
         for it, dp in enumerate(data_loader):
 
