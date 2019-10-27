@@ -159,7 +159,7 @@ def setup():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_subgoals/', type=str) # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_subgoals2/', type=str) # dataset_subgoals
 
     # Model params
     parser.add_argument('--action_dim', default=100, type=int)
@@ -170,7 +170,7 @@ def setup():
     parser.add_argument('--num_goals', default=3, type=int)
 
     parser.add_argument('--max_nodes', default=350, type=int)
-    parser.add_argument('--max_edges', default=500, type=int)
+    parser.add_argument('--max_edges', default=700, type=int)
     parser.add_argument('--max_steps', default=10, type=int)
 
     # Training params

@@ -109,7 +109,7 @@ class GraphStateRepresentation(nn.Module):
         node_representations = []
         # goal_representation TODO: ser here
         for it in range(len(init_nodes)):
-            node_representation_step_flat = self.mlp(init_nodes[it].view(-1, self.out_fts))
+            node_representation_step_flat = self.mlp(init_nodes[it])
             node_representation_step = node_representation_step_flat.view(
                 bs, -1, node_representation_step_flat.shape[-1])
             node_repr = self.graph_encoding(node_representation_step, edges_tsp[it], edge_types[it], mask_edges[it])
@@ -213,7 +213,7 @@ class GatedGraphConv(nn.Module):
             edge_embeddings = self.edge_embed(edge_types).view(-1, self._out_feats, self._out_feats)
 
             # Mask out edge_embeddings
-            edge_embeddings *= mask_edges.view(-1)[:, None, None]
+            edge_embeddings *= mask_edges.flatten()[:, None, None]
 
             feat_input_embeddings = feat_flat[origin_nodes_flat][:, None, :]
             input_embeddings = (edge_embeddings * feat_input_embeddings).sum(-1)
