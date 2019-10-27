@@ -37,6 +37,8 @@ def read_problem(folder_problem):
         # program = [program[0]]
         program.append('[stop]')
 
+        if not goal_str.lower().startswith('findclass'):
+            continue
         problems_dataset.append(
             {
                 'goal': goal_str,

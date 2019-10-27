@@ -13,7 +13,7 @@ class GoalEmbed(torch.nn.Module):
 
     def forward(self, goals):
         goal_id, goal_classnode_id, goal_node_id = goals
-        return self.goal_type_embed(goal_id)
+        return self.goal_type_embed(goal_classnode_id)
 
 class SinglePolicy(torch.nn.Module):
     class SinglePolicyActivations:
@@ -46,7 +46,9 @@ class SinglePolicy(torch.nn.Module):
         # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
 
-        self.goal_embedding = GoalEmbed(helper.args.num_goals, self.repr_dim)
+        # num_goals = num_objects
+        num_goals = len(dataset.object_dict)
+        self.goal_embedding = GoalEmbed(num_goals, self.repr_dim)
 
         # Combine char and object selected
         self.objectchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim*2, helper.args.object_dim),
