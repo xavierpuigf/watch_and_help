@@ -85,7 +85,7 @@ def train(dataset, helper):
 
             #action_logits[0,0,:].sum().backward()
             #pdb.set_trace()
-            loss, aloss, o1loss, o2loss = bc_loss(program, logits)
+            loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
 
             # Obtain the prediction
             pred_action = torch.argmax(action_logits, -1)
@@ -178,7 +178,10 @@ def bc_loss(program, logits):
     m_loss_o1 = ((loss_o1 * mask).sum(1) / mask.sum(1)).mean()
     m_loss_o2 = ((loss_o2 * mask).sum(1) / mask.sum(1)).mean()
     total_loss = m_loss_action + m_loss_o1 + m_loss_o2
-    return total_loss, m_loss_action, m_loss_o1, m_loss_o2
+    debug = {}
+    debug['loss_o1'] = loss_o1
+    debug['loss_o2'] = loss_o2
+    return total_loss, m_loss_action, m_loss_o1, m_loss_o2, debug
 
 def start():
     helper = utils.setup()

@@ -9,11 +9,19 @@ class GoalEmbed(torch.nn.Module):
         super(GoalEmbed, self).__init__()
         self.num_goals = num_goals
         self.out_dim = out_dim
-        self.goal_type_embed = nn.Embedding(self.num_goals, self.out_dim)
+        self.type_dim = 3
+        self.goal_type_embed = nn.Embedding(self.num_goals, self.type_dim)
+        self.goal_type_node_embed = nn.Linear(self.out_dim+self.type_dim, self.out_dim)
 
-    def forward(self, goals):
+    def forward(self, goals, node_repr):
         goal_id, goal_classnode_id, goal_node_id = goals
-        return self.goal_type_embed(goal_classnode_id)
+        goal_type = self.goal_type_embed(goal_classnode_id)
+        bs, tstps = node_repr.shape[:2]
+        goal_type = goal_type.unsqueeze(-2).repeat(1, tstps, 1)
+        node_goal = node_repr[torch.arange(bs), :, goal_id, :]
+
+        goal_and_node = torch.cat([goal_type, node_goal], dim=2)
+        return self.goal_type_node_embed(goal_and_node)
 
 class SinglePolicy(torch.nn.Module):
     class SinglePolicyActivations:
@@ -49,6 +57,9 @@ class SinglePolicy(torch.nn.Module):
         # num_goals = num_objects
         num_goals = len(dataset.object_dict)
         self.goal_embedding = GoalEmbed(num_goals, self.repr_dim)
+        self.goal_embedding.cuda()
+
+
 
         # Combine char and object selected
         self.objectchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim*2, helper.args.object_dim),
@@ -136,8 +147,7 @@ class SinglePolicy(torch.nn.Module):
         num_steps = observations[0].shape[1]
         class_names, class_ids, states, edges, edge_types, visibility, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
-        goal_repr = self.goal_embedding(goals)
-        goal_repr = goal_repr.unsqueeze(-2).repeat(1, num_steps, 1)
+        goal_repr = self.goal_embedding(goals, node_repr)
 
         num_nodes = node_repr.shape[-2]
 

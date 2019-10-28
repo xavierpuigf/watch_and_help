@@ -37,7 +37,7 @@ def read_problem(folder_problem):
         # program = [program[0]]
         program.append('[stop]')
 
-        if not goal_str.lower().startswith('findclass'):
+        if not goal_str.lower().startswith('findnode'):
             continue
         problems_dataset.append(
             {
@@ -55,6 +55,7 @@ class EnvDataset(Dataset):
     def __init__(self, args):
         self.dataset_file = args.dataset_folder
         self.problems_dataset = read_problem(self.dataset_file)
+        self.problems_dataset = [self.problems_dataset[0]]
 
         self.actions = [
             "Walk",  # Same as Run
@@ -134,7 +135,7 @@ class EnvDataset(Dataset):
             goal_id = 0
             goal_class = class_names[0, id_in_model]
             # This could be in the future all the nodes in the graph with the given id
-            goal_node = node_id  # no obj
+            goal_node = ids_used[node_id]  # no obj
 
         elif goal_str.lower().startswith('findclass'):
             # subgoal
@@ -276,7 +277,6 @@ class EnvDataset(Dataset):
                     problem['graphs_file'] = graphs_file_name
                 except:
                     print('Error')
-                    pdb.set_trace()
             else:
                 problem['graphs_file'] = graphs_file_name
                 with open(problem['graphs_file'], 'r') as f:
@@ -288,7 +288,6 @@ class EnvDataset(Dataset):
                 graphs = json.load(f)
 
         info = []
-        print(len(program), len(graphs), program)
         # The last instruction is the stop
         for state in graphs:
             info.append(self.process_graph(state, ids_used))
