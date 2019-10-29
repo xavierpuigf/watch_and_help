@@ -144,7 +144,7 @@ class SinglePolicy(torch.nn.Module):
 
         # Obtain the initial node representations
         num_steps = observations[0].shape[1]
-        class_names, class_ids, states, edges, edge_types, visibility, mask_edges = observations
+        class_names, class_ids, states, edges, edge_types, visibility, mask_nodes, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
         goal_repr = self.goal_embedding(goals, node_repr)
 

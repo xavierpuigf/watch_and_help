@@ -102,14 +102,7 @@ def train(dataset, helper):
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
 
             # Obtain the prediction
-            pred_action = torch.argmax(action_logits, -1)
-            pred_o1 = torch.argmax(o1_logits, -1)
-            pred_o2 = torch.argmax(o2_logits, -1)
 
-            object_ids = state[1]
-            object_names = state[0]
-            pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, [pred_action, pred_o1, pred_o2])
-            gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
 
 
             # agent.reset()
@@ -118,6 +111,15 @@ def train(dataset, helper):
             optimizer.step()
 
             if it % helper.args.print_freq == 0:
+                pred_action = torch.argmax(action_logits, -1)
+                pred_o1 = torch.argmax(o1_logits, -1)
+                pred_o2 = torch.argmax(o2_logits, -1)
+
+                object_ids = state[1]
+                object_names = state[0]
+                pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                          [pred_action, pred_o1, pred_o2])
+                gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
                 # pdb.set_trace()
                 lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
                 metrics.update({'LCS': lcs_triple,

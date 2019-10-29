@@ -239,6 +239,7 @@ class EnvDataset(Dataset):
             edges: [max_steps, max_edges, 2]
             edge_types: [max_steps, max_edges, 1]
             visible_mask: [max_steps, max_nodes] which nodes are visible at each step
+            mask_nodes: which nodes exist at each step
             mask_edges: [max_steps, max_edges] which edges are valid
             ids_used: dict with a mapping from object ids to model ids
         '''
@@ -336,7 +337,8 @@ class EnvDataset(Dataset):
         edge_types = np.concatenate([np.expand_dims(x, 0) for x in edge_types])
 
         visible_mask = np.concatenate([np.expand_dims(x, 0) for x in visible_mask])
-        mask_steps = np.ones(len(program)).astype(np.int64)
+        mask_nodes = np.zeros((self.max_nodes)).astype(np.float32)
+        mask_nodes[:num_nodes] = 1
 
         # Pad to max steps
         remain = self.max_steps - len(program)
@@ -349,7 +351,7 @@ class EnvDataset(Dataset):
 
         visible_mask = np.pad(visible_mask, ((0, remain), (0, 0)), 'constant').astype(np.float32)
         mask_edges = np.pad(mask_edges, ((0, remain), (0, 0)), 'constant').astype(np.float32)
-        return (class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges), ids_used
+        return (class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_nodes, mask_edges), ids_used
 
     def process_graph(self, state, ids_used):
         '''

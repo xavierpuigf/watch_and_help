@@ -67,7 +67,7 @@ class ClassNameStateRepresentation(nn.Module):
                                                torch.nn.ReLU(),
                                                torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
     def forward(self, observations):
-        class_names, obj_ids, states, edges, edge_types, visibility, mask_edges = observations
+        class_names, obj_ids, states, edges, edge_types, visibility, mask_nodes, mask_edges = observations
 
         node_name_embedding = self.object_embedding(class_names)
         state_embedding = self.state_embedding(states.float())
@@ -94,7 +94,7 @@ class GraphStateRepresentation(nn.Module):
         self.mlp = nn.Linear(self.out_fts, self.out_fts)
 
     def forward(self, observations):
-        class_names, obj_ids, states, edge_values, edge_types, visibility, mask_edges = observations
+        class_names, obj_ids, states, edge_values, edge_types, visibility, mask_nodes, mask_edges = observations
         # Obtain the initial node representation [bs, timesteps, num_nodes, node_dim]
         initial_node_repr = self.initial_node_repr(observations)
 
@@ -114,13 +114,12 @@ class GraphStateRepresentation(nn.Module):
             node_repr = self.graph_encoding(node_representation_step, edges_tsp[it], edge_types[it], mask_edges[it])
 
             # Mask out the nodes by their visibility
-            node_repr = node_repr * visibility_tsp[it][:, :, None]
+            node_repr = node_repr * mask_nodes[:, None]
             node_representations.append(node_repr)
 
-
         node_representations = torch.cat([x.unsqueeze(1) for x in node_representations], 1)
-        num_nodes = visibility.sum(-1) + 1e-9
-        global_repr = (node_representations * visibility.unsqueeze(-1)).sum(2)/num_nodes[:, :, None]
+        num_nodes = mask_nodes.sum(-1) + 1e-9
+        global_repr = (node_representations * mask_nodes.unsqueeze(1).unsqueeze(-1)).sum(2)/num_nodes[:, None, None]
 
         return node_representations, global_repr
 
