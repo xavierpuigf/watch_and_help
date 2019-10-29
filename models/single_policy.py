@@ -15,11 +15,10 @@ class GoalEmbed(torch.nn.Module):
 
     def forward(self, goals, node_repr):
         goal_id, goal_classnode_id, goal_node_id = goals
-        goal_type = self.goal_type_embed(goal_classnode_id)
+        goal_type = self.goal_type_embed(goal_id)
         bs, tstps = node_repr.shape[:2]
         goal_type = goal_type.unsqueeze(-2).repeat(1, tstps, 1)
-        node_goal = node_repr[torch.arange(bs), :, goal_id, :]
-
+        node_goal = node_repr[torch.arange(bs), :, goal_node_id, :]
         goal_and_node = torch.cat([goal_type, node_goal], dim=2)
         return self.goal_type_node_embed(goal_and_node)
 

@@ -107,7 +107,6 @@ class GraphStateRepresentation(nn.Module):
         bs = class_names.shape[0]
 
         node_representations = []
-        # goal_representation TODO: ser here
         for it in range(len(init_nodes)):
             node_representation_step_flat = self.mlp(init_nodes[it])
             node_representation_step = node_representation_step_flat.view(

@@ -148,14 +148,23 @@ class Helper:
 
     def setup(self):
         param_name = 'default'
-        fname = str(datetime.now())
+        fname = str(datetime.now()).replace(' ', '_')
+
         if self.args.debug:
             fname = 'debug'
-        self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
-        os.makedirs(self.dir_name, exist_ok=True)
-        with open('{}/args.txt'.format(self.dir_name), 'w+') as f:
-            args_str = str(self.args)
-            f.writelines(args_str)
+
+        else:
+            self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
+            self.log_dir_name = '{}/{}'.format(self.dir_name, 'log')
+
+            os.makedirs(self.dir_name, exist_ok=True)
+            os.makedirs(self.dir_name, exist_ok=True)
+
+            with open('{}/args.txt'.format(self.dir_name), 'w+') as f:
+                args_str = str(self.args)
+                f.writelines(args_str)
+
+            self.writer = SummaryWriter(self.log_dir_name)
 
 
     def save(self, epoch, loss_avg, model_params, optim_params):
@@ -169,7 +178,12 @@ class Helper:
             'optim_params': optim_params
         }, '{}/chkpt_{}.pt'.format(dir_chkpt, epoch))
 
-    def log(self, epoch, metric, name):
+
+    def log(self, epoch, metric, name, split=''):
+        for metric_name, meter in metric.metrics.items():
+            value = meter.avg
+            self.writer.add_scalar('{}/{}/{}'.format(name, metric_name, split), value, epoch)
+
 
 
 
@@ -194,7 +208,7 @@ def setup():
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
     parser.add_argument('--num_epochs', default=1000, type=int)
-    parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=10, type=int)
 
     # Logging

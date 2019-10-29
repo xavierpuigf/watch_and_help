@@ -9,7 +9,7 @@ from environment import Environment
 from models.single_policy import SinglePolicy
 from torch.utils import data
 
-def test(dataset, data_loader, helper, policy_net):
+def test(dataset, data_loader, helper, policy_net, epoch):
 
     # Loading params
 
@@ -50,6 +50,9 @@ def test(dataset, data_loader, helper, policy_net):
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
 
+    helper.log(epoch, metrics, 'LCS', 'test')
+    helper.log(epoch, metrics_loss, 'Losses', 'test')
+
 
 def train(dataset, helper):
     # Think how to handle this with multiple envs. One agent multiple envs?
@@ -81,6 +84,8 @@ def train(dataset, helper):
 
     data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size,
                                            shuffle=do_shuffle, num_workers=num_workers)
+    data_loader_test = data.DataLoader(dataset, batch_size=helper.args.batch_size,
+                                  shuffle=False, num_workers=num_workers)
 
     metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
     metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
@@ -133,9 +138,12 @@ def train(dataset, helper):
                     str(metrics_loss),
                     str(metrics)))
 
-    if (epoch + 1) % helper.args.save_freq == 0:
-        helper.save(epoch, policy_net.state_dict(), optimizer.state_dict())
-    test(dataset, helper, policy_net)
+        helper.log(epoch, metrics, 'LCS', 'train')
+        helper.log(epoch, metrics_loss, 'Losses', 'train')
+
+        if (epoch + 1) % helper.args.save_freq == 0:
+            helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+        test(dataset, data_loader_test, helper, policy_net, epoch)
     #pdb.set_trace()
 
 
