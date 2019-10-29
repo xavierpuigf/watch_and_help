@@ -39,6 +39,16 @@ def read_problem(folder_problem):
 
         if not goal_str.lower().startswith('findnode'):
             continue
+
+        # TODO: this should go in the data gen step
+        with open(graph_file, 'r') as f:
+            graph = json.load(f)
+        graph = graph['init_graph']
+        id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
+        location_char = [x['to_id'] for x in graph['edges'] if x['from_id'] == id_char and x['relation_type'] == 'INSIDE'][0]
+        if '({})'.format(location_char) in program[0]:
+            program = program[1:]
+
         problems_dataset.append(
             {
                 'id': id_problem,
@@ -48,6 +58,7 @@ def read_problem(folder_problem):
                 'program': program
             }
         )
+
     return problems_dataset
 
 
@@ -56,7 +67,7 @@ class EnvDataset(Dataset):
         self.dataset_file = args.dataset_folder
         self.problems_dataset = read_problem(self.dataset_file)
         self.problems_dataset = [self.problems_dataset[0]]
-
+        print(self.problems_dataset[0]['goal'])
         self.actions = [
             "Walk",  # Same as Run
             # "Find",
@@ -157,6 +168,7 @@ class EnvDataset(Dataset):
     def __getitem__(self, idx):
         problem = self.problems_dataset[idx]
         state_info, ids_used = self.prepare_data(problem)
+        # pdb.set_trace()
         program_info = self.prepare_program(problem['program'], ids_used)
         class_names = state_info[0]
         goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names)
@@ -190,7 +202,7 @@ class EnvDataset(Dataset):
         for it, action in enumerate(actions):
             if action == 'STOP':
                 o1[it] = self.node_stop
-                o2[it] = self.node_stop
+                o2[it] = self.node_none
         action_ids = np.array([self.action_dict.get_id(action) for action in actions])
         ob1 = np.array([ids_used[ob[1]] if ob is not None else ids_used[self.node_none[1]] for ob in o1])
         ob2 = np.array([ids_used[ob[1]] if ob is not None else ids_used[self.node_none[1]] for ob in o2])
@@ -232,13 +244,23 @@ class EnvDataset(Dataset):
             full_init_env = json.load(f)
             full_init_env = full_init_env['init_graph']
 
-        num_nodes = len(full_init_env['nodes'])
         class_namenode_ids, id_nodes = [], []
+
         for it, node in enumerate(full_init_env['nodes']):
-            ids_used[node['id']] = it
+            ids_used[node['id']] = len(id_nodes)
             id_nodes.append(node['id'])
             class_namenode_ids.append(self.object_dict.get_id(node['class_name']))
 
+        # Include the final nodes
+        # Include the Stop and None nodes
+        ids_used[self.node_stop[1]] = len(id_nodes)
+        ids_used[self.node_none[1]] = len(id_nodes)+1
+
+        id_nodes += [self.node_stop[1], self.node_none[1]]
+        class_namenode_ids += [self.object_dict.get_id(self.node_stop[0]),
+                               self.object_dict.get_id(self.node_none[0])]
+        # pdb.set_trace()
+        num_nodes = len(class_namenode_ids)
         class_names = np.zeros(self.max_nodes)
         object_ids = np.zeros(self.max_nodes)
 
@@ -276,7 +298,9 @@ class EnvDataset(Dataset):
                         f.write(json.dumps(graphs, indent=4))
                     problem['graphs_file'] = graphs_file_name
                 except:
+
                     print('Error')
+                    raise Exception
             else:
                 problem['graphs_file'] = graphs_file_name
                 with open(problem['graphs_file'], 'r') as f:
@@ -318,7 +342,6 @@ class EnvDataset(Dataset):
 
         visible_mask = np.pad(visible_mask, ((0, remain), (0, 0)), 'constant').astype(np.float32)
         mask_edges = np.pad(mask_edges, ((0, remain), (0, 0)), 'constant').astype(np.float32)
-
         return (class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_edges), ids_used
 
     def process_graph(self, state, ids_used):
@@ -333,27 +356,17 @@ class EnvDataset(Dataset):
             mask_edge: [max_edges]
         '''
 
-        # Build tensor of class_ids
-        id_nodes = [x['id'] for x in state['nodes']]
-        class_nodes = [x['class_name'] for x in state['nodes']]
-
-        # Include the Stop and None nodes
+        # TODO: this is computed 2 times...
+        id_nodes = [x['id'] for x in state['nodes'] if x['id'] in ids_used.keys()]
         id_nodes += [self.node_stop[1], self.node_none[1]]
-        class_nodes += [self.node_stop[0], self.node_none[0]]
-
-        for id in id_nodes:
-            if id not in ids_used.keys():
-                ids_used[id] = len(ids_used.keys())
-
         ids_in_model = [ids_used[id] for id in id_nodes]
-
-
-
+        #pdb.set_trace()
         # Populate state one hot [max_nodes, num_states]: one_hot
         num_states = len(self.state_dict)
         state_nodes = np.zeros((self.max_nodes, num_states))
         num_states = len(self.state_dict)
-        state_ids = [[self.state_dict.get_id(state.lower()) for state in x['states']] for x in state['nodes']]
+
+        state_ids = [[self.state_dict.get_id(state.lower()) for state in x['states']] for x in state['nodes'] if x['id'] in ids_used.keys()]
         for it, node_states in enumerate(state_ids):
             if len(node_states) > 0:
                 state_nodes[ids_in_model[it], node_states] = 1
@@ -365,14 +378,28 @@ class EnvDataset(Dataset):
         edges = np.zeros((self.max_edges, 2))
         mask_edges = np.zeros(self.max_edges)
         edge_types = np.zeros(self.max_edges)
+
+        cont = 0
+        room_ids = [x['id'] for x in state['nodes'] if x['category'] == 'Rooms']
+        char_id = [x['id'] for x in state['nodes'] if x['class_name'] == 'character']
         for it, edge in enumerate(state['edges']):
             rel_id = self.relation_dict.get_id(edge['relation_type'].lower())
+
+            if edge['from_id'] not in ids_used.keys() or edge['to_id'] not in ids_used.keys():
+                continue
+            if edge['from_id'] == char_id and edge['to_id'] in room_ids and edge['relation_type'] == 'CLOSE':
+                continue
+
             id_from = ids_used[edge['from_id']]
             id_to = ids_used[edge['to_id']]
-            edges[it, :] = [id_from, id_to]
-            edge_types[it] = rel_id
-            mask_edges[it] = 1
+            edges[cont, :] = [id_from, id_to]
+            edge_types[cont] = rel_id
+            mask_edges[cont] = 1
+            cont += 1
+
+        # Create
+
         visible_mask = np.zeros((self.max_nodes))
         visible_mask[ids_in_model] = 1
-
+        # pdb.set_trace()
         return state_nodes, edges, edge_types, visible_mask, mask_edges

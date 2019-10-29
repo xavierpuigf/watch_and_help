@@ -169,7 +169,7 @@ def setup():
     parser.add_argument('--agent_dim', default=100, type=int)
     parser.add_argument('--num_goals', default=3, type=int)
 
-    parser.add_argument('--max_nodes', default=350, type=int)
+    parser.add_argument('--max_nodes', default=50, type=int)
     parser.add_argument('--max_edges', default=700, type=int)
     parser.add_argument('--max_steps', default=10, type=int)
 

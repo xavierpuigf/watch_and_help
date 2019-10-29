@@ -84,7 +84,6 @@ def train(dataset, helper):
             logits = action_logits, o1_logits, o2_logits
 
             #action_logits[0,0,:].sum().backward()
-            #pdb.set_trace()
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
 
             # Obtain the prediction
@@ -123,6 +122,7 @@ def train(dataset, helper):
             optimizer.step()
 
         if epoch % helper.args.print_freq == 0:
+            pdb.set_trace()
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
             print(utils.pretty_print_program(pred_instr[0]))
             print('Epoch:{}. Iter {}.  Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'

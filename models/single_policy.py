@@ -153,7 +153,6 @@ class SinglePolicy(torch.nn.Module):
 
         concat_nodes = torch.cat([node_repr, global_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1),
                                              goal_repr.unsqueeze(-2).repeat(1, 1, num_nodes, 1)], -1)
-
         global_and_goal = torch.cat([goal_repr, global_repr], 2)
         action_logits = self.fc_action(global_and_goal)
         node_1_logits = self.fc_o1(concat_nodes).squeeze(-1)
@@ -163,8 +162,8 @@ class SinglePolicy(torch.nn.Module):
         node_1_logits = node_1_logits * visibility + (1-visibility) * -1e6
         node_2_logits = node_2_logits * visibility + (1-visibility) * -1e6
         # Predict actions according to the global representation
-
-        return action_logits, node_1_logits, node_2_logits, node_repr
+        # pdb.set_trace()
+        return action_logits, node_1_logits, node_2_logits, (node_repr, global_repr)
 
 
 
