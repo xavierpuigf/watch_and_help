@@ -9,64 +9,16 @@ from tqdm import tqdm
 import numpy as np
 import os
 
-def read_problem(folder_problem):
-    # This should go in a dataset class
-    file_problem = '{}/info.json'.format(folder_problem)
-    with open(file_problem, 'r') as f:
-        problems = json.load(f)
 
-    problems_dataset = []
-    for id_problem, problem in enumerate(problems):
-        graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
-        goal_name = problem['goal']
-        if '.txt' not in problem['program']:
-            problem['program'] = problem['program'] + '.txt'
-        program_file = '{}/programs/{}'.format(folder_problem, problem['program'])
-
-        if 'file_name' in problem.keys():
-            goal_file = '{}/{}'.format(folder_problem, problem['file_name'])
-            with open(goal_file, 'r') as f:
-                goal_str = f.read()
-        else:
-            goal_str = goal_name
-
-        with open(program_file, 'r') as f:
-            program = f.readlines()
-            program = [x.strip() for x in program]
-
-        # program = [program[0]]
-        program.append('[stop]')
-
-        if not goal_str.lower().startswith('findnode'):
-            continue
-
-        # TODO: this should go in the data gen step
-        with open(graph_file, 'r') as f:
-            graph = json.load(f)
-        graph = graph['init_graph']
-        id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
-        location_char = [x['to_id'] for x in graph['edges'] if x['from_id'] == id_char and x['relation_type'] == 'INSIDE'][0]
-        if '({})'.format(location_char) in program[0]:
-            program = program[1:]
-
-        problems_dataset.append(
-            {
-                'id': id_problem,
-                'goal': goal_str,
-                'graph_file': graph_file,
-                'goal_name': goal_name,
-                'program': program
-            }
-        )
-
-    return problems_dataset
 
 
 class EnvDataset(Dataset):
-    def __init__(self, args):
+    def __init__(self, args, split='train'):
         self.dataset_file = args.dataset_folder
-        self.problems_dataset = read_problem(self.dataset_file)
-        self.problems_dataset = [self.problems_dataset[0]]
+        self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7]}
+        self.split = split
+        self.problems_dataset = self.read_problem(self.dataset_file, split)
+        self.problems_dataset = self.problems_dataset
         print(self.problems_dataset[0]['goal'])
         self.actions = [
             "Walk",  # Same as Run
@@ -131,6 +83,62 @@ class EnvDataset(Dataset):
 
     def __len__(self):
         return self.num_items
+
+    def read_problem(self, folder_problem, split='train'):
+        # This should go in a dataset class
+        file_problem = '{}/info.json'.format(folder_problem)
+        with open(file_problem, 'r') as f:
+            problems = json.load(f)
+
+        scene_ids = self.scenes_split[split]
+        problems = [x for x in problems if int(x['env_path'].split('_')[0].split('Scene')[-1]) in scene_ids]
+
+        problems_dataset = []
+        for id_problem, problem in enumerate(problems):
+            graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
+            goal_name = problem['goal']
+            if '.txt' not in problem['program']:
+                problem['program'] = problem['program'] + '.txt'
+            program_file = '{}/programs/{}'.format(folder_problem, problem['program'])
+
+            if 'file_name' in problem.keys():
+                goal_file = '{}/{}'.format(folder_problem, problem['file_name'])
+                with open(goal_file, 'r') as f:
+                    goal_str = f.read()
+            else:
+                goal_str = goal_name
+
+            with open(program_file, 'r') as f:
+                program = f.readlines()
+                program = [x.strip() for x in program]
+
+            # program = [program[0]]
+            program.append('[stop]')
+
+            if not goal_str.lower().startswith('findnode'):
+                continue
+
+            # TODO: this should go in the data gen step
+            with open(graph_file, 'r') as f:
+                graph = json.load(f)
+            graph = graph['init_graph']
+            id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
+            location_char = \
+            [x['to_id'] for x in graph['edges'] if x['from_id'] == id_char and x['relation_type'] == 'INSIDE'][0]
+            if '({})'.format(location_char) in program[0]:
+                program = program[1:]
+
+            problems_dataset.append(
+                {
+                    'id': id_problem,
+                    'goal': goal_str,
+                    'graph_file': graph_file,
+                    'goal_name': goal_name,
+                    'program': program
+                }
+            )
+
+        return problems_dataset
 
     def prepare_goal(self, goal_str, ids_used, class_names):
         '''
