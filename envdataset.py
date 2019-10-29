@@ -296,7 +296,6 @@ class EnvDataset(Dataset):
 
                 graphs = [state]
                 try:
-                    print(len(program))
                     for instr in program[:-1]:
 
                         _, states, infos = curr_env.step(instr)

@@ -9,47 +9,46 @@ from environment import Environment
 from models.single_policy import SinglePolicy
 from torch.utils import data
 
-def test(dataset, helper, policy_net):
+def test(dataset, data_loader, helper, policy_net):
 
     # Loading params
+
     policy_net.eval()
 
-    envs = []
-    for dp in dataset:
-        graph_file, goal, program = dp
-        curr_env = Environment(graph_file, goal, 2)
-        for agent in curr_env.agents:
-            agent.policy_net = policy_net
-            agent.activation_info = policy_net.activation_info()
-        envs.append(curr_env)
+    with torch.no_grad():
+        metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+        metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
 
-    num_rollouts = helper.args.num_rollouts
+        metrics_loss.reset()
+        metrics.reset()
+        for it, dp in enumerate(data_loader):
+            state, program, goal = dp
+            action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
+            logits = action_logits, o1_logits, o2_logits
 
-    for it, dp in enumerate(dataset):
-        graph_file, program, goal = dp
-        curr_env = envs[it]
-        agent = curr_env.agents[0]
-        instructions = []
-        for it2 in range(num_rollouts):
-            # Decide object
-            observations = agent.get_observations()
-            instr_info = agent.get_instruction(observations)
+            loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
 
-            instr = instr_info['instruction']
-            instructions.append(instr)
-            if instr == '[stop]':
-                break
-            r, states, infos = curr_env.env.step(instr)
+            # Obtain the prediction
+            pred_action = torch.argmax(action_logits, -1)
+            pred_o1 = torch.argmax(o1_logits, -1)
+            pred_o2 = torch.argmax(o2_logits, -1)
 
-        print('PRED:')
-        print('\n'.join(instructions))
-
-        print('GT')
-        print('\n'.join(program))
-        pdb.set_trace()
-        lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS(program, instructions)
-        print('LCSaction {:.2f}. LCSo1 {:.2f}. LCSo2 {:.2f}. LCStriplet {:.2f}'.format(
-            lcs_action, lcs_o1, lcs_o2, lcs_triple))
+            object_ids = state[1]
+            object_names = state[0]
+            pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                      [pred_action, pred_o1, pred_o2])
+            gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
+            lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
+            metrics_loss.update({
+                'Loss': loss.data.cpu(),
+                'ActionLoss': aloss.data.cpu(),
+                'O1Loss': o1loss.data.cpu(),
+                'O2Loss': o2loss.data.cpu()
+            })
+            metrics.update({'LCS': lcs_triple,
+                            'ActionLCS': lcs_action,
+                            'O1LCS': lcs_o1,
+                            'O2LCS': lcs_o2})
 
 
 def train(dataset, helper):
@@ -75,15 +74,26 @@ def train(dataset, helper):
     num_epochs = helper.args.num_epochs
     do_shuffle = not helper.args.debug
 
-    data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size, shuffle=do_shuffle, num_workers=0)
+    if helper.args.debug:
+        num_workers = 0
+    else:
+        num_workers = helper.args.num_workers
+
+    data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size,
+                                           shuffle=do_shuffle, num_workers=num_workers)
+
+    metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+    metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
+
     for epoch in range(num_epochs):
+        metrics_loss.reset()
+        metrics.reset()
         for it, dp in enumerate(data_loader):
 
             state, program, goal = dp
             action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
             logits = action_logits, o1_logits, o2_logits
 
-            #action_logits[0,0,:].sum().backward()
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
 
             # Obtain the prediction
@@ -93,69 +103,43 @@ def train(dataset, helper):
 
             object_ids = state[1]
             object_names = state[0]
-            object_names_pred_1 = object_names[np.arange(object_names.shape[0])[:, None],
-                                               np.arange(object_names.shape[1])[None, :], pred_o1]
-            object_ids_pred_1 = object_ids[np.arange(object_names.shape[0])[:, None],
-                                           np.arange(object_names.shape[1])[None, :], pred_o1]
-            object_names_pred_2 = object_names[np.arange(object_names.shape[0])[:, None],
-                                               np.arange(object_names.shape[1])[None, :], pred_o2]
-            object_ids_pred_2 = object_ids[np.arange(object_names.shape[0])[:, None],
-                                           np.arange(object_names.shape[1])[None, :], pred_o2]
+            pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, [pred_action, pred_o1, pred_o2])
+            gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
 
-            object_names_gt_1 = object_names[np.arange(object_names.shape[0])[:, None],
-                                             np.arange(object_names.shape[1])[None, :], program[1]]
-            object_ids_gt_1 = object_ids[np.arange(object_names.shape[0])[:, None],
-                                         np.arange(object_names.shape[1])[None, :], program[1]]
-            object_names_gt_2 = object_names[np.arange(object_names.shape[0])[:, None],
-                                             np.arange(object_names.shape[1])[None, :], program[2]]
-            object_ids_gt_2 = object_ids[np.arange(object_names.shape[0])[:, None],
-                                         np.arange(object_names.shape[1])[None, :], program[2]]
-
-            pred_instr = obtain_list_instr(pred_action, object_names_pred_1, object_ids_pred_1,
-                                           object_names_pred_2, object_ids_pred_2, dataset)
-            gt_instr = obtain_list_instr(program[0], object_names_gt_1, object_ids_gt_1,
-                                         object_names_gt_2, object_ids_gt_2, dataset)
 
             # agent.reset()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-        if epoch % helper.args.print_freq == 0:
-            pdb.set_trace()
-            lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
-            print(utils.pretty_print_program(pred_instr[0]))
-            print('Epoch:{}. Iter {}.  Loss {:.3f}. ActionLoss {:.3f}. O1Loss {:.3f}. O2Loss {:.3f}.'
-                  'ActionLCS {:.2f}. O1LCS {:.2f}. O2LCS {:.2f}. TripletLCS {:.2f}'.format(
-                epoch, it,
-                loss.data, aloss.data, o1loss.data, o2loss.data,
-                lcs_action, lcs_o1, lcs_o2, lcs_triple))
+            if it % helper.args.print_freq == 0:
+                # pdb.set_trace()
+                lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
+                metrics.update({'LCS': lcs_triple,
+                                'ActionLCS': lcs_action,
+                                'O1LCS': lcs_o1,
+                                'O2LCS': lcs_o2})
+                metrics_loss.update({
+                    'Loss': loss.data.cpu(),
+                    'ActionLoss': aloss.data.cpu(),
+                    'O1Loss': o1loss.data.cpu(),
+                    'O2Loss': o2loss.data.cpu()
+                })
 
+                print(utils.pretty_print_program(pred_instr[0]))
+                print('Epoch:{}. Iter {}.  Losses: {}'
+                      'LCS: {}'.format(
+                    epoch, it,
+                    str(metrics_loss),
+                    str(metrics)))
+
+    if (epoch + 1) % helper.args.save_freq == 0:
+        helper.save(epoch, policy_net.state_dict(), optimizer.state_dict())
     test(dataset, helper, policy_net)
     #pdb.set_trace()
 
 
-def obtain_list_instr(actions, o1_names, o1_ids, o2_names, o2_ids, dataset):
-    # Split by batch
-    actions = torch.unbind(actions.cpu().data, 0)
-    o1_names = torch.unbind(o1_names.cpu().data, 0)
-    o1_ids = torch.unbind(o1_ids.cpu().data, 0)
-    o2_names = torch.unbind(o2_names.cpu().data, 0)
-    o2_ids = torch.unbind(o2_ids.cpu().data, 0)
 
-    num_batches = len(actions)
-    programs = []
-    for it in range(num_batches):
-        o1 = zip(list(o1_names[it].numpy()), list(o1_ids[it].numpy()))
-        o2 = zip(list(o2_names[it].numpy()), list(o2_ids[it].numpy()))
-
-        action_list = [dataset.action_dict.get_el(x) for x in list(actions[it].numpy())]
-        object_1_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o1]
-        object_2_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o2]
-
-
-        programs.append((action_list, object_1_list, object_2_list))
-    return programs
 
 
 def bc_loss(program, logits):
@@ -186,6 +170,7 @@ def bc_loss(program, logits):
 def start():
     helper = utils.setup()
     dataset = EnvDataset(helper.args)
+    dataset_test = EnvDataset(helper.args, 'test')
     train(dataset, helper)
 
     pdb.set_trace()

@@ -6,6 +6,9 @@ import numpy as np
 import pdb
 import re
 import math
+import torch
+from torch.utils.tensorboard import SummaryWriter
+
 
 def parse_prog(prog):
     program = []
@@ -155,6 +158,21 @@ class Helper:
             f.writelines(args_str)
 
 
+    def save(self, epoch, loss_avg, model_params, optim_params):
+        dir_chkpt = '{}/chkpt'.format(self.dir_name)
+        if not os.path.isdir(dir_chkpt):
+            os.makedirs(dir_chkpt, exist_ok=True)
+        torch.save({
+            'epoch': epoch,
+            'loss': loss_avg,
+            'model_params': model_params,
+            'optim_params': optim_params
+        }, '{}/chkpt_{}.pt'.format(dir_chkpt, epoch))
+
+    def log(self, epoch, metric, name):
+
+
+
 def setup():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
@@ -169,7 +187,7 @@ def setup():
     parser.add_argument('--agent_dim', default=100, type=int)
     parser.add_argument('--num_goals', default=3, type=int)
 
-    parser.add_argument('--max_nodes', default=50, type=int)
+    parser.add_argument('--max_nodes', default=100, type=int)
     parser.add_argument('--max_edges', default=700, type=int)
     parser.add_argument('--max_steps', default=10, type=int)
 
@@ -177,10 +195,12 @@ def setup():
     parser.add_argument('--num_rollouts', default=5, type=int)
     parser.add_argument('--num_epochs', default=1000, type=int)
     parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--num_workers', default=10, type=int)
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
     parser.add_argument('--print_freq', default=20, type=int)
+    parser.add_argument('--save_freq', default=2, type=int)
     parser.add_argument('--debug', action='store_true')
 
 
@@ -205,3 +225,84 @@ def pretty_print_program(program):
         instr_str = '[{}] {} {}'.format(action, o1s, o2s)
         instructions.append(instr_str)
     return '\n'.join(instructions)
+
+
+def get_program_from_nodes(dataset, object_names, object_ids, program):
+
+    object_names_1 = object_names[np.arange(object_names.shape[0])[:, None],
+                                     np.arange(object_names.shape[1])[None, :], program[1]]
+    object_ids_1 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                 np.arange(object_names.shape[1])[None, :], program[1]]
+    object_names_2 = object_names[np.arange(object_names.shape[0])[:, None],
+                                     np.arange(object_names.shape[1])[None, :], program[2]]
+    object_ids_2 = object_ids[np.arange(object_names.shape[0])[:, None],
+                                 np.arange(object_names.shape[1])[None, :], program[2]]
+    action = program[0]
+
+    instr = obtain_list_instr(action, object_names_1, object_ids_1, object_names_2, object_ids_2, dataset)
+    return instr
+
+
+def obtain_list_instr(actions, o1_names, o1_ids, o2_names, o2_ids, dataset):
+    # Split by batch
+    actions = torch.unbind(actions.cpu().data, 0)
+    o1_names = torch.unbind(o1_names.cpu().data, 0)
+    o1_ids = torch.unbind(o1_ids.cpu().data, 0)
+    o2_names = torch.unbind(o2_names.cpu().data, 0)
+    o2_ids = torch.unbind(o2_ids.cpu().data, 0)
+
+    num_batches = len(actions)
+    programs = []
+    for it in range(num_batches):
+        o1 = zip(list(o1_names[it].numpy()), list(o1_ids[it].numpy()))
+        o2 = zip(list(o2_names[it].numpy()), list(o2_ids[it].numpy()))
+
+        action_list = [dataset.action_dict.get_el(x) for x in list(actions[it].numpy())]
+        object_1_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o1]
+        object_2_list = [(dataset.object_dict.get_el(x), idi) for x, idi in o2]
+
+
+        programs.append((action_list, object_1_list, object_2_list))
+    return programs
+
+
+
+class AvgMetrics:
+    def __init__(self, metric_list, fmt=':f'):
+        self.metric_list = metric_list
+        self.metrics = {x: AverageMeter(x, fmt) for x in metric_list}
+
+    def reset(self):
+        for _, metric in self.metrics.items():
+            metric.reset()
+
+    def update(self, dict_update):
+        for metric_name, elem in dict_update.items():
+            self.metrics[metric_name].update(elem)
+
+    def __str__(self):
+        return '  '.join([str(self.metrics[name]) for name in self.metrics])
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
