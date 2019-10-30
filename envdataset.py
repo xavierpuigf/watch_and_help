@@ -17,7 +17,9 @@ class EnvDataset(Dataset):
         self.dataset_file = args.dataset_folder
         self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7], 'all': [1,2,3,4,5,6,7]}
         self.split = split
-        self.problems_dataset = [self.read_problem(self.dataset_file, split)[0]]
+        self.problems_dataset = self.read_problem(self.dataset_file, split)
+        if args.overfit:
+            self.problems_dataset = self.problems_dataset[:2]
         self.actions = [
             "Walk",  # Same as Run
             # "Find",
@@ -214,7 +216,7 @@ class EnvDataset(Dataset):
         # If there is a stop action, modify the object to be the stop_node
         for it, action in enumerate(actions):
             if action == 'STOP':
-                o1[it] = self.node_stop
+                o1[it] = self.node_none
                 o2[it] = self.node_none
         action_ids = np.array([self.action_dict.get_id(action) for action in actions])
         ob1 = np.array([ids_used[ob[1]] if ob is not None else ids_used[self.node_none[1]] for ob in o1])
@@ -330,10 +332,10 @@ class EnvDataset(Dataset):
         # The last instruction is the stop
         for state, state_full in graphs:
             info.append(self.process_graph(state, ids_used))
-            info_full.append(self.process_graph(state_full, ids_used))
+            #info_full.append(self.process_graph(state_full, ids_used))
 
         state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
-        state_nodes, edges, edge_types, visible_mask_full, mask_edges = zip(*info_full)
+        #state_nodes, edges, edge_types, visible_mask_full, mask_edges = zip(*info_full)
 
         # Hack - they should not count on time
         object_ids = [object_ids]*len(state_nodes)

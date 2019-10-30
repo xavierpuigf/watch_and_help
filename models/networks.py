@@ -1,5 +1,7 @@
 from torch import nn
 import torch
+from torch.nn import init
+
 import utils
 import numpy as np
 import pdb
@@ -90,7 +92,9 @@ class GraphStateRepresentation(nn.Module):
         self.initial_node_repr = ClassNameStateRepresentation(self.helper, self.dataset)
         self.in_fts = 100
         self.out_fts = 100
-        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, 3, len(dataset.relation_dict))# GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
+        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, 3,
+                                             len(dataset.relation_dict))
+        # GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
         self.mlp = nn.Linear(self.out_fts, self.out_fts)
 
     def forward(self, observations):
@@ -163,13 +167,19 @@ class GatedGraphConv(nn.Module):
         self.gru = nn.GRUCell(out_feats, out_feats, bias=bias)
         self.reset_parameters()
 
+        self.gradient = None
+
+    def store_func(self, input_grad):
+        self.gradient = input_grad
+
+
     def reset_parameters(self):
         """Reinitialize learnable parameters."""
-        #gain = init.calculate_gain('relu')
+        gain = init.calculate_gain('relu')
         self.gru.reset_parameters()
-        #init.xavier_normal_(self.edge_embed.weight, gain=gain)
+        init.xavier_normal_(self.edge_embed.weight, gain=gain)
 
-    def forward(self, feat, edges, edge_types, mask_edges):
+    def forward(self, feat_in, edges, edge_types, mask_edges):
         """Compute Gated Graph Convolution layer.
         Parameters
         ----------
@@ -181,7 +191,9 @@ class GatedGraphConv(nn.Module):
             input feature size.
         etypes : torch.LongTensor
             The edge type tensor of shape :math:`(E,)` where :math:`E` is
-            the number of edges of the graph.
+            the number of edges of th
+
+            e graph.
         Returns
         -------
         torch.Tensor
@@ -190,8 +202,8 @@ class GatedGraphConv(nn.Module):
         """
         # graph = graph.local_var()
         # pdb.set_trace()
-        zero_pad = feat.new_zeros((feat.shape[0], feat.shape[1], self._out_feats - feat.shape[2]))
-        feat = torch.cat([feat, zero_pad], -1)
+        zero_pad = feat_in.new_zeros((feat_in.shape[0], feat_in.shape[1], self._out_feats - feat_in.shape[2]))
+        feat = torch.cat([feat_in, zero_pad], -1)
 
         bs, num_nodes = feat.shape[:2]
 
@@ -204,8 +216,13 @@ class GatedGraphConv(nn.Module):
 
         origin_nodes_flat = (origin_nodes + (num_nodes * range_bs)).view(-1)
         dest_nodes_flat = (dest_nodes + (num_nodes * range_bs)).view(-1)
-        feat_flat = feat.view(-1, feat.shape[-1])
+        feat_flat = feat_in.view(-1, feat_in.shape[-1])
 
+
+
+        # feat_in.register_hook(self.store_func)
+
+        # Tested that batch elements do not merge
         for _ in range(self._n_steps):
 
             edge_embeddings = self.edge_embed(edge_types).view(-1, self._out_feats, self._out_feats)
@@ -221,6 +238,8 @@ class GatedGraphConv(nn.Module):
                 a_t = a_t.cuda()
             a_t = a_t.scatter_add(0, dest_nodes_flat[:, None].repeat(1, self._out_feats), input_embeddings)
 
-            feat = self.gru(a_t,  feat_flat)
-        feat = feat.view(bs, num_nodes, -1)
+            feat_flat = self.gru(a_t,  feat_flat)
+        feat = feat_flat.view(bs, num_nodes, -1)
+        # pdb.set_trace()
+        # pdb.set_trace()
         return feat

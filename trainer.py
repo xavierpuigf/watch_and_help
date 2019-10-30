@@ -137,7 +137,6 @@ def train(dataset, helper):
                     'O2Loss': o2loss.data.cpu()
                 })
                 item = random.randint(0, bs-1)
-
                 # Char nodes
                 id_char = dataset.object_dict.get_id('character')
                 model_id_char = np.where(object_names[item][0] == id_char)[0][0]

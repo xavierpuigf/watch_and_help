@@ -48,8 +48,8 @@ class SinglePolicy(torch.nn.Module):
                                        torch.nn.ReLU(),
                                        torch.nn.Linear(self.repr_dim, num_actions))
 
-        self.fc_o1 = nn.Linear(self.repr_dim*3, 1)
-        self.fc_o2 = nn.Linear(self.repr_dim*3, 1)
+        self.fc_o1 = nn.Sequential(nn.Linear(self.repr_dim*3, self.repr_dim), torch.nn.ReLU(), torch.nn.Linear(self.repr_dim, 1))
+        self.fc_o2 = nn.Sequential(nn.Linear(self.repr_dim*3, self.repr_dim), torch.nn.ReLU(), torch.nn.Linear(self.repr_dim, 1))
         # self.state_embedding = networks.StateRepresentation(helper, dataset)
         self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
 
