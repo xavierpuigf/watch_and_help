@@ -209,13 +209,14 @@ def setup():
     parser.add_argument('--num_rollouts', default=5, type=int)
     parser.add_argument('--num_epochs', default=1000, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
-    parser.add_argument('--num_workers', default=10, type=int)
+    parser.add_argument('--num_workers', default=30, type=int)
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
     parser.add_argument('--print_freq', default=20, type=int)
     parser.add_argument('--save_freq', default=2, type=int)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--overfit', action='store_true')
 
 
     # Chkpts
@@ -225,18 +226,38 @@ def setup():
     return helper
 
 
-def pretty_print_program(program):
+def pretty_print_program(program, other=None):
 
+    finished = [False]
     program_joint = list(zip(*program))
-    final_instr = [it for it, x in enumerate(program_joint) if x[0] == 'stop']
-    if len(final_instr) > 0:
-        program_joint = program_joint[:final_instr[0]]
+    # final_instr = [it for it, x in enumerate(program_joint) if x[0] == 'stop']
+
+    if other is not None:
+        finished.append(False)
+        program_joint2 = list(zip(*other))
+        # final_instr2 = [it for it, x in enumerate(program_joint2) if x[0] == 'stop']
+
+    else:
+        program_joint2 = [None]*len(program_joint)
+
+
+    #if len(final_instr) > 0:
+    #    program_joint = program_joint[:final_instr[0]]
+
     instructions = []
-    for instr in program_joint:
+    instructions.append('{:70s} | {}'.format('PRED', 'GT'))
+    for instr, instr2 in zip(program_joint, program_joint2):
         action, o1, o2 = instr
         o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
         o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
         instr_str = '[{}] {} {}'.format(action, o1s, o2s)
+
+        if instr2 is not None:
+            action, o1, o2 = instr2
+            o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
+            o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+            instr_str2 = '[{}] {} {}'.format(action, o1s, o2s)
+            instr_str = '{:70s} | {}'.format(instr_str, instr_str2)
         instructions.append(instr_str)
     return '\n'.join(instructions)
 

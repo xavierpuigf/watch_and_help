@@ -4,6 +4,7 @@ import torch
 import utils
 import numpy as np
 import argparse
+import random
 from envdataset import EnvDataset
 from environment import Environment
 from models.single_policy import SinglePolicy
@@ -14,7 +15,7 @@ def test(dataset, data_loader, helper, policy_net, epoch):
     # Loading params
 
     policy_net.eval()
-
+    print('Testing')
     with torch.no_grad():
         metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
         metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
@@ -49,7 +50,7 @@ def test(dataset, data_loader, helper, policy_net, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-
+    policy_net.train()
     helper.log(epoch, metrics, 'LCS', 'test')
     helper.log(epoch, metrics_loss, 'Losses', 'test')
 
@@ -132,19 +133,22 @@ def train(dataset, helper):
                     'O1Loss': o1loss.data.cpu(),
                     'O2Loss': o2loss.data.cpu()
                 })
-
-                print(utils.pretty_print_program(pred_instr[0]))
+                item = random.randint(0, len(pred_instr)-1)
+                print(item)
+                print(utils.pretty_print_program(pred_instr[item], other=gt_instr[item]))
                 print('Epoch:{}. Iter {}.  Losses: {}'
                       'LCS: {}'.format(
                     epoch, it,
                     str(metrics_loss),
                     str(metrics)))
+                # pdb.set_trace()
 
-        helper.log(epoch, metrics, 'LCS', 'train')
-        helper.log(epoch, metrics_loss, 'Losses', 'train')
+        if not helper.args.debug:
+            helper.log(epoch, metrics, 'LCS', 'train')
+            helper.log(epoch, metrics_loss, 'Losses', 'train')
 
-        if (epoch + 1) % helper.args.save_freq == 0:
-            helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+            if (epoch + 1) % helper.args.save_freq == 0:
+                helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
         test(dataset, data_loader_test, helper, policy_net, epoch)
     #pdb.set_trace()
 

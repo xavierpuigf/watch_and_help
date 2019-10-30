@@ -15,10 +15,9 @@ import os
 class EnvDataset(Dataset):
     def __init__(self, args, split='train'):
         self.dataset_file = args.dataset_folder
-        self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7]}
+        self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7], 'all': [1,2,3,4,5,6,7]}
         self.split = split
         self.problems_dataset = self.read_problem(self.dataset_file, split)
-        self.problems_dataset = self.problems_dataset
         print(self.problems_dataset[0]['goal'])
         self.actions = [
             "Walk",  # Same as Run
@@ -85,7 +84,6 @@ class EnvDataset(Dataset):
         return self.num_items
 
     def read_problem(self, folder_problem, split='train'):
-        # This should go in a dataset class
         file_problem = '{}/info.json'.format(folder_problem)
         with open(file_problem, 'r') as f:
             problems = json.load(f)
@@ -189,6 +187,7 @@ class EnvDataset(Dataset):
         object_file_name = '{}/obj_names.json'.format(self.dataset_file)
 
         if not os.path.isfile(object_file_name):
+            problems = self.read_problem(self.dataset_file, 'all')
             object_names = []
             for prob in tqdm(self.problems_dataset):
                 with open(prob['graph_file'], 'r') as f:
