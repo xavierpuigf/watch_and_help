@@ -17,8 +17,7 @@ class EnvDataset(Dataset):
         self.dataset_file = args.dataset_folder
         self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7], 'all': [1,2,3,4,5,6,7]}
         self.split = split
-        self.problems_dataset = self.read_problem(self.dataset_file, split)
-        print(self.problems_dataset[0]['goal'])
+        self.problems_dataset = [self.read_problem(self.dataset_file, split)[0]]
         self.actions = [
             "Walk",  # Same as Run
             # "Find",
@@ -299,14 +298,15 @@ class EnvDataset(Dataset):
                 curr_env.reset(init_graph, goal_name)
                 curr_env.to_pomdp()
                 state = curr_env.get_observations()
+                full_state = curr_env.vh_state.to_dict()
 
-
-                graphs = [state]
+                graphs = [(state, full_state)]
                 try:
                     for instr in program[:-1]:
 
-                        _, states, infos = curr_env.step(instr)
-                        graphs.append(states)
+                        _, state, infos = curr_env.step(instr)
+                        full_state = curr_env.vh_state.to_dict()
+                        graphs.append((state, full_state))
 
                     with open(graphs_file_name, 'w+') as f:
                         f.write(json.dumps(graphs, indent=4))
@@ -326,11 +326,14 @@ class EnvDataset(Dataset):
                 graphs = json.load(f)
 
         info = []
+        info_full = []
         # The last instruction is the stop
-        for state in graphs:
+        for state, state_full in graphs:
             info.append(self.process_graph(state, ids_used))
+            info_full.append(self.process_graph(state_full, ids_used))
 
         state_nodes, edges, edge_types, visible_mask, mask_edges = zip(*info)
+        state_nodes, edges, edge_types, visible_mask_full, mask_edges = zip(*info_full)
 
         # Hack - they should not count on time
         object_ids = [object_ids]*len(state_nodes)
@@ -387,9 +390,6 @@ class EnvDataset(Dataset):
                 state_nodes[ids_in_model[it], node_states] = 1
 
 
-        # Populate edges one hot [max_nodes, max_nodes, edge_types]
-
-        #edges = np.zeros((self.max_nodes, self.max_nodes, len(self.relation_dict)))
         edges = np.zeros((self.max_edges, 2))
         mask_edges = np.zeros(self.max_edges)
         edge_types = np.zeros(self.max_edges)
@@ -397,13 +397,21 @@ class EnvDataset(Dataset):
         cont = 0
         room_ids = [x['id'] for x in state['nodes'] if x['category'] == 'Rooms']
         char_id = [x['id'] for x in state['nodes'] if x['class_name'] == 'character']
+
+        ids_and_rooms = [(edge['from_id'], edge['to_id']) for edge in state['edges'] if edge['relation_type'] == 'INSIDE' and edge['to_id'] in room_ids]
+        # pdb.set_trace()
+        for from_id, to_id in ids_and_rooms:
+            state['edges'].append({'from_id': from_id, 'to_id': to_id, 'relation_type': 'CLOSE'})
+            state['edges'].append({'from_id': to_id, 'to_id': from_id, 'relation_type': 'CLOSE'})
         for it, edge in enumerate(state['edges']):
             rel_id = self.relation_dict.get_id(edge['relation_type'].lower())
 
             if edge['from_id'] not in ids_used.keys() or edge['to_id'] not in ids_used.keys():
-                continue
-            if edge['from_id'] == char_id and edge['to_id'] in room_ids and edge['relation_type'] == 'CLOSE':
-                continue
+                raise Exception
+            #if edge['from_id'] == char_id[0] and edge['to_id'] in room_ids and edge['relation_type'] == 'CLOSE':
+            #    pdb.set_trace()
+            #    raise Exception
+
 
             id_from = ids_used[edge['from_id']]
             id_to = ids_used[edge['to_id']]

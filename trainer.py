@@ -24,7 +24,9 @@ def test(dataset, data_loader, helper, policy_net, epoch):
         metrics.reset()
         for it, dp in enumerate(data_loader):
             state, program, goal = dp
-            action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
+            action_logits, o1_logits, o2_logits, repr = policy_net(state,
+                                                                   goal,
+                                                                   dataset.object_dict.get_id('character'))
             logits = action_logits, o1_logits, o2_logits
 
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
@@ -97,7 +99,7 @@ def train(dataset, helper):
         for it, dp in enumerate(data_loader):
 
             state, program, goal = dp
-            action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
+            action_logits, o1_logits, o2_logits, repr = policy_net(state, goal, dataset.object_dict.get_id('character'))
             bs = action_logits.shape[0]
             logits = action_logits, o1_logits, o2_logits
 

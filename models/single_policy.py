@@ -140,12 +140,13 @@ class SinglePolicy(torch.nn.Module):
         # #distr = distributions.categorical.Categorical(logits=logit_attention)
         # return logit_attention, candidates
 
-    def forward(self, observations, goals):
+    def forward(self, observations, goals, class_id_char):
 
         # Obtain the initial node representations
         num_steps = observations[0].shape[1]
         class_names, class_ids, states, edges, edge_types, visibility, mask_nodes, mask_edges = observations
         node_repr, global_repr = self.state_embedding(observations)
+        global_repr = ((class_names == class_id_char).unsqueeze(-1).float()*node_repr).sum(-2)
         goal_repr = self.goal_embedding(goals, node_repr)
 
         num_nodes = node_repr.shape[-2]
