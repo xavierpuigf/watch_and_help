@@ -98,6 +98,7 @@ def train(dataset, helper):
 
             state, program, goal = dp
             action_logits, o1_logits, o2_logits, repr = policy_net(state, goal)
+            bs = action_logits.shape[0]
             logits = action_logits, o1_logits, o2_logits
 
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
@@ -133,8 +134,33 @@ def train(dataset, helper):
                     'O1Loss': o1loss.data.cpu(),
                     'O2Loss': o2loss.data.cpu()
                 })
-                item = random.randint(0, len(pred_instr)-1)
-                print(item)
+                item = random.randint(0, bs-1)
+
+                # Char nodes
+                id_char = dataset.object_dict.get_id('character')
+                model_id_char = np.where(object_names[item][0] == id_char)[0][0]
+                edges_elem, edge_types, mask_edge = state[3][item].data, state[4][item].data, state[-1][item].data
+                edges_elem = torch.unbind(edges_elem, 0)
+                edge_types = torch.unbind(edge_types, 0)
+                mask_edge = torch.unbind(mask_edge, 0)
+                for id in range(len(edges_elem)):
+                    # edges_from
+
+                    edges_from = edges_elem[id][edges_elem[id][:, 0] == model_id_char]
+                    edges_to = edges_elem[id][edges_elem[id][:, 1] == model_id_char]
+                    if edges_from.shape[0] + edges_to.shape[0] > 0:
+                        print('Step {}'.format(id))
+                    if edges_from.shape[0] > 0:
+                        edges_from = list(object_ids[item, 0][edges_from[:, 1]].data.numpy())
+                        edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 0] == model_id_char].data.numpy())]
+                        edges_from = list(zip(edge_class, edges_from))
+                        print('From', edges_from)
+                    if edges_to.shape[0] > 0:
+                        edges_to = list(object_ids[item, 0][edges_to[:, 0]].data.numpy())
+                        edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 1] == model_id_char].data.numpy())]
+                        edges_to = list(zip(edges_to, edge_class))
+                        print('To', edges_to)
+                    #pdb.set_trace()
                 print(utils.pretty_print_program(pred_instr[item], other=gt_instr[item]))
                 print('Epoch:{}. Iter {}.  Losses: {}'
                       'LCS: {}'.format(
@@ -149,7 +175,7 @@ def train(dataset, helper):
 
             if (epoch + 1) % helper.args.save_freq == 0:
                 helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
-        test(dataset, data_loader_test, helper, policy_net, epoch)
+        # test(dataset, data_loader_test, helper, policy_net, epoch)
     #pdb.set_trace()
 
 

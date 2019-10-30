@@ -126,6 +126,13 @@ class EnvDataset(Dataset):
             if '({})'.format(location_char) in program[0]:
                 program = program[1:]
 
+            # If there are 2 rooms one after another, then we should delete both
+            if len(program) >= 2:
+                if '[WALK]' in program[0] and '[WALK]' in program[1]:
+                    ids = [int(x.split()[-1][1:-1]) for x in program[:2]]
+                    if ids[1] == location_char:
+                        program = program[2:]
+
             problems_dataset.append(
                 {
                     'id': id_problem,
