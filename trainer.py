@@ -5,28 +5,41 @@ import utils
 import numpy as np
 import argparse
 import random
+import multiprocessing
 from envdataset import EnvDataset
 from environment import Environment
 from models.single_policy import SinglePolicy
 from torch.utils import data
 
-def test(dataset, data_loader, helper, policy_net, epoch):
+def test(args, path_name, weights, epoch):
+    print(path_name)
+    helper = utils.Helper(args, path_name)
 
     # Loading params
+    device = torch.device('cuda:0')
 
+    dataset_test = EnvDataset(helper.args, 'test')
+    data_loader_test = data.DataLoader(dataset_test, batch_size=4,
+                                       shuffle=False, num_workers=10)
+    policy_net = SinglePolicy(dataset_test, helper)
+    policy_net.to(device)
+    policy_net = torch.nn.DataParallel(policy_net)
+
+    state_dict = torch.load(weights)
+    policy_net.load_state_dict(state_dict['model_params'])
     policy_net.eval()
-    print('Testing')
+    helper.log_text('test', 'Testing {}'.format(epoch))
     with torch.no_grad():
         metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
         metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
 
         metrics_loss.reset()
         metrics.reset()
-        for it, dp in enumerate(data_loader):
+        for it, dp in enumerate(data_loader_test):
             state, program, goal = dp
             action_logits, o1_logits, o2_logits, repr = policy_net(state,
                                                                    goal,
-                                                                   dataset.object_dict.get_id('character'))
+                                                                   dataset_test.object_dict.get_id('character'))
             logits = action_logits, o1_logits, o2_logits
 
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
@@ -38,9 +51,9 @@ def test(dataset, data_loader, helper, policy_net, epoch):
 
             object_ids = state[1]
             object_names = state[0]
-            pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
+            pred_instr = utils.get_program_from_nodes(dataset_test, object_names, object_ids,
                                                       [pred_action, pred_o1, pred_o2])
-            gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
+            gt_instr = utils.get_program_from_nodes(dataset_test, object_names, object_ids, program)
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
             metrics_loss.update({
                 'Loss': loss.data.cpu(),
@@ -52,12 +65,12 @@ def test(dataset, data_loader, helper, policy_net, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-    policy_net.train()
     helper.log(epoch, metrics, 'LCS', 'test')
     helper.log(epoch, metrics_loss, 'Losses', 'test')
 
 
-def train(dataset, helper):
+
+def train(dataset, helper, q):
     # Think how to handle this with multiple envs. One agent multiple envs?
     # Here we set the policy and the env
     policy_net = SinglePolicy(dataset, helper)
@@ -87,11 +100,12 @@ def train(dataset, helper):
 
     data_loader = data.DataLoader(dataset, batch_size=helper.args.batch_size,
                                            shuffle=do_shuffle, num_workers=num_workers)
-    data_loader_test = data.DataLoader(dataset, batch_size=helper.args.batch_size,
-                                  shuffle=False, num_workers=num_workers)
+
 
     metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
     metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
+
+
 
     for epoch in range(num_epochs):
         metrics_loss.reset()
@@ -99,6 +113,7 @@ def train(dataset, helper):
         for it, dp in enumerate(data_loader):
 
             state, program, goal = dp
+            # pdb.set_trace()
             action_logits, o1_logits, o2_logits, repr = policy_net(state, goal, dataset.object_dict.get_id('character'))
             bs = action_logits.shape[0]
             logits = action_logits, o1_logits, o2_logits
@@ -124,7 +139,7 @@ def train(dataset, helper):
                 pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
                                                           [pred_action, pred_o1, pred_o2])
                 gt_instr = utils.get_program_from_nodes(dataset, object_names, object_ids, program)
-                # pdb.set_trace()
+
                 lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
                 metrics.update({'LCS': lcs_triple,
                                 'ActionLCS': lcs_action,
@@ -175,13 +190,31 @@ def train(dataset, helper):
             helper.log(epoch, metrics_loss, 'Losses', 'train')
 
             if (epoch + 1) % helper.args.save_freq == 0:
-                helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+
+                weights_path = helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+
+                if q is not None:
+                    try:
+                        q.join()
+                    except:
+                       pass
+
+                q.put((helper.args, helper.dir_name, weights_path, epoch))
         # test(dataset, data_loader_test, helper, policy_net, epoch)
+    if q is not None:
+        q.put(None)
     #pdb.set_trace()
 
 
 
-
+def ptest(q):
+    while True:
+        args = q.get()
+        if args is None:
+           q.task_done()
+           break
+        test(*args)
+        q.task_done()
 
 def bc_loss(program, logits):
     criterion = torch.nn.CrossEntropyLoss(reduction='none')
@@ -209,10 +242,21 @@ def bc_loss(program, logits):
     return total_loss, m_loss_action, m_loss_o1, m_loss_o2, debug
 
 def start():
+    torch.manual_seed(0)
+    torch.cuda.manual_seed(0)
+    np.random.seed(0)
+
     helper = utils.setup()
+
+    if helper.args.dotest:
+        mp_ctx = multiprocessing.get_context('spawn')
+        q = mp_ctx.JoinableQueue()
+        p = mp_ctx.Process(target=ptest, args=(q,))
+        p.start()
+    else:
+        q = None
     dataset = EnvDataset(helper.args)
-    dataset_test = EnvDataset(helper.args, 'test')
-    train(dataset, helper)
+    train(dataset, helper, q)
 
     pdb.set_trace()
 

@@ -141,29 +141,29 @@ class DictObjId:
 
 
 class Helper:
-    def __init__(self, args):
+    def __init__(self, args, dir_name):
         self.args = args
-        self.dir_name = None
+        self.dir_name = dir_name
         self.setup()
 
     def setup(self):
-        param_name = 'default'
-        fname = str(datetime.now()).replace(' ', '_')
-
+        argvars = vars(self.args)
+        names_save = ['pomdp', 'graphsteps']
+        names_and_params = [(x, argvars[x]) for x in names_save]
         if self.args.debug:
             fname = 'debug'
 
         else:
-            self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
+            if self.dir_name is None:
+                param_name = '_'.join(['{}.{}'.format(x, y) for x, y in names_and_params])
+                fname = str(datetime.now()).replace(' ', '_').replace(':', '.')
+                self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
+                os.makedirs(self.dir_name, exist_ok=True)
+                with open('{}/args.txt'.format(self.dir_name), 'w+') as f:
+                    args_str = str(self.args)
+                    f.writelines(args_str)
+
             self.log_dir_name = '{}/{}'.format(self.dir_name, 'log')
-
-            os.makedirs(self.dir_name, exist_ok=True)
-            os.makedirs(self.dir_name, exist_ok=True)
-
-            with open('{}/args.txt'.format(self.dir_name), 'w+') as f:
-                args_str = str(self.args)
-                f.writelines(args_str)
-
             self.writer = SummaryWriter(self.log_dir_name)
 
 
@@ -177,8 +177,11 @@ class Helper:
             'model_params': model_params,
             'optim_params': optim_params
         }, '{}/chkpt_{}.pt'.format(dir_chkpt, epoch))
+        return '{}/chkpt_{}.pt'.format(dir_chkpt, epoch)
 
-
+    def log_text(self, split, text):
+        with open('{}/log_{}.txt'.format(self.dir_name, split), 'a+') as f:
+            f.writelines(text)
     def log(self, epoch, metric, name, split=''):
         for metric_name, meter in metric.metrics.items():
             value = meter.avg
@@ -187,7 +190,7 @@ class Helper:
 
 
 
-def setup():
+def setup(path_name=None):
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
@@ -204,6 +207,9 @@ def setup():
     parser.add_argument('--max_nodes', default=100, type=int)
     parser.add_argument('--max_edges', default=700, type=int)
     parser.add_argument('--max_steps', default=10, type=int)
+    parser.add_argument('--pomdp', action='store_true') # whether to use the true state or the test state
+    parser.add_argument('--graphsteps', default=3, type=int)
+
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
@@ -217,12 +223,12 @@ def setup():
     parser.add_argument('--save_freq', default=2, type=int)
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--overfit', action='store_true')
-
+    parser.add_argument('--dotest', action='store_true')
 
     # Chkpts
     parser.add_argument('--load_path', default=None, type=str)
     args = parser.parse_args()
-    helper = Helper(args)
+    helper = Helper(args, path_name)
     return helper
 
 

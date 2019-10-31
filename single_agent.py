@@ -11,6 +11,7 @@ class SingleAgent():
         self.goal = goal
         self.agent_id = agent_id
         self.policy_net = policy
+
         if policy is not None:
             self.activation_info = policy.activation_info()
         self.beliefs = None
@@ -29,6 +30,10 @@ class SingleAgent():
             'action_space': [],
             'rewards': []
         }
+
+    def single_step_probs(self, observation, belief, goal_name):
+        """ Given an observation and a belief what are the chances of next step """
+
 
 
 

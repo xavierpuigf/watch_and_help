@@ -92,7 +92,7 @@ class GraphStateRepresentation(nn.Module):
         self.initial_node_repr = ClassNameStateRepresentation(self.helper, self.dataset)
         self.in_fts = 100
         self.out_fts = 100
-        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, 3,
+        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, helper.args.graphsteps,
                                              len(dataset.relation_dict))
         # GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
         self.mlp = nn.Linear(self.out_fts, self.out_fts)
