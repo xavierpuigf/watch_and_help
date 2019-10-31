@@ -85,10 +85,11 @@ class EnvDataset(Dataset):
             self.problems_dataset = self.read_problem(self.dataset_file, split)
             if args.overfit:
                 self.problems_dataset = self.problems_dataset[:2]
+            self.num_items = len(self.problems_dataset)
         else:
             self.num_items = 0
 
-        self.num_items = len(self.problems_dataset)
+
 
     def __len__(self):
         return self.num_items
@@ -167,7 +168,7 @@ class EnvDataset(Dataset):
             node_id = int(goal_str.split('_')[-1])
             id_in_model = ids_used[node_id]
             goal_id = 0
-            goal_class = class_names[0, id_in_model]
+            goal_class = class_names[id_in_model]
             # This could be in the future all the nodes in the graph with the given id
             goal_node = ids_used[node_id]  # no obj
 
@@ -185,7 +186,6 @@ class EnvDataset(Dataset):
             goal_class = self.object_dict.get_id('no_obj')
             goal_node = ids_used[-1] # no obj
 
-
         return goal_id, goal_class, goal_node
 
     def __getitem__(self, idx):
@@ -194,14 +194,15 @@ class EnvDataset(Dataset):
         # pdb.set_trace()
         program_info = self.prepare_program(problem['program'], ids_used)
         class_names = state_info[0]
-        goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names)
+        goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names[0])
         return state_info, program_info, goal_info
 
 
 
     def getobjects(self):
-        print('Getting objects...')
+
         object_file_name = '{}/obj_names.json'.format(self.dataset_file)
+        print('Getting objects from {}...'.format(object_file_name))
 
         if not os.path.isfile(object_file_name):
             object_names = []
@@ -325,7 +326,7 @@ class EnvDataset(Dataset):
         # The last instruction is the stop
         for state, state_full in graphs:
             nodes, edges, _ = self.process_graph(state, ids_used)
-            nodes_full, edges_full, _ = self.process_graph(state, ids_used)
+            nodes_full, edges_full, _ = self.process_graph(state_full, ids_used)
             info[0].append(nodes)
             info[1].append(edges)
             info_full[0].append(nodes_full)
@@ -334,48 +335,60 @@ class EnvDataset(Dataset):
         _, _, visible_mask, state_nodes = zip(*info[0])
         edges, edge_types, mask_edges = zip(*info[1])
         if not self.args.pomdp:
-            edges, edge_types, mask_edges = zip(*info_full[1])
             _, _, _, state_nodes = zip(*info_full[0])
+            edges, edge_types, mask_edges = zip(*info_full[1])
+
+        graph_data = self.join_timesteps(class_names, object_ids, state_nodes,
+                                         edges, edge_types, visible_mask, mask_nodes, mask_edges)
+
+        return graph_data, ids_used
+
+    def join_timesteps(self, class_names, object_ids, state_nodes,
+                       edges, edge_types, visible_mask, mask_nodes, mask_edges):
 
         # Hack - they should not count on time
         object_ids = [object_ids]*len(state_nodes)
         class_names = [class_names]*len(state_nodes)
 
-        object_ids = np.concatenate([np.expand_dims(x, 0) for x in object_ids])
         class_names = np.concatenate([np.expand_dims(x, 0) for x in class_names])
+        object_ids = np.concatenate([np.expand_dims(x, 0) for x in object_ids])
         state_nodes = np.concatenate([np.expand_dims(x, 0) for x in state_nodes])
         edges = np.concatenate([np.expand_dims(x, 0) for x in edges])
         edge_types = np.concatenate([np.expand_dims(x, 0) for x in edge_types])
-
         visible_mask = np.concatenate([np.expand_dims(x, 0) for x in visible_mask])
 
         # Pad to max steps
-        remain = self.max_steps - len(program)
-        class_names = np.pad(class_names, ((0, remain), (0,0)), 'constant').astype(np.int64)
+        remain = self.max_steps - len(state_nodes)
+        class_names = np.pad(class_names, ((0, remain), (0, 0)), 'constant').astype(np.int64)
         object_ids = np.pad(object_ids, ((0, remain), (0, 0)), 'constant').astype(np.int64)
 
-        state_nodes = np.pad(state_nodes, ((0, remain), (0,0), (0,0)), 'constant').astype(np.int64)
-        edges = np.pad(edges, ((0, remain), (0, 0), (0,0)), 'constant').astype(np.int64)
+        state_nodes = np.pad(state_nodes, ((0, remain), (0, 0), (0, 0)), 'constant').astype(np.int64)
+        edges = np.pad(edges, ((0, remain), (0, 0), (0, 0)), 'constant').astype(np.int64)
         edge_types = np.pad(edge_types, ((0, remain), (0, 0)), 'constant').astype(np.int64)
 
         visible_mask = np.pad(visible_mask, ((0, remain), (0, 0)), 'constant').astype(np.float32)
         mask_edges = np.pad(mask_edges, ((0, remain), (0, 0)), 'constant').astype(np.float32)
 
-        return (class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_nodes, mask_edges), ids_used
+        return class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_nodes, mask_edges
 
-    def process_graph(self, graph, ids_used=None):
+
+    def process_graph(self, graph, ids_used=None, ids_visible=None):
         """
         Maps the json graph into a dense structure to be used by the model
         :param graph: dictionary with the state, it can be POMDP or FOMDP
-        :param ids_used: IDS mapping JSON nodes to MODEL ids
+        :      ids_used: IDS mapping JSON nodes to MODEL ids
+        :      ids_visible: list of ids that are visible from the ones in the graph
         :return:
             (class_names
-            object_ids
-            mask_nodes: [max_nodes] with 1 if visible
-            )state_nodes: [max_nodes, num_states]
+             object_ids
+             mask_nodes: [max_nodes] with 1 if visible
+             state_nodes: [max_nodes, num_states]
+            )
+
             (edges: [max_edges, 3]
-            edge_types: [max_edges]
-            )mask_edge: [max_edges]
+             edge_types: [max_edges]
+             mask_edge: [max_edges]
+            )
             ids_used: updated dict
         """
         if ids_used is None:
@@ -407,6 +420,9 @@ class EnvDataset(Dataset):
 
         mask_nodes[ids_used[self.node_none[1]]] = 1
         mask_nodes[ids_used[self.node_stop[1]]] = 1
+
+        if ids_visible is None:
+            pass
 
         # Fill out state
         num_states = len(self.state_dict)

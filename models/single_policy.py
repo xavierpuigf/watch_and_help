@@ -25,33 +25,32 @@ class GoalEmbed(torch.nn.Module):
 class SinglePolicy(torch.nn.Module):
     class SinglePolicyActivations:
         # This class will store for every agent it's own activations
-        def __init__(self, helper):
+        def __init__(self, dummy_var):
             # The previous action used
             self.action_embedding = None
             self.object_embedding = None
             self.state = None
 
-    def __init__(self, dataset, helper):
+    def __init__(self, dataset):
         super(SinglePolicy, self).__init__()
 
         # Network
         self.node_None = {'id': -1, 'class_name': None, 'properties': [], 'states': []}
         self.node_Stop = {'id': -2, 'class_name': 'stop', 'properties': [], 'states': []}
 
-        self.helper = helper
         self.dataset = dataset
         self.repr_dim = 100
 
         num_actions = len(dataset.action_dict)
 
-        self.fc_action = nn.Sequential(torch.nn.Linear(self.repr_dim * 2, helper.args.object_dim),
+        self.fc_action = nn.Sequential(torch.nn.Linear(self.repr_dim * 2, dataset.args.object_dim),
                                        torch.nn.ReLU(),
                                        torch.nn.Linear(self.repr_dim, num_actions))
 
         self.fc_o1 = nn.Sequential(nn.Linear(self.repr_dim*3, self.repr_dim), torch.nn.ReLU(), torch.nn.Linear(self.repr_dim, 1))
         self.fc_o2 = nn.Sequential(nn.Linear(self.repr_dim*3, self.repr_dim), torch.nn.ReLU(), torch.nn.Linear(self.repr_dim, 1))
-        # self.state_embedding = networks.StateRepresentation(helper, dataset)
-        self.state_embedding = networks.GraphStateRepresentation(helper, dataset)
+
+        self.state_embedding = networks.GraphStateRepresentation(dataset)
 
         # num_goals = num_objects
         num_goals = len(dataset.object_dict)
@@ -61,14 +60,14 @@ class SinglePolicy(torch.nn.Module):
 
 
         # Combine char and object selected
-        self.objectchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim*2, helper.args.object_dim),
+        self.objectchar = nn.Sequential(torch.nn.Linear(dataset.args.object_dim*2, dataset.args.object_dim),
                                      torch.nn.ReLU(),
-                                     torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
+                                     torch.nn.Linear(dataset.args.object_dim, dataset.args.object_dim))
 
-        self.objectactionchar = nn.Sequential(torch.nn.Linear(helper.args.object_dim * 3,
-                                                              helper.args.object_dim),
+        self.objectactionchar = nn.Sequential(torch.nn.Linear(dataset.args.object_dim * 3,
+                                                              dataset.args.object_dim),
                                         torch.nn.ReLU(),
-                                        torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
+                                        torch.nn.Linear(dataset.args.object_dim, dataset.args.object_dim))
 
         # Debug:
         self.interm_grad = None
@@ -79,7 +78,8 @@ class SinglePolicy(torch.nn.Module):
         self.debug_var = debug_var
 
     def activation_info(self):
-        return self.SinglePolicyActivations(self.helper)
+        # [Deprecated]
+        return self.SinglePolicyActivations(self.dataset)
 
     def get_action(self, actions, agent, object_selected):
         is_cuda = next(self.parameters()).is_cuda

@@ -141,12 +141,14 @@ class DictObjId:
 
 
 class Helper:
-    def __init__(self, args, dir_name):
+    def __init__(self, args, dir_name=None):
         self.args = args
         self.dir_name = dir_name
         self.setup()
 
     def setup(self):
+        if self.args.interactive:
+            return
         argvars = vars(self.args)
         names_save = ['pomdp', 'graphsteps']
         names_and_params = [(x, argvars[x]) for x in names_save]
@@ -165,7 +167,6 @@ class Helper:
 
             self.log_dir_name = '{}/{}'.format(self.dir_name, 'log')
             self.writer = SummaryWriter(self.log_dir_name)
-
 
     def save(self, epoch, loss_avg, model_params, optim_params):
         dir_chkpt = '{}/chkpt'.format(self.dir_name)
@@ -189,12 +190,11 @@ class Helper:
 
 
 
-
-def setup(path_name=None):
+def read_args():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_toy/', type=str) # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_toy/', type=str)  # dataset_subgoals
 
     # Model params
     parser.add_argument('--action_dim', default=100, type=int)
@@ -207,9 +207,8 @@ def setup(path_name=None):
     parser.add_argument('--max_nodes', default=100, type=int)
     parser.add_argument('--max_edges', default=700, type=int)
     parser.add_argument('--max_steps', default=10, type=int)
-    parser.add_argument('--pomdp', action='store_true') # whether to use the true state or the test state
+    parser.add_argument('--pomdp', action='store_true')  # whether to use the true state or the test state
     parser.add_argument('--graphsteps', default=3, type=int)
-
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
@@ -221,13 +220,21 @@ def setup(path_name=None):
     parser.add_argument('--log_dir', default='logdir', type=str)
     parser.add_argument('--print_freq', default=20, type=int)
     parser.add_argument('--save_freq', default=2, type=int)
+
+    # Running mode
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--overfit', action='store_true')
     parser.add_argument('--dotest', action='store_true')
+    parser.add_argument('--interactive', action='store_true')
+    parser.add_argument('--eval', action='store_true')
 
     # Chkpts
     parser.add_argument('--load_path', default=None, type=str)
     args = parser.parse_args()
+    return args
+
+def setup(path_name=None):
+    args = read_args()
     helper = Helper(args, path_name)
     return helper
 

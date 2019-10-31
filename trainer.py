@@ -21,14 +21,17 @@ def test(args, path_name, weights, epoch):
     dataset_test = EnvDataset(helper.args, 'test')
     data_loader_test = data.DataLoader(dataset_test, batch_size=4,
                                        shuffle=False, num_workers=10)
-    policy_net = SinglePolicy(dataset_test, helper)
+    policy_net = SinglePolicy(dataset_test)
     policy_net.to(device)
     policy_net = torch.nn.DataParallel(policy_net)
 
     state_dict = torch.load(weights)
     policy_net.load_state_dict(state_dict['model_params'])
     policy_net.eval()
-    helper.log_text('test', 'Testing {}'.format(epoch))
+
+    if path_name is not None:
+        helper.log_text('test', 'Testing {}'.format(epoch))
+
     with torch.no_grad():
         metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
         metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
@@ -65,31 +68,26 @@ def test(args, path_name, weights, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-    helper.log(epoch, metrics, 'LCS', 'test')
-    helper.log(epoch, metrics_loss, 'Losses', 'test')
 
+    if path_name is not None:
+        helper.log(epoch, metrics, 'LCS', 'test')
+        helper.log(epoch, metrics_loss, 'Losses', 'test')
+
+    else:
+        print('Epoch:{}. Iter {}.  Losses: {}'
+              'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
 
 
 def train(dataset, helper, q):
     # Think how to handle this with multiple envs. One agent multiple envs?
     # Here we set the policy and the env
-    policy_net = SinglePolicy(dataset, helper)
+    policy_net = SinglePolicy(dataset)
     policy_net.cuda()
     policy_net = torch.nn.DataParallel(policy_net)
-    # policy_net = policy_net.cuda()
-    # envs = []
-    # for dp in dataset:
-    #     state, program = dp
-    #     actions, objects1, objects2 = policy_net(state)
-    #     curr_env = Environment(graph_file, goal, 2)
-    #     for agent in curr_env.agents:
-    #         agent.policy_net = policy_net
-    #         agent.activation_info = policy_net.activation_info()
-    #     envs.append(curr_env)
-    #
+    policy_net = torch.nn.DataParallel(policy_net)
+
     optimizer = torch.optim.Adam(list(policy_net.parameters()))
-    #
-    # num_rollouts = helper.args.num_rollouts
+
     num_epochs = helper.args.num_epochs
     do_shuffle = not helper.args.debug
 
@@ -247,16 +245,20 @@ def start():
     np.random.seed(0)
 
     helper = utils.setup()
+    if helper.args.eval:
+        weights = 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+        test(helper.args, None, weights, 0)
 
-    if helper.args.dotest:
-        mp_ctx = multiprocessing.get_context('spawn')
-        q = mp_ctx.JoinableQueue()
-        p = mp_ctx.Process(target=ptest, args=(q,))
-        p.start()
     else:
-        q = None
-    dataset = EnvDataset(helper.args)
-    train(dataset, helper, q)
+        if helper.args.dotest:
+            mp_ctx = multiprocessing.get_context('spawn')
+            q = mp_ctx.JoinableQueue()
+            p = mp_ctx.Process(target=ptest, args=(q,))
+            p.start()
+        else:
+            q = None
+        dataset = EnvDataset(helper.args)
+        train(dataset, helper, q)
 
     pdb.set_trace()
 

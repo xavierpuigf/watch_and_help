@@ -56,18 +56,17 @@ class GCNN(nn.Module):
 
 class ClassNameStateRepresentation(nn.Module):
     # Representaiton based on class names and state
-    def __init__(self, helper, dataset):
+    def __init__(self, dataset):
         super().__init__()
         self.dataset = dataset
-        self.helper = helper
         self.eps = 1e-6
         self.num_states = len(dataset.state_dict)
-        self.object_embedding = nn.Embedding(len(dataset.object_dict), helper.args.object_dim)
-        self.state_embedding = nn.Linear(self.num_states, helper.args.state_dim)
-        self.combine_state_dim = nn.Sequential(torch.nn.Linear(helper.args.state_dim+helper.args.object_dim,
-                                                               helper.args.object_dim),
+        self.object_embedding = nn.Embedding(len(dataset.object_dict), dataset.args.object_dim)
+        self.state_embedding = nn.Linear(self.num_states, dataset.args.state_dim)
+        self.combine_state_dim = nn.Sequential(torch.nn.Linear(dataset.args.state_dim+dataset.args.object_dim,
+                                                               dataset.args.object_dim),
                                                torch.nn.ReLU(),
-                                               torch.nn.Linear(helper.args.object_dim, helper.args.object_dim))
+                                               torch.nn.Linear(dataset.args.object_dim, dataset.args.object_dim))
     def forward(self, observations):
         class_names, obj_ids, states, edges, edge_types, visibility, mask_nodes, mask_edges = observations
 
@@ -85,16 +84,15 @@ class ClassNameStateRepresentation(nn.Module):
 
 
 class GraphStateRepresentation(nn.Module):
-    def __init__(self, helper, dataset):
+    def __init__(self, dataset):
         super().__init__()
         self.dataset = dataset
-        self.helper = helper
-        self.initial_node_repr = ClassNameStateRepresentation(self.helper, self.dataset)
+        self.initial_node_repr = ClassNameStateRepresentation(self.dataset)
         self.in_fts = 100
         self.out_fts = 100
-        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, helper.args.graphsteps,
+        self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, dataset.args.graphsteps,
                                              len(dataset.relation_dict))
-        # GCNN(2, helper.args.relation_dim, len(dataset.relation_dict))
+        # GCNN(2, dataset.args.relation_dim, len(dataset.relation_dict))
         self.mlp = nn.Linear(self.out_fts, self.out_fts)
 
     def forward(self, observations):

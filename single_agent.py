@@ -3,6 +3,10 @@ from models.single_policy import SinglePolicy
 import torch
 from torch import distributions
 import pdb
+import vh_graph
+import gym
+import envdataset
+import utils
 
 
 class SingleAgent():
@@ -12,8 +16,8 @@ class SingleAgent():
         self.agent_id = agent_id
         self.policy_net = policy
 
-        if policy is not None:
-            self.activation_info = policy.activation_info()
+        #if policy is not None:
+        #    self.activation_info = policy.activation_info()
         self.beliefs = None
 
         self.agent_info = {
@@ -37,6 +41,7 @@ class SingleAgent():
 
 
 
+
     def get_beliefs(self):
         return self.beliefs
 
@@ -54,6 +59,17 @@ class SingleAgent():
         self.agent_info['indices'].append(indices)
         self.agent_info['action_space'].append(action_space)
         self.agent_info['rewards'].append(reward)
+
+
+    def get_top_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
+        pred_action = torch.argmax(action_logits, -1)
+        pred_o1 = torch.argmax(o1_logits, -1)
+        pred_o2 = torch.argmax(o2_logits, -1)
+        object_ids = state[1]
+        object_names = state[0]
+        pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                  [pred_action, pred_o1, pred_o2])
+        print(pred_instr[0])
 
     def get_instruction(self, observations):
         indices = []
@@ -119,3 +135,67 @@ class SingleAgent():
 
         }
         return dict_info
+
+def interactive_agent():
+    path_init_env = 'dataset_toy/init_envs/TrimmedTestScene3_graph_46.json'
+    goal_name = '(facing living_room[1] living_room[1])'
+    weights = 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+
+    curr_env.reset(path_init_env, goal_name)
+    curr_env.to_pomdp()
+    args = utils.read_args()
+    args.max_steps = 1
+    args.interactive = True
+    helper = utils.Helper(args)
+    dataset_interactive = envdataset.EnvDataset(args, process_progs=False)
+
+    policy_net = SinglePolicy(dataset_interactive).cuda()
+    policy_net = torch.nn.DataParallel(policy_net)
+    state_dict = torch.load(weights)
+    policy_net.load_state_dict(state_dict['model_params'])
+    policy_net.eval()
+
+    single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
+    observations = single_agent.get_observations()
+    gt_state = single_agent.env.vh_state.to_dict()
+    nodes, edges, ids_used = dataset_interactive.process_graph(gt_state)
+    print('Objects...')
+    print([(x['id'], x['class_name']) for x in gt_state['nodes']])
+    id_str = '135' # input('Id of object to find...')
+    id_obj = int(id_str)
+    goal_str = 'findnode_{}'.format(id_obj)
+    id_char = dataset_interactive.object_dict.get_id('character')
+    while True:
+        observations = single_agent.get_observations()
+        gt_state = single_agent.env.vh_state.to_dict()
+
+        # Really overkill if we only care about visibility
+        nodes_visible, edges_visible, _ = dataset_interactive.process_graph(observations, ids_used)
+        nodes_all, edges_all, _ = dataset_interactive.process_graph(gt_state, ids_used)
+        visible_mask = nodes_visible[2]
+
+        if not args.pomdp:
+            class_names, object_ids, mask_nodes, state_nodes = nodes_all
+            edges, edge_types, mask_edges = edges_all
+        else:
+            class_names, object_ids, mask_nodes, state_nodes = nodes_visible
+            edges, edge_types, mask_edges = edges_visible
+
+        graph_data = dataset_interactive.join_timesteps(class_names, object_ids, [state_nodes],
+                                                        [edges], [edge_types], [visible_mask], mask_nodes, [mask_edges])
+
+        goal_info = dataset_interactive.prepare_goal(goal_str, ids_used, class_names)
+        # To tensor
+        graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
+        goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
+        pdb.set_trace()
+        output = policy_net(graph_data, goal_info, id_char)
+        action_logits, o1_logits, o2_logits, _ = output
+        single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
+
+        input('Waiting for input...')
+
+
+if __name__ == '__main__':
+    curr_env = gym.make('vh_graph-v0')
+    interactive_agent()
