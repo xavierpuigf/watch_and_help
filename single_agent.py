@@ -165,6 +165,7 @@ def interactive_agent():
     id_obj = int(id_str)
     goal_str = 'findnode_{}'.format(id_obj)
     id_char = dataset_interactive.object_dict.get_id('character')
+    pdb.set_trace()
     while True:
         observations = single_agent.get_observations()
         gt_state = single_agent.env.vh_state.to_dict()
@@ -191,8 +192,8 @@ def interactive_agent():
         pdb.set_trace()
         output = policy_net(graph_data, goal_info, id_char)
         action_logits, o1_logits, o2_logits, _ = output
-        single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
-
+        instruction = single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
+        print(instruction)
         input('Waiting for input...')
 
 

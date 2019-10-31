@@ -191,7 +191,6 @@ class EnvDataset(Dataset):
     def __getitem__(self, idx):
         problem = self.problems_dataset[idx]
         state_info, ids_used = self.prepare_data(problem)
-        # pdb.set_trace()
         program_info = self.prepare_program(problem['program'], ids_used)
         class_names = state_info[0]
         goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names[0])
@@ -317,26 +316,24 @@ class EnvDataset(Dataset):
             full_init_env = full_init_env['init_graph']
 
         node_info, _, ids_used = self.process_graph(full_init_env)
-        class_names, object_ids, mask_nodes, _ = node_info
+        class_names, object_ids, _, mask_nodes, _ = node_info
 
         graphs = self.obtain_graph_list(problem, program, full_init_env)
 
         info = [[], []]
-        info_full = [[], []]
         # The last instruction is the stop
         for state, state_full in graphs:
-            nodes, edges, _ = self.process_graph(state, ids_used)
-            nodes_full, edges_full, _ = self.process_graph(state_full, ids_used)
+
+            visible_ids = [x['id'] for x in state['nodes']]
+            if self.args.pomdp:
+                nodes, edges, _ = self.process_graph(state, ids_used, visible_ids)
+            else:
+                nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids)
             info[0].append(nodes)
             info[1].append(edges)
-            info_full[0].append(nodes_full)
-            info_full[1].append(edges_full)
 
-        _, _, visible_mask, state_nodes = zip(*info[0])
-        edges, edge_types, mask_edges = zip(*info[1])
-        if not self.args.pomdp:
-            _, _, _, state_nodes = zip(*info_full[0])
-            edges, edge_types, mask_edges = zip(*info_full[1])
+        _, _, visible_mask, _, state_nodes = [list(x) for x in zip(*info[0])]
+        edges, edge_types, mask_edges = [list(x) for x in zip(*info[1])]
 
         graph_data = self.join_timesteps(class_names, object_ids, state_nodes,
                                          edges, edge_types, visible_mask, mask_nodes, mask_edges)
@@ -371,17 +368,17 @@ class EnvDataset(Dataset):
 
         return class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_nodes, mask_edges
 
-
-    def process_graph(self, graph, ids_used=None, ids_visible=None):
+    def process_graph(self, graph, ids_used=None, visible_ids=None):
         """
         Maps the json graph into a dense structure to be used by the model
         :param graph: dictionary with the state, it can be POMDP or FOMDP
-        :      ids_used: IDS mapping JSON nodes to MODEL ids
-        :      ids_visible: list of ids that are visible from the ones in the graph
+        :param ids_used: IDS mapping JSON nodes to MODEL ids
+        :param visible_ids: list of ids that are visible from the ones in the graph. Mark how we mask the logits
         :return:
             (class_names
              object_ids
-             mask_nodes: [max_nodes] with 1 if visible
+             visible_mask: [max_nodes] with 1 if visible
+             mask_nodes: [max_nodes] with 1 if exists
              state_nodes: [max_nodes, num_states]
             )
 
@@ -421,8 +418,16 @@ class EnvDataset(Dataset):
         mask_nodes[ids_used[self.node_none[1]]] = 1
         mask_nodes[ids_used[self.node_stop[1]]] = 1
 
-        if ids_visible is None:
-            pass
+        if visible_ids is None:
+            visible_mask = mask_nodes
+        else:
+            visible_mask = np.zeros(self.max_nodes).astype(np.float32)
+            for id_visible in visible_ids:
+                visible_mask[ids_used[id_visible]] = 1
+            visible_mask[ids_used[self.node_none[1]]] = 1
+            visible_mask[ids_used[self.node_stop[1]]] = 1
+
+
 
         # Fill out state
         num_states = len(self.state_dict)
@@ -459,6 +464,7 @@ class EnvDataset(Dataset):
             mask_edges[cont] = 1
             cont += 1
 
-        return (class_names, object_ids, mask_nodes, state_nodes), (edges, edge_types, mask_edges), ids_used
+        return (class_names, object_ids, visible_mask, mask_nodes, state_nodes), \
+               (edges, edge_types, mask_edges), ids_used
 
 

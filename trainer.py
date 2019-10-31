@@ -19,8 +19,12 @@ def test(args, path_name, weights, epoch):
     device = torch.device('cuda:0')
 
     dataset_test = EnvDataset(helper.args, 'test')
+    if helper.args.debug:
+        num_workers = 0
+    else:
+        num_workers = 10
     data_loader_test = data.DataLoader(dataset_test, batch_size=4,
-                                       shuffle=False, num_workers=10)
+                                       shuffle=False, num_workers=num_workers)
     policy_net = SinglePolicy(dataset_test)
     policy_net.to(device)
     policy_net = torch.nn.DataParallel(policy_net)
@@ -102,7 +106,6 @@ def train(dataset, helper, q):
 
     metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
     metrics_loss = utils.AvgMetrics(['Loss', 'ActionLoss', 'O1Loss', 'O2Loss'], ':.3f')
-
 
 
     for epoch in range(num_epochs):
