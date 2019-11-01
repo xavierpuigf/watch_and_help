@@ -69,7 +69,11 @@ class SingleAgent():
         object_names = state[0]
         pred_instr = utils.get_program_from_nodes(dataset, object_names, object_ids,
                                                   [pred_action, pred_o1, pred_o2])
-        print(pred_instr[0])
+        return pred_instr[0]
+
+    def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
+        # TODO: finish this
+        distr_object1 = distributions.categorical.Categorical(logits=o1_logits)
 
     def get_instruction(self, observations):
         indices = []
@@ -137,7 +141,7 @@ class SingleAgent():
         return dict_info
 
 def interactive_agent():
-    path_init_env = 'dataset_toy/init_envs/TrimmedTestScene3_graph_46.json'
+    path_init_env = 'dataset_toy/init_envs/TrimmedTestScene6_graph_42.json'
     goal_name = '(facing living_room[1] living_room[1])'
     weights = 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
@@ -156,46 +160,49 @@ def interactive_agent():
     policy_net.eval()
 
     single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
-    observations = single_agent.get_observations()
+
+    # Starting the scene
+    curr_state = single_agent.get_observations()
     gt_state = single_agent.env.vh_state.to_dict()
-    nodes, edges, ids_used = dataset_interactive.process_graph(gt_state)
+    nodes, _, ids_used = dataset_interactive.process_graph(gt_state)
+    class_names, object_ids, _, mask_nodes, _ = nodes
     print('Objects...')
     print([(x['id'], x['class_name']) for x in gt_state['nodes']])
-    id_str = '135' # input('Id of object to find...')
+    id_str = '2001' # input('Id of object to find...')
     id_obj = int(id_str)
     goal_str = 'findnode_{}'.format(id_obj)
     id_char = dataset_interactive.object_dict.get_id('character')
-    pdb.set_trace()
+
     while True:
-        observations = single_agent.get_observations()
-        gt_state = single_agent.env.vh_state.to_dict()
-
-        # Really overkill if we only care about visibility
-        nodes_visible, edges_visible, _ = dataset_interactive.process_graph(observations, ids_used)
-        nodes_all, edges_all, _ = dataset_interactive.process_graph(gt_state, ids_used)
-        visible_mask = nodes_visible[2]
-
-        if not args.pomdp:
-            class_names, object_ids, mask_nodes, state_nodes = nodes_all
-            edges, edge_types, mask_edges = edges_all
+        if args.pomdp:
+            curr_state = single_agent.get_observations()
+            visible_ids = None
         else:
-            class_names, object_ids, mask_nodes, state_nodes = nodes_visible
-            edges, edge_types, mask_edges = edges_visible
+            curr_state = single_agent.env.vh_state.to_dict()
+            visible_ids = single_agent.env.observable_object_ids
 
+        nodes, edges, _ = dataset_interactive.process_graph(curr_state, ids_used, visible_ids)
+        _, _, visible_mask, _, state_nodes = nodes
+        edge_bin, edge_types, mask_edges = edges
         graph_data = dataset_interactive.join_timesteps(class_names, object_ids, [state_nodes],
-                                                        [edges], [edge_types], [visible_mask], mask_nodes, [mask_edges])
+                                                        [edge_bin], [edge_types], [visible_mask],
+                                                        mask_nodes, [mask_edges])
 
         goal_info = dataset_interactive.prepare_goal(goal_str, ids_used, class_names)
-        # To tensor
         graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
         goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
-        pdb.set_trace()
+
         output = policy_net(graph_data, goal_info, id_char)
         action_logits, o1_logits, o2_logits, _ = output
         instruction = single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
-        print(instruction)
-        input('Waiting for input...')
-
+        instr = list(zip(*instruction))[0]
+        str_instruction = utils.pretty_instr(instr)
+        print(str_instruction)
+        if str_instruction.strip() == '[stop]':
+            print('Episode finished')
+        else:
+            single_agent.env.step(str_instruction)
+        pdb.set_trace()
 
 if __name__ == '__main__':
     curr_env = gym.make('vh_graph-v0')

@@ -72,7 +72,7 @@ def test(args, path_name, weights, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-
+    pdb.set_trace()
     if path_name is not None:
         helper.log(epoch, metrics, 'LCS', 'test')
         helper.log(epoch, metrics_loss, 'Losses', 'test')

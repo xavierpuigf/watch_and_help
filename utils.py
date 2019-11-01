@@ -238,6 +238,12 @@ def setup(path_name=None):
     helper = Helper(args, path_name)
     return helper
 
+def pretty_instr(instr):
+    action, o1, o2 = instr
+    o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
+    o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+    instr_str = '[{}] {} {}'.format(action, o1s, o2s)
+    return instr_str
 
 def pretty_print_program(program, other=None):
 
@@ -260,16 +266,10 @@ def pretty_print_program(program, other=None):
     instructions = []
     instructions.append('{:70s} | {}'.format('PRED', 'GT'))
     for instr, instr2 in zip(program_joint, program_joint2):
-        action, o1, o2 = instr
-        o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
-        o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
-        instr_str = '[{}] {} {}'.format(action, o1s, o2s)
+        instr_str = pretty_instr(instr)
 
         if instr2 is not None:
-            action, o1, o2 = instr2
-            o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
-            o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
-            instr_str2 = '[{}] {} {}'.format(action, o1s, o2s)
+            instr_str2 = pretty_instr(instr2)
             instr_str = '{:70s} | {}'.format(instr_str, instr_str2)
         instructions.append(instr_str)
     return '\n'.join(instructions)
