@@ -150,7 +150,7 @@ class Helper:
         if self.args.interactive:
             return
         argvars = vars(self.args)
-        names_save = ['pomdp', 'graphsteps']
+        names_save = ['dataset_folder', 'pomdp', 'graphsteps']
         names_and_params = [(x, argvars[x]) for x in names_save]
         if self.args.debug:
             fname = 'debug'
@@ -194,14 +194,14 @@ def read_args():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_toy/', type=str)  # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_subgoals2', type=str)  # dataset_subgoals
 
     # Model params
-    parser.add_argument('--action_dim', default=100, type=int)
-    parser.add_argument('--object_dim', default=100, type=int)
-    parser.add_argument('--relation_dim', default=100, type=int)
-    parser.add_argument('--state_dim', default=100, type=int)
-    parser.add_argument('--agent_dim', default=100, type=int)
+    parser.add_argument('--action_dim', default=50, type=int)
+    parser.add_argument('--object_dim', default=50, type=int)
+    parser.add_argument('--relation_dim', default=50, type=int)
+    parser.add_argument('--state_dim', default=50, type=int)
+    parser.add_argument('--agent_dim', default=50, type=int)
     parser.add_argument('--num_goals', default=3, type=int)
 
     parser.add_argument('--max_nodes', default=100, type=int)
@@ -212,7 +212,7 @@ def read_args():
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
-    parser.add_argument('--num_epochs', default=1000, type=int)
+    parser.add_argument('--num_epochs', default=50, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
 

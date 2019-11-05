@@ -331,6 +331,8 @@ class EnvDataset(Dataset):
                 nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids)
             info[0].append(nodes)
             info[1].append(edges)
+        if len(graphs) > self.max_steps:
+            pdb.set_trace()
 
         _, _, visible_mask, _, state_nodes = [list(x) for x in zip(*info[0])]
         edges, edge_types, mask_edges = [list(x) for x in zip(*info[1])]

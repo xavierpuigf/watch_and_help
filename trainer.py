@@ -12,29 +12,28 @@ from models.single_policy import SinglePolicy
 from torch.utils import data
 
 def test(args, path_name, weights, epoch):
-    print(path_name)
     helper = utils.Helper(args, path_name)
 
-    # Loading params
     device = torch.device('cuda:0')
 
     dataset_test = EnvDataset(helper.args, 'test')
     if helper.args.debug:
         num_workers = 0
     else:
-        num_workers = 10
+        num_workers = 4
     data_loader_test = data.DataLoader(dataset_test, batch_size=4,
                                        shuffle=False, num_workers=num_workers)
     policy_net = SinglePolicy(dataset_test)
-    policy_net.to(device)
+    policy_net.cuda()
     policy_net = torch.nn.DataParallel(policy_net)
-
-    state_dict = torch.load(weights)
-    policy_net.load_state_dict(state_dict['model_params'])
+    # policy_net.to(device)
+    if len(weights) > 0:
+        state_dict = torch.load(weights)
+        policy_net.load_state_dict(state_dict['model_params'])
     policy_net.eval()
 
     if path_name is not None:
-        helper.log_text('test', 'Testing {}'.format(epoch))
+        helper.log_text('test', 'Testing {}\n'.format(epoch))
 
     with torch.no_grad():
         metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
@@ -72,10 +71,14 @@ def test(args, path_name, weights, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-    pdb.set_trace()
+            helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}\n'
+                  'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
+    helper.log_text('test', 'Done epoch')
     if path_name is not None:
         helper.log(epoch, metrics, 'LCS', 'test')
         helper.log(epoch, metrics_loss, 'Losses', 'test')
+        helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}'
+              'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
 
     else:
         print('Epoch:{}. Iter {}.  Losses: {}'
@@ -87,7 +90,6 @@ def train(dataset, helper, q):
     # Here we set the policy and the env
     policy_net = SinglePolicy(dataset)
     policy_net.cuda()
-    policy_net = torch.nn.DataParallel(policy_net)
     policy_net = torch.nn.DataParallel(policy_net)
 
     optimizer = torch.optim.Adam(list(policy_net.parameters()))
@@ -160,24 +162,25 @@ def train(dataset, helper, q):
                 edges_elem = torch.unbind(edges_elem, 0)
                 edge_types = torch.unbind(edge_types, 0)
                 mask_edge = torch.unbind(mask_edge, 0)
-                for id in range(len(edges_elem)):
-                    # edges_from
+                if False:
+                    for id in range(len(edges_elem)):
+                        # edges_from
 
-                    edges_from = edges_elem[id][edges_elem[id][:, 0] == model_id_char]
-                    edges_to = edges_elem[id][edges_elem[id][:, 1] == model_id_char]
-                    if edges_from.shape[0] + edges_to.shape[0] > 0:
-                        print('Step {}'.format(id))
-                    if edges_from.shape[0] > 0:
-                        edges_from = list(object_ids[item, 0][edges_from[:, 1]].data.numpy())
-                        edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 0] == model_id_char].data.numpy())]
-                        edges_from = list(zip(edge_class, edges_from))
-                        print('From', edges_from)
-                    if edges_to.shape[0] > 0:
-                        edges_to = list(object_ids[item, 0][edges_to[:, 0]].data.numpy())
-                        edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 1] == model_id_char].data.numpy())]
-                        edges_to = list(zip(edges_to, edge_class))
-                        print('To', edges_to)
-                    #pdb.set_trace()
+                        edges_from = edges_elem[id][edges_elem[id][:, 0] == model_id_char]
+                        edges_to = edges_elem[id][edges_elem[id][:, 1] == model_id_char]
+                        if edges_from.shape[0] + edges_to.shape[0] > 0:
+                            print('Step {}'.format(id))
+                        if edges_from.shape[0] > 0:
+                            edges_from = list(object_ids[item, 0][edges_from[:, 1]].data.numpy())
+                            edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 0] == model_id_char].data.numpy())]
+                            edges_from = list(zip(edge_class, edges_from))
+                            print('From', edges_from)
+                        if edges_to.shape[0] > 0:
+                            edges_to = list(object_ids[item, 0][edges_to[:, 0]].data.numpy())
+                            edge_class = [dataset.relation_dict.get_el(x) for x in list(edge_types[id][edges_elem[id][:, 1] == model_id_char].data.numpy())]
+                            edges_to = list(zip(edges_to, edge_class))
+                            print('To', edges_to)
+                        #pdb.set_trace()
                 print(utils.pretty_print_program(pred_instr[item], other=gt_instr[item]))
                 print('Epoch:{}. Iter {}.  Losses: {}'
                       'LCS: {}'.format(
@@ -200,7 +203,7 @@ def train(dataset, helper, q):
                     except:
                        pass
 
-                q.put((helper.args, helper.dir_name, weights_path, epoch))
+                    q.put((helper.args, helper.dir_name, weights_path, epoch))
         # test(dataset, data_loader_test, helper, policy_net, epoch)
     if q is not None:
         q.put(None)
@@ -249,7 +252,7 @@ def start():
 
     helper = utils.setup()
     if helper.args.eval:
-        weights = 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+        weights = '' # logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
         test(helper.args, None, weights, 0)
 
     else:

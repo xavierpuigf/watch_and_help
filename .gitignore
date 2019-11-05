@@ -1,4 +1,8 @@
+*.png
+*.gv
+*.pdf
 __pycache__/
 *.py[cod]
 *$py.class
 logdir/*
+dataset_*

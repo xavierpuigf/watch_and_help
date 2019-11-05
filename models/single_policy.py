@@ -39,7 +39,7 @@ class SinglePolicy(torch.nn.Module):
         self.node_Stop = {'id': -2, 'class_name': 'stop', 'properties': [], 'states': []}
 
         self.dataset = dataset
-        self.repr_dim = 100
+        self.repr_dim = self.dataset.args.state_dim
 
         num_actions = len(dataset.action_dict)
 

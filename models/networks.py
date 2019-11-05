@@ -88,8 +88,8 @@ class GraphStateRepresentation(nn.Module):
         super().__init__()
         self.dataset = dataset
         self.initial_node_repr = ClassNameStateRepresentation(self.dataset)
-        self.in_fts = 100
-        self.out_fts = 100
+        self.in_fts = self.dataset.args.state_dim
+        self.out_fts = self.dataset.args.state_dim
         self.graph_encoding = GatedGraphConv(self.in_fts, self.out_fts, dataset.args.graphsteps,
                                              len(dataset.relation_dict))
         # GCNN(2, dataset.args.relation_dim, len(dataset.relation_dict))
@@ -116,7 +116,7 @@ class GraphStateRepresentation(nn.Module):
             node_repr = self.graph_encoding(node_representation_step, edges_tsp[it], edge_types[it], mask_edges[it])
 
             # Mask out the nodes by their visibility
-            node_repr = node_repr * mask_nodes[:, None]
+            node_repr = node_repr * mask_nodes[:, :, None]
             node_representations.append(node_repr)
 
         node_representations = torch.cat([x.unsqueeze(1) for x in node_representations], 1)
