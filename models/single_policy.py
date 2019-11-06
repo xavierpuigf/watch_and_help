@@ -81,64 +81,7 @@ class SinglePolicy(torch.nn.Module):
         # [Deprecated]
         return self.SinglePolicyActivations(self.dataset)
 
-    def get_action(self, actions, agent, object_selected):
-        is_cuda = next(self.parameters()).is_cuda
-        # Returns a distribution of actions based on the policy
-        action_ids = torch.tensor([self.dataset.action_dict.get_id(action) for action in actions])
-        if is_cuda:
-            action_ids = action_ids.cuda()
-        action_embeddings = self.action_embedding(action_ids)
 
-        embed_character = agent.activation_info.state['char_embedding']
-        embed_character_o1 = self.objectchar(
-            torch.cat([embed_character,
-                       agent.activation_info.state['node_embeddings'][object_selected][None, :]], 1))
-        agent.activation_info.action_embedding = action_embeddings
-
-        logits = (action_embeddings*embed_character_o1).sum(1)
-
-        return logits, actions
-
-    def get_first_obj(self, observations, agent): # Inside the environment
-        is_cuda = next(self.parameters()).is_cuda
-
-
-        # Obtain the node names
-        # TODO: We should include the node None as well
-        observations['nodes'] = observations['nodes'] + [self.node_Stop]
-
-        node_embeddings, char_embedding = self.state_embedding(observations)
-
-        agent.activation_info.state = {'node_embeddings': node_embeddings,
-                                       'char_embedding': char_embedding
-                                      }
-        # Remove character
-        candidates = [x for it, x in enumerate(observations['nodes']) if x['class_name'] != 'character']
-        index_candidates = [it for it, x in enumerate(observations['nodes']) if x['class_name'] != 'character']
-        index_candidates = torch.tensor(index_candidates)
-
-        logit_attention = (node_embeddings*char_embedding).sum(1)
-        logit_attention = logit_attention[index_candidates]
-
-        # print(node_embeddings.shape, char_embedding.shape, logit_attention.shape)
-
-        return logit_attention, candidates
-
-    def get_second_obj(self, triples, agent, object_selected, action_selected): # Inside the environment
-        # TODO: finish implementing
-        pass
-        # is_cuda = next(self.parameters()).is_cuda
-        # candidates = triples['nodes'] + [None]
-        # node_names = [node['class_name'] if type(node) == dict else node for node in candidates]
-        # node_name_ids = torch.tensor([self.dataset.object_dict.get_id(node_name) for node_name in node_names])
-        # node_embeddings = self.object_embedding(node_name_ids)
-        # pdb.set_trace()
-        # self.object_embedding = node_embeddings
-        #
-        # node_character = self.object_embedding(self.dataset.object_dict.get_id('character'))
-        # logit_attention = (node_embeddings * node_character[None, :]).sum(1)
-        # #distr = distributions.categorical.Categorical(logits=logit_attention)
-        # return logit_attention, candidates
 
     def forward(self, observations, goals, class_id_char):
 

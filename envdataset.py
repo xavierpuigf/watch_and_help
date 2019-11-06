@@ -204,7 +204,8 @@ class EnvDataset(Dataset):
 
         if not os.path.isfile(object_file_name):
             object_names = []
-            for prob in tqdm(self.problems_dataset):
+            all_problems = self.read_problem(self.dataset_file, 'all')
+            for prob in tqdm(all_problems):
                 with open(prob['graph_file'], 'r') as f:
                     graph = json.load(f)
                 object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
@@ -216,8 +217,7 @@ class EnvDataset(Dataset):
             with open(object_file_name, 'r') as f:
                 object_names = json.load(f)
         object_names += ['stop']
-        print('Done')
-        print('Done')
+
         return object_names
 
     def prepare_program(self, program, ids_used):

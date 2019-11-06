@@ -78,20 +78,107 @@ class SingleAgent():
             triple_candidates = self.env.get_action_space(action=action_selected,
                                                           obj1=object1_node,
                                                           structured_actions=True)
-            obj2_id_cands = torch.tensor([dataset.node_none[1] if len(x) < 3 else x[2]['id'] for x in triple_candidates])
 
+            obj2_id_cands = torch.tensor([dataset.node_none[1] if len(x) < 3 else x[2]['id'] for x in triple_candidates])
+            if len(triple_candidates) == 0:
+                pdb.set_trace()
         mask_o2 = (state[1] == obj2_id_cands).float()
-        o2_logits_masked = (o2_logits.cpu() * mask_o2) + (1-mask_o2)*1e-9
+        o2_logits_masked = (o2_logits.cpu() * mask_o2) + (1-mask_o2)*(-1e9)
         distr_object2 = distributions.categorical.Categorical(logits=o2_logits_masked)
         obj2_id_model = distr_object2.sample()
         prob_2d = distr_object2.log_prob(obj2_id_model)
-        if instruction is None:
-            instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
-                                                       [action_id_model, obj1_id_model, obj2_id_model])
-        pdb.set_trace()
+        #if instruction is None:
+        instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                   [action_id_model, obj1_id_model, obj2_id_model])
+        instruction = instruction[0]
         return instruction, (prob_action, prob_1d, prob_2d)
 
 
+
+
+def dataset_agent():
+    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_31.pt'
+    # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+
+    # Set up the policy
+    args = utils.read_args()
+    args.max_steps = 1
+    args.interactive = True
+    helper = utils.Helper(args)
+
+    dataset = envdataset.EnvDataset(args, split='test')
+    policy_net = SinglePolicy(dataset).cuda()
+    policy_net = torch.nn.DataParallel(policy_net)
+    policy_net.eval()
+
+    if weights is not None:
+        print('Loading weights')
+        state_dict = torch.load(weights)
+        policy_net.load_state_dict(state_dict['model_params'])
+
+    id_char = dataset.object_dict.get_id('character')
+    success, cont = 0, 0
+    for problem in dataset.problems_dataset:
+        path_init_env = problem['graph_file']
+        goal_str = problem['goal']
+        print('Goal: {}'.format(goal_str))
+        goal_name = '(facing living_room[1] living_room[1])'
+        curr_env.reset(path_init_env, goal_name)
+        curr_env.to_pomdp()
+        single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
+
+
+        gt_state = single_agent.env.vh_state.to_dict()
+        node_id_char = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
+        # All the nodes
+        nodes, _, ids_used = dataset.process_graph(gt_state)
+        class_names, object_ids, _, mask_nodes, _ = nodes
+
+        finished = False
+        cont_episodes = 0
+        while cont < 10 and not finished:
+            if args.pomdp:
+                curr_state = single_agent.get_observations()
+                visible_ids = None
+            else:
+                curr_state = single_agent.env.vh_state.to_dict()
+                visible_ids = single_agent.env.observable_object_ids
+
+            nodes, edges, _ = dataset.process_graph(curr_state, ids_used, visible_ids)
+            _, _, visible_mask, _, state_nodes = nodes
+            edge_bin, edge_types, mask_edges = edges
+            graph_data = dataset.join_timesteps(class_names, object_ids, [state_nodes],
+                                                            [edge_bin], [edge_types], [visible_mask],
+                                                            mask_nodes, [mask_edges])
+
+            goal_info = dataset.prepare_goal(goal_str, ids_used, class_names)
+            graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
+            goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
+
+            output = policy_net(graph_data, goal_info, id_char)
+            action_logits, o1_logits, o2_logits, _ = output
+            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits,
+                                                          o2_logits)
+            instr = list(zip(*instruction))[0]
+
+            str_instruction = utils.pretty_instr(instr)
+            print(str_instruction)
+            if str_instruction.strip() == '[stop]':
+                finished = True
+            else:
+                single_agent.env.step(str_instruction)
+            cont += 1
+
+        goal_id = int(goal_str.split('_')[-1])
+        edges_goal = [x for x in single_agent.env.vh_state.to_dict()['edges']
+                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == node_id_char]
+        edge_found = len(edges_goal) > 0
+        if goal_id in single_agent.env.observable_object_ids and edge_found:
+            success += 1
+
+        cont_episodes += 1
+
+        print(success, cont_episodes)
 
 
 def interactive_agent():
@@ -171,4 +258,5 @@ def interactive_agent():
 
 if __name__ == '__main__':
     curr_env = gym.make('vh_graph-v0')
-    interactive_agent()
+    dataset_agent()
+    #interactive_agent()
