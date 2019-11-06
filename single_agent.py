@@ -46,6 +46,8 @@ class SingleAgent():
         object_ids = state[1]
         object_names = state[0]
 
+
+
         distr_object1 = distributions.categorical.Categorical(logits=o1_logits)
         obj1_id_model = distr_object1.sample()
         prob_1d = distr_object1.log_prob(obj1_id_model)
@@ -117,7 +119,7 @@ def dataset_agent():
         policy_net.load_state_dict(state_dict['model_params'])
 
     id_char = dataset.object_dict.get_id('character')
-    success, cont = 0, 0
+    success, cont_episodes = 0, 0
     for problem in dataset.problems_dataset:
         path_init_env = problem['graph_file']
         goal_str = problem['goal']
@@ -135,7 +137,7 @@ def dataset_agent():
         class_names, object_ids, _, mask_nodes, _ = nodes
 
         finished = False
-        cont_episodes = 0
+        cont = 0
         while cont < 10 and not finished:
             if args.pomdp:
                 curr_state = single_agent.get_observations()
@@ -157,12 +159,15 @@ def dataset_agent():
 
             output = policy_net(graph_data, goal_info, id_char)
             action_logits, o1_logits, o2_logits, _ = output
+            mask_character = (graph_data[0] != id_char).float().cuda()
+            o1_logits = o1_logits * mask_character + (1-mask_character)*(-1e9)
+            #pdb.set_trace()
             instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits,
                                                           o2_logits)
             instr = list(zip(*instruction))[0]
 
             str_instruction = utils.pretty_instr(instr)
-            print(str_instruction)
+            #print(str_instruction)
             if str_instruction.strip() == '[stop]':
                 finished = True
             else:
