@@ -194,7 +194,7 @@ def read_args():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_subgoals2', type=str)  # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_toy3', type=str)  # dataset_subgoals
 
     # Model params
     parser.add_argument('--action_dim', default=50, type=int)

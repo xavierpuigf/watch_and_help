@@ -20,6 +20,15 @@ class EnvDataset(Dataset):
         self.args = args
         self.process_progs = process_progs
 
+        if self.process_progs:
+            self.problems_dataset = self.read_problem(self.dataset_file, split)
+            if args.overfit:
+                self.problems_dataset = self.problems_dataset[:1]
+                print(self.problems_dataset)
+            self.num_items = len(self.problems_dataset)
+        else:
+            self.num_items = 0
+
         self.actions = [
             "Walk",  # Same as Run
             # "Find",
@@ -64,6 +73,8 @@ class EnvDataset(Dataset):
             "WakeUp",
             # "Release"
         ]
+        self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain']
+
         self.states = ['on', 'open', 'off', 'closed']
         self.relations = ['inside', 'close', 'facing', 'on']
         self.objects = self.getobjects()
@@ -78,16 +89,13 @@ class EnvDataset(Dataset):
         self.max_edges = args.max_edges #500
         self.max_steps = args.max_steps # 10
 
+
+        self.max_nodes_g = 0
+        self.max_edges_g = 0
+
         self.node_stop = ('stop', -2)
         self.node_none = ('no_obj', -1)
 
-        if self.process_progs:
-            self.problems_dataset = self.read_problem(self.dataset_file, split)
-            if args.overfit:
-                self.problems_dataset = self.problems_dataset[:2]
-            self.num_items = len(self.problems_dataset)
-        else:
-            self.num_items = 0
 
 
 
@@ -127,22 +135,14 @@ class EnvDataset(Dataset):
             if not goal_str.lower().startswith('findnode'):
                 continue
 
-            # TODO: this should go in the data gen step
-            with open(graph_file, 'r') as f:
-                graph = json.load(f)
-            graph = graph['init_graph']
-            id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
-            location_char = \
-            [x['to_id'] for x in graph['edges'] if x['from_id'] == id_char and x['relation_type'] == 'INSIDE'][0]
-            if '({})'.format(location_char) in program[0]:
-                program = program[1:]
-
-            # If there are 2 rooms one after another, then we should delete both
-            if len(program) >= 2:
-                if '[WALK]' in program[0] and '[WALK]' in program[1]:
-                    ids = [int(x.split()[-1][1:-1]) for x in program[:2]]
-                    if ids[1] == location_char:
-                        program = program[2:]
+            #
+            #
+            # # If there are 2 rooms one after another, then we should delete both
+            # if len(program) >= 2:
+            #     if '[WALK]' in program[0] and '[WALK]' in program[1]:
+            #         ids = [int(x.split()[-1][1:-1]) for x in program[:2]]
+            #         if ids[1] == location_char:
+            #             program = program[2:]
 
             problems_dataset.append(
                 {
@@ -199,7 +199,6 @@ class EnvDataset(Dataset):
 
 
     def getobjects(self):
-
         object_file_name = '{}/obj_names.json'.format(self.dataset_file)
         print('Getting objects from {}...'.format(object_file_name))
 
@@ -210,12 +209,15 @@ class EnvDataset(Dataset):
                     graph = json.load(f)
                 object_names += [x['class_name'] for x in graph['init_graph']['nodes']]
             object_names = list(set(object_names))
+            object_names = [x for x in object_names if x not in self.objects_remove]
             with open(object_file_name, 'w+') as f:
                 f.write(json.dumps(object_names))
         else:
             with open(object_file_name, 'r') as f:
                 object_names = json.load(f)
         object_names += ['stop']
+        print('Done')
+        print('Done')
         return object_names
 
     def prepare_program(self, program, ids_used):
@@ -324,6 +326,9 @@ class EnvDataset(Dataset):
         # The last instruction is the stop
         for state, state_full in graphs:
 
+            self.max_nodes_g = max(self.max_nodes_g, len(state_full['nodes']))
+            self.max_edges_g = max(self.max_edges_g, len(state_full['edges']))
+
             visible_ids = [x['id'] for x in state['nodes']]
             if self.args.pomdp:
                 nodes, edges, _ = self.process_graph(state, ids_used, visible_ids)
@@ -331,14 +336,13 @@ class EnvDataset(Dataset):
                 nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids)
             info[0].append(nodes)
             info[1].append(edges)
-        if len(graphs) > self.max_steps:
-            pdb.set_trace()
 
         _, _, visible_mask, _, state_nodes = [list(x) for x in zip(*info[0])]
         edges, edge_types, mask_edges = [list(x) for x in zip(*info[1])]
 
         graph_data = self.join_timesteps(class_names, object_ids, state_nodes,
                                          edges, edge_types, visible_mask, mask_nodes, mask_edges)
+
 
         return graph_data, ids_used
 
@@ -393,10 +397,14 @@ class EnvDataset(Dataset):
         if ids_used is None:
             ids_used = {}
 
+        char_id = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
         class_names = np.zeros(self.max_nodes)
         object_ids = np.zeros(self.max_nodes)
         mask_nodes = np.zeros(self.max_nodes).astype(np.float32)
+        ids_remove = []
         for node in graph['nodes']:
+            if node['class_name'] in self.objects_remove:
+                ids_remove.append(node['id'])
             if node['id'] not in ids_used.keys():
                 ids_used[node['id']] = len(ids_used.keys())
 
@@ -447,16 +455,23 @@ class EnvDataset(Dataset):
         mask_edges = np.zeros(self.max_edges)
         edge_types = np.zeros(self.max_edges)
         room_ids = [x['id'] for x in graph['nodes'] if x['category'] == 'Rooms']
-        char_id = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character']
+
         ids_and_rooms = [(edge['from_id'], edge['to_id']) for edge in graph['edges'] if
                          edge['relation_type'] == 'INSIDE' and edge['to_id'] in room_ids]
+
         # Obtects inside rooms are also close to rooms
-        for from_id, to_id in ids_and_rooms:
-            graph['edges'].append({'from_id': from_id, 'to_id': to_id, 'relation_type': 'CLOSE'})
-            graph['edges'].append({'from_id': to_id, 'to_id': from_id, 'relation_type': 'CLOSE'})
+        # for from_id, to_id in ids_and_rooms:
+        #    graph['edges'].append({'from_id': from_id, 'to_id': to_id, 'relation_type': 'CLOSE'})
+        #    graph['edges'].append({'from_id': to_id, 'to_id': from_id, 'relation_type': 'CLOSE'})
 
         cont = 0
         for it, edge in enumerate(graph['edges']):
+            if edge['from_id'] in ids_remove or edge['to_id'] in ids_remove:
+                continue
+
+            if edge['relation_type'] == 'CLOSE' and edge['from_id'] != char_id and edge['to_id'] != char_id:
+                continue
+
             rel_id = self.relation_dict.get_id(edge['relation_type'].lower())
 
             id_from = ids_used[edge['from_id']]

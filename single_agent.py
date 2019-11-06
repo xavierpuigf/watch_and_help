@@ -6,6 +6,7 @@ import pdb
 import vh_graph
 import gym
 import envdataset
+import utils_viz
 import utils
 
 
@@ -27,39 +28,8 @@ class SingleAgent():
             'rewards': []
         }
 
-    def reset(self):
-        self.agent_info = {
-            'saved_log_probs': [],
-            'indices': [],
-            'action_space': [],
-            'rewards': []
-        }
-
-    def single_step_probs(self, observation, belief, goal_name):
-        """ Given an observation and a belief what are the chances of next step """
-
-
-
-
-
-    def get_beliefs(self):
-        return self.beliefs
-
-    def update_beliefs(self, beliefs):
-        self.beliefs = beliefs
-
     def get_observations(self):
         return self.env.get_observations()
-
-    def update_info(self, info, reward):
-        logs = info['log_probs']
-        indices = info['indices']
-        action_space = info['action_space']
-        self.agent_info['saved_log_probs'].append(logs)
-        self.agent_info['indices'].append(indices)
-        self.agent_info['action_space'].append(action_space)
-        self.agent_info['rewards'].append(reward)
-
 
     def get_top_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
         pred_action = torch.argmax(action_logits, -1)
@@ -72,79 +42,65 @@ class SingleAgent():
         return pred_instr[0]
 
     def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
-        # TODO: finish this
+        instruction = None
+        object_ids = state[1]
+        object_names = state[0]
+
         distr_object1 = distributions.categorical.Categorical(logits=o1_logits)
+        obj1_id_model = distr_object1.sample()
+        prob_1d = distr_object1.log_prob(obj1_id_model)
+        obj1_id = state[1][0,0,obj1_id_model].item()
 
-    def get_instruction(self, observations):
-        indices = []
-        space = []
-        log_probs = []
-        logit_o1, candidates_o1 = self.policy_net.get_first_obj(observations, self)
-        # pdb.set_trace()
-        distr_o1 = distributions.categorical.Categorical(logits=logit_o1)
+        if obj1_id < 0:
+            # TODO: sometimes this none could correspond to standing up, we will need to solve this
+            instruction = 'stop'
+            action_candidate_ids = [dataset.action_dict.get_id('stop')]
 
-        node_names = [x['class_name'] if type(x) == dict else x for x in candidates_o1]
-
-        # pdb.set_trace()
-        obj1_id = distr_o1.sample()
-        object_1_selected = candidates_o1[obj1_id]
-        space.append(candidates_o1)
-        indices.append(obj1_id)
-        log_probs.append(logit_o1)
-
-
-
-        # If the object is None consider the none action, that means stop
-
-        if candidates_o1[obj1_id]['class_name'] != 'stop':
-            # Decide action
-            action_candidates_tripl = self.env.get_action_space(obj1=object_1_selected, structured_actions=True)
-            actions_unique = list(set([x[0] for x in action_candidates_tripl]))
-            logits_action, candidates_action = self.policy_net.get_action(actions_unique, self, obj1_id)
-            distr_a1 = distributions.categorical.Categorical(logits=logits_action)
-            action_id = distr_a1.sample()
-            space.append(candidates_action)
-            indices.append(action_id)
-            log_probs.append(logits_action)
-
-            action_selected = actions_unique[action_id]
-            action_candidates_tripl = self.env.get_action_space(action=action_selected,
-                                                                obj1=object_1_selected,
-                                                                structured_actions=True)
-            if len(action_candidates_tripl) == 1:
-                id_triple = 0 # There is no third object
-
-            else:
-                print(action_candidates_tripl)
-                logits_triple, candidates_tripl = self.policy_net.get_second_obj(action_candidates_tripl, self)
-                distr_triple = distributions.categorical(logits=logits_triple)
-                id_triple = distr_triple.sample()
-                space.append(candidates_tripl)
-                indices.append(id_triple)
-                log_probs.append(logits_triple)
-
-            final_instruction = self.env.obtain_formatted_action(action_candidates_tripl[id_triple][0],
-                                                                 action_candidates_tripl[id_triple][1:])
         else:
-            final_instruction = '[stop]'
+            object1_node = [x for x in self.env.vh_state.to_dict()['nodes'] if x['id'] == obj1_id][0]
+            # Given this object, get the action candidates
+            action_candidates_tripl = self.env.get_action_space(obj1=object1_node, structured_actions=True)
+            action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl]
 
-        # TODO: this should be done in a batch
-        for it, lp in enumerate(log_probs):
-            log_probs[it] = lp.log_softmax(0)
-        dict_info = {
-            'instruction': final_instruction,
-            'log_probs': log_probs,
-            'indices': indices,
-            'action_space': space,
+        mask = torch.zeros(action_logits[0,0].shape)
+        mask[action_candidate_ids] = 1.
 
-        }
-        return dict_info
+        action_logits_masked = action_logits.cpu() * mask + (-1e9) * (1-mask)
+        distr_action1 = distributions.categorical.Categorical(logits=action_logits_masked)
+        action_id_model = distr_action1.sample()
+        prob_action = distr_action1.log_prob(action_id_model)
+
+        # Given action and object, get the last candidates
+        if obj1_id < 0:
+            obj2_id_cands = torch.tensor([dataset.node_none[1]])
+        else:
+            action_selected = dataset.action_dict.get_el(action_id_model.item())
+            triple_candidates = self.env.get_action_space(action=action_selected,
+                                                          obj1=object1_node,
+                                                          structured_actions=True)
+            obj2_id_cands = torch.tensor([dataset.node_none[1] if len(x) < 3 else x[2]['id'] for x in triple_candidates])
+
+        mask_o2 = (state[1] == obj2_id_cands).float()
+        o2_logits_masked = (o2_logits.cpu() * mask_o2) + (1-mask_o2)*1e-9
+        distr_object2 = distributions.categorical.Categorical(logits=o2_logits_masked)
+        obj2_id_model = distr_object2.sample()
+        prob_2d = distr_object2.log_prob(obj2_id_model)
+        if instruction is None:
+            instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                       [action_id_model, obj1_id_model, obj2_id_model])
+        pdb.set_trace()
+        return instruction, (prob_action, prob_1d, prob_2d)
+
+
+
 
 def interactive_agent():
-    path_init_env = 'dataset_toy/init_envs/TrimmedTestScene6_graph_42.json'
+    path_init_env = 'dataset_toy3/init_envs/TrimmedTestScene6_graph_42.json'
     goal_name = '(facing living_room[1] living_room[1])'
-    weights = 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-05_19.26.06.856104/chkpt/chkpt_49.pt'
+    # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
+    # Set up the policy
     curr_env.reset(path_init_env, goal_name)
     curr_env.to_pomdp()
     args = utils.read_args()
@@ -153,22 +109,27 @@ def interactive_agent():
     helper = utils.Helper(args)
     dataset_interactive = envdataset.EnvDataset(args, process_progs=False)
 
+    print('Starting model...')
     policy_net = SinglePolicy(dataset_interactive).cuda()
     policy_net = torch.nn.DataParallel(policy_net)
-    state_dict = torch.load(weights)
-    policy_net.load_state_dict(state_dict['model_params'])
     policy_net.eval()
-
     single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
 
     # Starting the scene
     curr_state = single_agent.get_observations()
     gt_state = single_agent.env.vh_state.to_dict()
+
+    # All the nodes
     nodes, _, ids_used = dataset_interactive.process_graph(gt_state)
     class_names, object_ids, _, mask_nodes, _ = nodes
-    print('Objects...')
-    print([(x['id'], x['class_name']) for x in gt_state['nodes']])
-    id_str = '2001' # input('Id of object to find...')
+
+
+    utils_viz.print_graph(gt_state, 'gt_graph.gv')
+    if weights is not None:
+        print('Loading weights')
+        state_dict = torch.load(weights)
+        policy_net.load_state_dict(state_dict['model_params'])
+    id_str = input('Id of object to find...')
     id_obj = int(id_str)
     goal_str = 'findnode_{}'.format(id_obj)
     id_char = dataset_interactive.object_dict.get_id('character')
@@ -181,6 +142,7 @@ def interactive_agent():
             curr_state = single_agent.env.vh_state.to_dict()
             visible_ids = single_agent.env.observable_object_ids
 
+        # Process data
         nodes, edges, _ = dataset_interactive.process_graph(curr_state, ids_used, visible_ids)
         _, _, visible_mask, _, state_nodes = nodes
         edge_bin, edge_types, mask_edges = edges
@@ -191,9 +153,12 @@ def interactive_agent():
         goal_info = dataset_interactive.prepare_goal(goal_str, ids_used, class_names)
         graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
         goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
-
+        # Finish encode
         output = policy_net(graph_data, goal_info, id_char)
         action_logits, o1_logits, o2_logits, _ = output
+
+        instruction = single_agent.sample_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
+
         instruction = single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
         instr = list(zip(*instruction))[0]
         str_instruction = utils.pretty_instr(instr)

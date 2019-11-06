@@ -38,7 +38,7 @@ def delete_redundant_edges_and_ids(graph):
     graph['edges'] = final_edges
     return graph
 
-def graph2im(graph):
+def graph2im(graph, id_char=None, id_goal=None):
     """
     Outputs an image given a graph
     :param graph:
@@ -91,7 +91,11 @@ def graph2im(graph):
                     cng.subgraph(subgraphs_added[child])
 
                 else:
-                    cng.node(name=str(child), label=getclass(id2node[child]))
+                    if id_char is not None and child == id_char:
+                        cng.node(name=str(child), label=getclass(id2node[child]), color='darkseagreen', style='filled')
+
+                    else:
+                        cng.node(name=str(child), label=getclass(id2node[child]))
 
             subgraphs_added[curr_subgraph_id] = cng
             if curr_subgraph_id == 1:
@@ -148,13 +152,16 @@ def graph2im(graph):
             else:
                 g.edge(str(edge['from_id']), str(edge['to_id']), color=colors[rt],
                        ltail='cluster_'+str(edge['from_id']), lhead='cluster_'+str(edge['to_id']), style=style[rt])
-
-    pdb.set_trace()
     return g
 
 
+def print_graph(graph, output='graph_example.gv'):
+    id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
+    g = graph2im(graph, id_char)
+    g.render(output)
+
 if __name__ == '__main__':
-    input_graph = 'dataset_toy3/init_envs/TrimmedTestScene1_graph_4.json'
+    input_graph = 'dataset_toy3/init_envs/TrimmedTestScene5_graph_8.json'
     with open(input_graph, 'r') as f:
         graph = json.load(f)
     g = graph2im(graph['init_graph'])
