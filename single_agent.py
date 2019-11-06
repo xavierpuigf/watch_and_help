@@ -62,6 +62,7 @@ class SingleAgent():
             object1_node = [x for x in self.env.vh_state.to_dict()['nodes'] if x['id'] == obj1_id][0]
             # Given this object, get the action candidates
             action_candidates_tripl = self.env.get_action_space(obj1=object1_node, structured_actions=True)
+
             action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl]
 
         mask = torch.zeros(action_logits[0,0].shape)
@@ -96,10 +97,35 @@ class SingleAgent():
         return instruction, (prob_action, prob_1d, prob_2d)
 
 
+    def obtain_logits_from_observations(self, dataset, curr_state, ids_used, visible_ids, class_names,
+                                        object_ids, mask_nodes, goal_str):
+
+        id_char = dataset.object_dict.get_id('character')
+        nodes, edges, _ = dataset.process_graph(curr_state, ids_used, visible_ids)
+        _, _, visible_mask, _, state_nodes = nodes
+        edge_bin, edge_types, mask_edges = edges
+        graph_data = dataset.join_timesteps(class_names, object_ids, [state_nodes],
+                                                        [edge_bin], [edge_types], [visible_mask],
+                                                        mask_nodes, [mask_edges])
+
+        goal_info = dataset.prepare_goal(goal_str, ids_used, class_names)
+        graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
+        goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
+
+        output = self.policy_net(graph_data, goal_info, id_char)
+        action_logits, o1_logits, o2_logits, _ = output
+        mask_character = (graph_data[0] != id_char).float().cuda()
+        o1_logits = o1_logits * mask_character + (1 - mask_character) * (-1e9)
+        return graph_data, action_logits, o1_logits, o2_logits
+
+
+
 
 
 def dataset_agent():
-    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_31.pt'
+    #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_31.pt'
+    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_31.pt'
+
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
@@ -118,7 +144,7 @@ def dataset_agent():
         state_dict = torch.load(weights)
         policy_net.load_state_dict(state_dict['model_params'])
 
-    id_char = dataset.object_dict.get_id('character')
+
     success, cont_episodes = 0, 0
     for problem in dataset.problems_dataset:
         path_init_env = problem['graph_file']
@@ -146,26 +172,12 @@ def dataset_agent():
                 curr_state = single_agent.env.vh_state.to_dict()
                 visible_ids = single_agent.env.observable_object_ids
 
-            nodes, edges, _ = dataset.process_graph(curr_state, ids_used, visible_ids)
-            _, _, visible_mask, _, state_nodes = nodes
-            edge_bin, edge_types, mask_edges = edges
-            graph_data = dataset.join_timesteps(class_names, object_ids, [state_nodes],
-                                                            [edge_bin], [edge_types], [visible_mask],
-                                                            mask_nodes, [mask_edges])
 
-            goal_info = dataset.prepare_goal(goal_str, ids_used, class_names)
-            graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
-            goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
+            graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
+                dataset, curr_state, ids_used, visible_ids, class_names, object_ids, mask_nodes, goal_str)
 
-            output = policy_net(graph_data, goal_info, id_char)
-            action_logits, o1_logits, o2_logits, _ = output
-            mask_character = (graph_data[0] != id_char).float().cuda()
-            o1_logits = o1_logits * mask_character + (1-mask_character)*(-1e9)
-            #pdb.set_trace()
-            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits,
-                                                          o2_logits)
+            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits)
             instr = list(zip(*instruction))[0]
-
             str_instruction = utils.pretty_instr(instr)
             #print(str_instruction)
             if str_instruction.strip() == '[stop]':
@@ -186,10 +198,12 @@ def dataset_agent():
         print(success, cont_episodes)
 
 
+
+
 def interactive_agent():
     path_init_env = 'dataset_toy3/init_envs/TrimmedTestScene6_graph_42.json'
     goal_name = '(facing living_room[1] living_room[1])'
-    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-05_19.26.06.856104/chkpt/chkpt_49.pt'
+    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_31.pt'
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
@@ -235,26 +249,17 @@ def interactive_agent():
             visible_ids = single_agent.env.observable_object_ids
 
         # Process data
-        nodes, edges, _ = dataset_interactive.process_graph(curr_state, ids_used, visible_ids)
-        _, _, visible_mask, _, state_nodes = nodes
-        edge_bin, edge_types, mask_edges = edges
-        graph_data = dataset_interactive.join_timesteps(class_names, object_ids, [state_nodes],
-                                                        [edge_bin], [edge_types], [visible_mask],
-                                                        mask_nodes, [mask_edges])
+        graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
+            dataset_interactive, curr_state, ids_used, visible_ids, class_names, object_ids, mask_nodes, goal_str)
 
-        goal_info = dataset_interactive.prepare_goal(goal_str, ids_used, class_names)
-        graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
-        goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
-        # Finish encode
-        output = policy_net(graph_data, goal_info, id_char)
-        action_logits, o1_logits, o2_logits, _ = output
+        instruction, _ = single_agent.sample_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
 
-        instruction = single_agent.sample_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
+        #instruction, _ = single_agent.sample_instruction(dataset_interactive, graph_data, action_logits, o1_logits,
+        #                                                 o2_logits)
 
-        instruction = single_agent.get_top_instruction(dataset_interactive, graph_data, action_logits, o1_logits, o2_logits)
         instr = list(zip(*instruction))[0]
         str_instruction = utils.pretty_instr(instr)
-        print(str_instruction)
+        pdb.set_trace()
         if str_instruction.strip() == '[stop]':
             print('Episode finished')
         else:
@@ -263,5 +268,5 @@ def interactive_agent():
 
 if __name__ == '__main__':
     curr_env = gym.make('vh_graph-v0')
-    dataset_agent()
-    #interactive_agent()
+    #dataset_agent()
+    interactive_agent()

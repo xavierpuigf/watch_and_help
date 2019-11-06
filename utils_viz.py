@@ -38,7 +38,7 @@ def delete_redundant_edges_and_ids(graph):
     graph['edges'] = final_edges
     return graph
 
-def graph2im(graph, id_char=None, id_goal=None):
+def graph2im(graph, special_nodes={}):
     """
     Outputs an image given a graph
     :param graph:
@@ -91,8 +91,13 @@ def graph2im(graph, id_char=None, id_goal=None):
                     cng.subgraph(subgraphs_added[child])
 
                 else:
-                    if id_char is not None and child == id_char:
-                        cng.node(name=str(child), label=getclass(id2node[child]), color='darkseagreen', style='filled')
+                    color_special = {
+                        'agent': 'darkseagreen',
+                        'goal': 'lightblue'
+                    }
+                    if child in special_nodes:
+                        color_sp = color_special[special_nodes[child]]
+                        cng.node(name=str(child), label=getclass(id2node[child]), color=color_sp, style='filled')
 
                     else:
                         cng.node(name=str(child), label=getclass(id2node[child]))
