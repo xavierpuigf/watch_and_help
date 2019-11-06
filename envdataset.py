@@ -258,7 +258,7 @@ class EnvDataset(Dataset):
                     goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
                 else:
                     goal_name = goal
-                curr_env.reset(init_graph, goal_name)
+                curr_env.reset(init_graph, {0: goal_name})
                 curr_env.to_pomdp()
                 state = curr_env.get_observations()
                 full_state = curr_env.vh_state.to_dict()
@@ -267,7 +267,7 @@ class EnvDataset(Dataset):
                 try:
                     for instr in program[:-1]:
 
-                        _, state, infos = curr_env.step(instr)
+                        _, state, infos = curr_env.step({0: instr})
                         full_state = curr_env.vh_state.to_dict()
                         graphs.append((state, full_state))
 

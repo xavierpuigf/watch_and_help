@@ -165,7 +165,7 @@ def dataset_agent():
         goal_str = problem['goal']
         print('Goal: {}'.format(goal_str))
         goal_name = '(facing living_room[1] living_room[1])'
-        curr_env.reset(path_init_env, goal_name)
+        curr_env.reset(path_init_env, {0: goal_name})
         curr_env.to_pomdp()
         single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
 
@@ -184,7 +184,7 @@ def dataset_agent():
                 visible_ids = None
             else:
                 curr_state = single_agent.env.vh_state.to_dict()
-                visible_ids = single_agent.env.observable_object_ids
+                visible_ids = single_agent.env.observable_object_ids_n[0]
 
 
             graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
@@ -197,7 +197,7 @@ def dataset_agent():
             if str_instruction.strip() == '[stop]':
                 finished = True
             else:
-                single_agent.env.step(str_instruction)
+                single_agent.env.step({0: str_instruction})
             cont += 1
 
         goal_id = int(goal_str.split('_')[-1])
@@ -205,7 +205,7 @@ def dataset_agent():
                       if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == node_id_char]
         edge_found = len(edges_goal) > 0
         curr_success = False
-        if goal_id in single_agent.env.observable_object_ids and edge_found:
+        if goal_id in single_agent.env.observable_object_ids_n[0] and edge_found:
             success += 1
             curr_success = True
 
@@ -217,7 +217,7 @@ def dataset_agent():
         f.write(json.dumps(final_list))
 
 
-
+# def policy_gradient():
 
 def interactive_agent():
     path_init_env = 'dataset_toy3/init_envs/TrimmedTestScene6_graph_42.json'
@@ -226,7 +226,7 @@ def interactive_agent():
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
-    curr_env.reset(path_init_env, goal_name)
+    curr_env.reset(path_init_env, {0: goal_name})
     curr_env.to_pomdp()
     args = utils.read_args()
     args.max_steps = 1
@@ -265,7 +265,7 @@ def interactive_agent():
             visible_ids = None
         else:
             curr_state = single_agent.env.vh_state.to_dict()
-            visible_ids = single_agent.env.observable_object_ids
+            visible_ids = single_agent.env.observable_object_ids_n[0]
 
         # Process data
         graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
@@ -282,7 +282,7 @@ def interactive_agent():
         if str_instruction.strip() == '[stop]':
             print('Episode finished')
         else:
-            single_agent.env.step(str_instruction)
+            single_agent.env.step({0: str_instruction})
         pdb.set_trace()
 
 if __name__ == '__main__':
