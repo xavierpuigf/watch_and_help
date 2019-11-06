@@ -131,7 +131,7 @@ def graph2im(graph, special_nodes={}):
 
     }
     print('Edges...')
-    max_num = 2
+    max_num = 0.2
     for edge in graph['edges']:
         rt = edge['relation_type']
         if rt != 'INSIDE' and edge['from_id'] not in ids_delete and edge['to_id'] not in ids_delete:
@@ -139,7 +139,7 @@ def graph2im(graph, special_nodes={}):
                 # print(edge['from_id'], edge['to_id'], edge['relation_type'])
                 if parent[edge['from_id']] != parent[edge['to_id']]:
                     continue
-                if random.randint(0,max_num) < max_num:
+                if random.random() < max_num:
                     continue
             # if ((edge['to_id'] in parent and parent[edge['to_id']] == edge['from_id']) or
             #    (edge['from_id'] in parent and parent[edge['from_id']] == edge['to_id'])):

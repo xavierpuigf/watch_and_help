@@ -5,6 +5,7 @@ from torch import distributions
 import pdb
 import vh_graph
 import gym
+import json
 import envdataset
 import utils_viz
 import utils
@@ -41,7 +42,7 @@ class SingleAgent():
                                                   [pred_action, pred_o1, pred_o2])
         return pred_instr[0]
 
-    def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
+    def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits, pick_max=False):
         instruction = None
         object_ids = state[1]
         object_names = state[0]
@@ -49,7 +50,10 @@ class SingleAgent():
 
 
         distr_object1 = distributions.categorical.Categorical(logits=o1_logits)
-        obj1_id_model = distr_object1.sample()
+        if pick_max:
+            obj1_id_model = torch.argmax(o1_logits, -1)
+        else:
+            obj1_id_model = distr_object1.sample()
         prob_1d = distr_object1.log_prob(obj1_id_model)
         obj1_id = state[1][0,0,obj1_id_model].item()
 
@@ -70,7 +74,10 @@ class SingleAgent():
 
         action_logits_masked = action_logits.cpu() * mask + (-1e9) * (1-mask)
         distr_action1 = distributions.categorical.Categorical(logits=action_logits_masked)
-        action_id_model = distr_action1.sample()
+        if pick_max:
+            action_id_model = action_logits_masked.argmax(-1)
+        else:
+            action_id_model = distr_action1.sample()
         prob_action = distr_action1.log_prob(action_id_model)
 
         # Given action and object, get the last candidates
@@ -88,7 +95,11 @@ class SingleAgent():
         mask_o2 = (state[1] == obj2_id_cands).float()
         o2_logits_masked = (o2_logits.cpu() * mask_o2) + (1-mask_o2)*(-1e9)
         distr_object2 = distributions.categorical.Categorical(logits=o2_logits_masked)
-        obj2_id_model = distr_object2.sample()
+
+        if pick_max:
+            obj2_id_model = torch.argmax(o2_logits_masked, -1)
+        else:
+            obj2_id_model = distr_object2.sample()
         prob_2d = distr_object2.log_prob(obj2_id_model)
         #if instruction is None:
         instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
@@ -123,13 +134,16 @@ class SingleAgent():
 
 
 def dataset_agent():
-    #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_31.pt'
-    weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_31.pt'
+    args = utils.read_args()
+    if args.pomdp:
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_49.pt'
+    else:
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_49.pt'
 
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
-    args = utils.read_args()
+
     args.max_steps = 1
     args.interactive = True
     helper = utils.Helper(args)
@@ -144,7 +158,7 @@ def dataset_agent():
         state_dict = torch.load(weights)
         policy_net.load_state_dict(state_dict['model_params'])
 
-
+    final_list = []
     success, cont_episodes = 0, 0
     for problem in dataset.problems_dataset:
         path_init_env = problem['graph_file']
@@ -176,7 +190,7 @@ def dataset_agent():
             graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
                 dataset, curr_state, ids_used, visible_ids, class_names, object_ids, mask_nodes, goal_str)
 
-            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits)
+            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits, pick_max=True)
             instr = list(zip(*instruction))[0]
             str_instruction = utils.pretty_instr(instr)
             #print(str_instruction)
@@ -190,12 +204,17 @@ def dataset_agent():
         edges_goal = [x for x in single_agent.env.vh_state.to_dict()['edges']
                       if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == node_id_char]
         edge_found = len(edges_goal) > 0
+        curr_success = False
         if goal_id in single_agent.env.observable_object_ids and edge_found:
             success += 1
+            curr_success = True
 
+        final_list.append((path_init_env, goal_id, curr_success))
         cont_episodes += 1
 
-        print(success, cont_episodes)
+        #print(success, cont_episodes)
+    with open('output_{}.json'.format(args.pomdp), 'w+') as f:
+        f.write(json.dumps(final_list))
 
 
 
@@ -268,5 +287,5 @@ def interactive_agent():
 
 if __name__ == '__main__':
     curr_env = gym.make('vh_graph-v0')
-    #dataset_agent()
-    interactive_agent()
+    dataset_agent()
+    #interactive_agent()
