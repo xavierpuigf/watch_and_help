@@ -364,6 +364,16 @@ def train():
     optimizer = torch.optim.Adam(policy_net.parameters())
     policy_net = torch.nn.DataParallel(policy_net)
 
+    if args.pomdp:
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_49.pt'
+    else:
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_49.pt'
+
+    if weights is not None:
+        print('Loading weights')
+        state_dict = torch.load(weights)
+        policy_net.load_state_dict(state_dict['model_params'])
+
     for epoch in range(args.num_epochs):
         import random
         random.shuffle(shuffle_indices)
@@ -381,7 +391,10 @@ def train():
             for agent in agents:
                 instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
 
+            print(agent.goal)
             print(instructions)
+            print(r)
+            pdb.set_trace()
             # For now gamma = 0.9
             log_prob = torch.cat([x[0]+x[1]+x[2] for x in logits])
             dr = []
@@ -392,12 +405,14 @@ def train():
                 prevdr = dr[-1]
             reward_tensor = torch.tensor(dr)[:, None].float().cuda()
             std = reward_tensor.std() if len(dr) > 1 else 1.
+            print(reward_tensor.mean())
             reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
+
             optimizer.zero_grad()
             #pdb.set_trace()
             pg_loss = (-log_prob*reward_tensor).sum()
             pg_loss.backward()
-            optimizer.step()
+            #optimizer.step()
             print(pg_loss.data)
 
 

@@ -15,6 +15,8 @@ import os
 class EnvDataset(Dataset):
     def __init__(self, args, split='train', process_progs=True):
         self.dataset_file = args.dataset_folder
+
+        self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain']
         self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7], 'all': [1,2,3,4,5,6,7]}
         self.split = split
         self.args = args
@@ -73,7 +75,6 @@ class EnvDataset(Dataset):
             "WakeUp",
             # "Release"
         ]
-        self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain']
 
         self.states = ['on', 'open', 'off', 'closed']
         self.relations = ['inside', 'close', 'facing', 'on']
@@ -135,15 +136,14 @@ class EnvDataset(Dataset):
             if not goal_str.lower().startswith('findnode'):
                 continue
 
-            #
-            #
-            # # If there are 2 rooms one after another, then we should delete both
-            # if len(program) >= 2:
-            #     if '[WALK]' in program[0] and '[WALK]' in program[1]:
-            #         ids = [int(x.split()[-1][1:-1]) for x in program[:2]]
-            #         if ids[1] == location_char:
-            #             program = program[2:]
-
+            _, o1, o2 = utils.parse_prog(program)
+            objects_prog = o1 + o2
+            object_prohib = False
+            for o in objects_prog:
+                if o is not None and o[0].lower() in self.objects_remove:
+                    object_prohib = True
+            if object_prohib:
+                continue
             problems_dataset.append(
                 {
                     'id': id_problem,
@@ -192,6 +192,7 @@ class EnvDataset(Dataset):
         problem = self.problems_dataset[idx]
         state_info, ids_used = self.prepare_data(problem)
         program_info = self.prepare_program(problem['program'], ids_used)
+
         class_names = state_info[0]
         goal_info = self.prepare_goal(self.problems_dataset[idx]['goal'], ids_used, class_names[0])
         return state_info, program_info, goal_info
@@ -247,43 +248,41 @@ class EnvDataset(Dataset):
             # Run the graph to get the info of the episode
             init_graph = problem['graph_file']
             graphs_file_name = init_graph[:-5] + '_multiple_{}.json'.format(problem['id'])
-
-            if not os.path.isfile(graphs_file_name):
-                goal = problem['goal']
-                curr_env = gym.make('vh_graph-v0')
-
-                if goal[0] != '(':
-                    fnode = full_init_env['nodes'][0]
-                    nnode = '{}[{}]'.format(fnode['class_name'], fnode['id'])
-                    goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
-                else:
-                    goal_name = goal
-                curr_env.reset(init_graph, {0: goal_name})
-                curr_env.to_pomdp()
-                state = curr_env.get_observations()
-                full_state = curr_env.vh_state.to_dict()
-
-                graphs = [(state, full_state)]
-                try:
-                    for instr in program[:-1]:
-
-                        _, state, infos = curr_env.step({0: instr})
-                        full_state = curr_env.vh_state.to_dict()
-                        graphs.append((state, full_state))
-
-                    with open(graphs_file_name, 'w+') as f:
-                        f.write(json.dumps(graphs, indent=4))
-                    problem['graphs_file'] = graphs_file_name
-                except:
-
-                    print('Error')
-                    raise Exception
-            else:
-                problem['graphs_file'] = graphs_file_name
-                with open(problem['graphs_file'], 'r') as f:
-
-                    graphs = json.load(f)
         else:
+            graphs_file_name = problem['graphs_file']
+
+        if not os.path.isfile(graphs_file_name):
+            goal = problem['goal']
+            curr_env = gym.make('vh_graph-v0')
+
+            if goal[0] != '(':
+                fnode = full_init_env['nodes'][0]
+                nnode = '{}[{}]'.format(fnode['class_name'], fnode['id'])
+                goal_name = '(facing {0} {0})'.format(nnode) # some random goal for now
+            else:
+                goal_name = goal
+            curr_env.reset(init_graph, {0: goal_name})
+            curr_env.to_pomdp()
+            state = curr_env.get_observations()
+            full_state = curr_env.vh_state.to_dict()
+
+            graphs = [(state, full_state)]
+            try:
+                for instr in program[:-1]:
+
+                    _, state, infos = curr_env.step({0: instr})
+                    full_state = curr_env.vh_state.to_dict()
+                    graphs.append((state[0], full_state))
+
+                with open(graphs_file_name, 'w+') as f:
+                    f.write(json.dumps(graphs, indent=4))
+                problem['graphs_file'] = graphs_file_name
+            except:
+
+                print('Error')
+                raise Exception
+        else:
+            problem['graphs_file'] = graphs_file_name
             # load graphs
             with open(problem['graphs_file'], 'r') as f:
                 graphs = json.load(f)
@@ -321,7 +320,6 @@ class EnvDataset(Dataset):
         class_names, object_ids, _, mask_nodes, _ = node_info
 
         graphs = self.obtain_graph_list(problem, program, full_init_env)
-
         info = [[], []]
         # The last instruction is the stop
         for state, state_full in graphs:
@@ -407,11 +405,12 @@ class EnvDataset(Dataset):
             if node['id'] not in ids_used.keys():
                 ids_used[node['id']] = len(ids_used.keys())
 
+            object_ids[ids_used[node['id']]] = node['id']
+            class_names[ids_used[node['id']]] = self.object_dict.get_id(node['class_name'])
             if node['class_name'] in self.objects_remove:
                 ids_remove.append(node['id'])
                 continue
-            object_ids[ids_used[node['id']]] = node['id']
-            class_names[ids_used[node['id']]] = self.object_dict.get_id(node['class_name'])
+
             mask_nodes[ids_used[node['id']]] = 1
 
         # Include the final nodes

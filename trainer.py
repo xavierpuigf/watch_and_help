@@ -122,7 +122,8 @@ def train(dataset, helper, q):
             logits = action_logits, o1_logits, o2_logits
 
             loss, aloss, o1loss, o2loss, debug = bc_loss(program, logits)
-
+            if o1loss.data > 100:
+                pdb.set_trace()
             # Obtain the prediction
 
 
