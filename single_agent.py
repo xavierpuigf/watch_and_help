@@ -12,15 +12,19 @@ import utils
 
 
 class SingleAgent():
-    def __init__(self, env, goal, agent_id, policy=None):
+    def __init__(self, env, goal, agent_id, dataset=None, policy=None):
         self.env = env
         self.goal = goal
         self.agent_id = agent_id
         self.policy_net = policy
+        self.dataset = dataset
 
+
+        self.max_steps = 10
         #if policy is not None:
         #    self.activation_info = policy.activation_info()
         self.beliefs = None
+        self.finished = False
 
         self.agent_info = {
             'saved_log_probs': [],
@@ -28,6 +32,18 @@ class SingleAgent():
             'action_space': [],
             'rewards': []
         }
+
+        if dataset is not None:
+            gt_state = env.vh_state.to_dict()
+            self.node_id_char = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
+            # All the nodes
+            nodes, _, ids_used = dataset.process_graph(gt_state)
+            class_names, object_ids, _, mask_nodes, _ = nodes
+            self.nodes = nodes
+            self.ids_used = ids_used
+            self.class_names = class_names
+            self.object_ids = object_ids
+            self.mask_nodes = mask_nodes
 
     def get_observations(self):
         return self.env.get_observations()
@@ -63,16 +79,19 @@ class SingleAgent():
             action_candidate_ids = [dataset.action_dict.get_id('stop')]
 
         else:
-            object1_node = [x for x in self.env.vh_state.to_dict()['nodes'] if x['id'] == obj1_id][0]
+            try:
+                object1_node = [x for x in self.env.vh_state.to_dict()['nodes'] if x['id'] == obj1_id][0]
+            except:
+                pdb.set_trace()
             # Given this object, get the action candidates
             action_candidates_tripl = self.env.get_action_space(obj1=object1_node, structured_actions=True)
 
             action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl]
 
-        mask = torch.zeros(action_logits[0,0].shape)
+        mask = torch.zeros(action_logits[0,0].shape).cuda()
         mask[action_candidate_ids] = 1.
 
-        action_logits_masked = action_logits.cpu() * mask + (-1e9) * (1-mask)
+        action_logits_masked = action_logits * mask + (-1e9) * (1-mask)
         distr_action1 = distributions.categorical.Categorical(logits=action_logits_masked)
         if pick_max:
             action_id_model = action_logits_masked.argmax(-1)
@@ -92,8 +111,8 @@ class SingleAgent():
             obj2_id_cands = torch.tensor([dataset.node_none[1] if len(x) < 3 else x[2]['id'] for x in triple_candidates])
             if len(triple_candidates) == 0:
                 pdb.set_trace()
-        mask_o2 = (state[1] == obj2_id_cands).float()
-        o2_logits_masked = (o2_logits.cpu() * mask_o2) + (1-mask_o2)*(-1e9)
+        mask_o2 = (state[1] == obj2_id_cands).float().cuda()
+        o2_logits_masked = (o2_logits * mask_o2) + (1-mask_o2)*(-1e9)
         distr_object2 = distributions.categorical.Categorical(logits=o2_logits_masked)
 
         if pick_max:
@@ -108,18 +127,17 @@ class SingleAgent():
         return instruction, (prob_action, prob_1d, prob_2d)
 
 
-    def obtain_logits_from_observations(self, dataset, curr_state, ids_used, visible_ids, class_names,
-                                        object_ids, mask_nodes, goal_str):
+    def obtain_logits_from_observations(self, curr_state, visible_ids, goal_str):
 
-        id_char = dataset.object_dict.get_id('character')
-        nodes, edges, _ = dataset.process_graph(curr_state, ids_used, visible_ids)
+        id_char = self.dataset.object_dict.get_id('character')
+        nodes, edges, _ = self.dataset.process_graph(curr_state, self.ids_used, visible_ids)
         _, _, visible_mask, _, state_nodes = nodes
         edge_bin, edge_types, mask_edges = edges
-        graph_data = dataset.join_timesteps(class_names, object_ids, [state_nodes],
+        graph_data = self.dataset.join_timesteps(self.class_names, self.object_ids, [state_nodes],
                                                         [edge_bin], [edge_types], [visible_mask],
-                                                        mask_nodes, [mask_edges])
+                                                        self.mask_nodes, [mask_edges])
 
-        goal_info = dataset.prepare_goal(goal_str, ids_used, class_names)
+        goal_info = self.dataset.prepare_goal(goal_str, self.ids_used, self.class_names)
         graph_data = [torch.tensor(x).unsqueeze(0) for x in graph_data]
         goal_info = [torch.tensor(x).unsqueeze(0) for x in list(goal_info)]
 
@@ -129,9 +147,49 @@ class SingleAgent():
         o1_logits = o1_logits * mask_character + (1 - mask_character) * (-1e9)
         return graph_data, action_logits, o1_logits, o2_logits
 
+    def one_step_rollout(self, goal_string, pomdp):
+        if pomdp:
+            curr_state = self.get_observations()
+            visible_ids = None
+        else:
+            curr_state = self.env.vh_state.to_dict()
+            visible_ids = self.env.observable_object_ids_n[0]
 
+        # pdb.set_trace()
+        graph_data, action_logits, o1_logits, o2_logits = self.obtain_logits_from_observations(
+            curr_state, visible_ids, goal_string)
+        instruction, logits = self.sample_instruction(self.dataset, graph_data,
+                                                      action_logits, o1_logits, o2_logits)
+        instr = list(zip(*instruction))[0]
+        str_instruction = utils.pretty_instr(instr)
+        if 'stop' in str_instruction:
+            resp = None
+        else:
+            resp = self.env.step({0: str_instruction})
 
+        # Measure reward
+        # TODO: this should be done in the env
+        goal_id = int(goal_string.split('_')[-1])
+        edges_goal = [x for x in self.env.vh_state.to_dict()['edges']
+                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
+        edge_found = len(edges_goal) > 0
+        reward = 5 if goal_id in self.env.observable_object_ids_n[0] and edge_found else -1
 
+        return resp, str_instruction, logits, reward
+
+    def rollout(self, goal_str, pomdp):
+        max_instr = 0
+        instr = ''
+        instructions = []
+        logits = []
+        rewards = []
+        while max_instr < self.max_steps and 'stop' not in instr:
+            _, instr, log, r = self.one_step_rollout(goal_str, pomdp)
+            max_instr += 1
+            instructions.append(instr)
+            logits.append(log)
+            rewards.append(r)
+        return instructions, logits, rewards
 
 def dataset_agent():
     args = utils.read_args()
@@ -143,7 +201,7 @@ def dataset_agent():
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
-
+    curr_env = gym.make('vh_graph-v0')
     args.max_steps = 1
     args.interactive = True
     helper = utils.Helper(args)
@@ -167,7 +225,7 @@ def dataset_agent():
         goal_name = '(facing living_room[1] living_room[1])'
         curr_env.reset(path_init_env, {0: goal_name})
         curr_env.to_pomdp()
-        single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
+        single_agent = SingleAgent(curr_env, goal_name, 0, dataset, policy_net)
 
 
         gt_state = single_agent.env.vh_state.to_dict()
@@ -226,6 +284,7 @@ def interactive_agent():
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
     # Set up the policy
+    curr_env = gym.make('vh_graph-v0')
     curr_env.reset(path_init_env, {0: goal_name})
     curr_env.to_pomdp()
     args = utils.read_args()
@@ -238,7 +297,7 @@ def interactive_agent():
     policy_net = SinglePolicy(dataset_interactive).cuda()
     policy_net = torch.nn.DataParallel(policy_net)
     policy_net.eval()
-    single_agent = SingleAgent(curr_env, goal_name, 0, policy_net)
+    single_agent = SingleAgent(curr_env, goal_name, 0, dataset_interactive, policy_net)
 
     # Starting the scene
     curr_state = single_agent.get_observations()
@@ -285,7 +344,66 @@ def interactive_agent():
             single_agent.env.step({0: str_instruction})
         pdb.set_trace()
 
+
+def train():
+    args = utils.read_args()
+    args.training_mode = 'pg'
+    args.max_steps = 1
+    helper = utils.Helper(args)
+    print('Creating dataset')
+    dataset = envdataset.EnvDataset(args, split='train')
+    print('done')
+    curr_envs = [gym.make('vh_graph-v0') for _ in range(args.batch_size)]
+    num_elems = len(dataset.problems_dataset)
+    shuffle_indices = list(range(num_elems))
+    num_iter = num_elems // args.num_epochs
+
+    # Set up the policy
+    policy_net = SinglePolicy(dataset)
+    policy_net.cuda()
+    optimizer = torch.optim.Adam(policy_net.parameters())
+    policy_net = torch.nn.DataParallel(policy_net)
+
+    for epoch in range(args.num_epochs):
+        import random
+        random.shuffle(shuffle_indices)
+        batched_indices = [shuffle_indices[i*args.batch_size:min((i+1)*args.batch_size, len(shuffle_indices))] for i in range(num_iter)]
+        for indices in batched_indices:
+            agents = []
+            for it, index_problem in enumerate(indices):
+                problem = dataset.problems_dataset[index_problem]
+                path_init_env = problem['graph_file']
+                goal_str = problem['goal']
+                curr_envs[it].reset(path_init_env, {0:'(facing living_room[1] living_room[1])'})
+                curr_envs[it].to_pomdp()
+                agents.append(SingleAgent(curr_envs[it], goal_str, 0, dataset, policy_net))
+
+            for agent in agents:
+                instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
+
+            print(instructions)
+            # For now gamma = 0.9
+            log_prob = torch.cat([x[0]+x[1]+x[2] for x in logits])
+            dr = []
+            prevdr = 0.
+            gamma = 0.9
+            for t in range(len(r)):
+                dr.append(prevdr*gamma + r[t])
+                prevdr = dr[-1]
+            reward_tensor = torch.tensor(dr)[:, None].float().cuda()
+            std = reward_tensor.std() if len(dr) > 1 else 1.
+            reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
+            optimizer.zero_grad()
+            #pdb.set_trace()
+            pg_loss = (-log_prob*reward_tensor).sum()
+            pg_loss.backward()
+            optimizer.step()
+            print(pg_loss.data)
+
+
+
 if __name__ == '__main__':
-    curr_env = gym.make('vh_graph-v0')
-    dataset_agent()
+    train()
+    #curr_env = gym.make('vh_graph-v0')
+    #dataset_agent()
     #interactive_agent()

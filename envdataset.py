@@ -403,11 +403,13 @@ class EnvDataset(Dataset):
         mask_nodes = np.zeros(self.max_nodes).astype(np.float32)
         ids_remove = []
         for node in graph['nodes']:
-            if node['class_name'] in self.objects_remove:
-                ids_remove.append(node['id'])
+
             if node['id'] not in ids_used.keys():
                 ids_used[node['id']] = len(ids_used.keys())
 
+            if node['class_name'] in self.objects_remove:
+                ids_remove.append(node['id'])
+                continue
             object_ids[ids_used[node['id']]] = node['id']
             class_names[ids_used[node['id']]] = self.object_dict.get_id(node['class_name'])
             mask_nodes[ids_used[node['id']]] = 1
@@ -433,7 +435,8 @@ class EnvDataset(Dataset):
         else:
             visible_mask = np.zeros(self.max_nodes).astype(np.float32)
             for id_visible in visible_ids:
-                visible_mask[ids_used[id_visible]] = 1
+                if id_visible not in ids_remove:
+                    visible_mask[ids_used[id_visible]] = 1
             visible_mask[ids_used[self.node_none[1]]] = 1
             visible_mask[ids_used[self.node_stop[1]]] = 1
 

@@ -150,7 +150,7 @@ class Helper:
         if self.args.interactive:
             return
         argvars = vars(self.args)
-        names_save = ['dataset_folder', 'pomdp', 'graphsteps']
+        names_save = ['dataset_folder', 'pomdp', 'graphsteps', 'training_mode']
         names_and_params = [(x, argvars[x]) for x in names_save]
         if self.args.debug:
             fname = 'debug'
@@ -215,6 +215,7 @@ def read_args():
     parser.add_argument('--num_epochs', default=50, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
+    parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
