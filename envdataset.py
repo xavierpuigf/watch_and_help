@@ -322,16 +322,17 @@ class EnvDataset(Dataset):
         graphs = self.obtain_graph_list(problem, program, full_init_env)
         info = [[], []]
         # The last instruction is the stop
-        for state, state_full in graphs:
+        for it, (state, state_full) in enumerate(graphs):
 
             self.max_nodes_g = max(self.max_nodes_g, len(state_full['nodes']))
             self.max_edges_g = max(self.max_edges_g, len(state_full['edges']))
 
             visible_ids = [x['id'] for x in state['nodes']]
+            first_step = (it == 0)
             if self.args.pomdp:
-                nodes, edges, _ = self.process_graph(state, ids_used, visible_ids)
+                nodes, edges, _ = self.process_graph(state, ids_used, visible_ids, remove_close=first_step)
             else:
-                nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids)
+                nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids, remove_close=first_step)
             info[0].append(nodes)
             info[1].append(edges)
 
@@ -372,7 +373,7 @@ class EnvDataset(Dataset):
 
         return class_names, object_ids, state_nodes, edges, edge_types, visible_mask, mask_nodes, mask_edges
 
-    def process_graph(self, graph, ids_used=None, visible_ids=None):
+    def process_graph(self, graph, ids_used=None, visible_ids=None, remove_close=False):
         """
         Maps the json graph into a dense structure to be used by the model
         :param graph: dictionary with the state, it can be POMDP or FOMDP
@@ -471,8 +472,9 @@ class EnvDataset(Dataset):
             if edge['from_id'] in ids_remove or edge['to_id'] in ids_remove:
                 continue
 
-            if edge['relation_type'] == 'CLOSE' and edge['from_id'] != char_id and edge['to_id'] != char_id:
-                continue
+            if edge['relation_type'] == 'CLOSE':
+                if remove_close or (edge['from_id'] != char_id and edge['to_id'] != char_id):
+                    continue
 
             rel_id = self.relation_dict.get_id(edge['relation_type'].lower())
 

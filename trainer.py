@@ -60,6 +60,7 @@ def test(args, path_name, weights, epoch):
             pred_instr = utils.get_program_from_nodes(dataset_test, object_names, object_ids,
                                                       [pred_action, pred_o1, pred_o2])
             gt_instr = utils.get_program_from_nodes(dataset_test, object_names, object_ids, program)
+            # print(utils.pretty_print_program(pred_instr[0], other=gt_instr[0]))
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple(gt_instr, pred_instr)
             metrics_loss.update({
                 'Loss': loss.data.cpu(),
@@ -71,10 +72,12 @@ def test(args, path_name, weights, epoch):
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
-            helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}\n'
-                  'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
-    helper.log_text('test', 'Done epoch')
+            if path_name is not None:
+                helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}\n'
+                      'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
+
     if path_name is not None:
+        helper.log_text('test', 'Done epoch')
         helper.log(epoch, metrics, 'LCS', 'test')
         helper.log(epoch, metrics_loss, 'Losses', 'test')
         helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}'
@@ -253,7 +256,8 @@ def start():
 
     helper = utils.setup()
     if helper.args.eval:
-        weights = '' # logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-06_23.54.52.675520/chkpt/chkpt_49.pt'
+        #logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
         test(helper.args, None, weights, 0)
 
     else:

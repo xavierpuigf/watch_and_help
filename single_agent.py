@@ -147,13 +147,16 @@ class SingleAgent():
         o1_logits = o1_logits * mask_character + (1 - mask_character) * (-1e9)
         return graph_data, action_logits, o1_logits, o2_logits
 
-    def one_step_rollout(self, goal_string, pomdp):
+    def one_step_rollout(self, goal_string, pomdp, remove_edges=False):
         if pomdp:
             curr_state = self.get_observations()
             visible_ids = None
         else:
             curr_state = self.env.vh_state.to_dict()
             visible_ids = self.env.observable_object_ids_n[0]
+
+        if remove_edges:
+            curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
         # pdb.set_trace()
         graph_data, action_logits, o1_logits, o2_logits = self.obtain_logits_from_observations(
@@ -184,7 +187,7 @@ class SingleAgent():
         logits = []
         rewards = []
         while max_instr < self.max_steps and 'stop' not in instr:
-            _, instr, log, r = self.one_step_rollout(goal_str, pomdp)
+            _, instr, log, r = self.one_step_rollout(goal_str, pomdp, remove_edges=(max_instr==0))
             max_instr += 1
             instructions.append(instr)
             logits.append(log)
@@ -194,9 +197,9 @@ class SingleAgent():
 def dataset_agent():
     args = utils.read_args()
     if args.pomdp:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
     else:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
 
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
@@ -225,6 +228,8 @@ def dataset_agent():
         goal_name = '(facing living_room[1] living_room[1])'
         curr_env.reset(path_init_env, {0: goal_name})
         curr_env.to_pomdp()
+
+
         single_agent = SingleAgent(curr_env, goal_name, 0, dataset, policy_net)
 
 
@@ -244,9 +249,11 @@ def dataset_agent():
                 curr_state = single_agent.env.vh_state.to_dict()
                 visible_ids = single_agent.env.observable_object_ids_n[0]
 
+            if cont == 0:
+                curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
             graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
-                dataset, curr_state, ids_used, visible_ids, class_names, object_ids, mask_nodes, goal_str)
+                curr_state, visible_ids, goal_str)
 
             instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits, pick_max=True)
             instr = list(zip(*instruction))[0]
@@ -270,7 +277,7 @@ def dataset_agent():
         final_list.append((path_init_env, goal_id, curr_success))
         cont_episodes += 1
 
-        #print(success, cont_episodes)
+        print(success, cont_episodes)
     with open('output_{}.json'.format(args.pomdp), 'w+') as f:
         f.write(json.dumps(final_list))
 
@@ -365,9 +372,10 @@ def train():
     policy_net = torch.nn.DataParallel(policy_net)
 
     if args.pomdp:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3/2019-11-06_09.13.35.555005/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
     else:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3/2019-11-06_09.14.31.202175/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
+
 
     if weights is not None:
         print('Loading weights')
@@ -391,11 +399,10 @@ def train():
             for agent in agents:
                 instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
 
-            print(agent.goal)
-            print(instructions)
-            print(r)
-            pdb.set_trace()
-            # For now gamma = 0.9
+            #print(agent.goal)
+            #print(instructions)
+            #print(r)
+            # For now gamma = 0.9 --> REDUCE
             log_prob = torch.cat([x[0]+x[1]+x[2] for x in logits])
             dr = []
             prevdr = 0.
@@ -403,6 +410,7 @@ def train():
             for t in range(len(r)):
                 dr.append(prevdr*gamma + r[t])
                 prevdr = dr[-1]
+
             reward_tensor = torch.tensor(dr)[:, None].float().cuda()
             std = reward_tensor.std() if len(dr) > 1 else 1.
             print(reward_tensor.mean())
@@ -413,11 +421,11 @@ def train():
             pg_loss = (-log_prob*reward_tensor).sum()
             pg_loss.backward()
             #optimizer.step()
-            print(pg_loss.data)
-
+        print(avg_reward)
 
 
 if __name__ == '__main__':
+    pdb.set_trace()
     train()
     #curr_env = gym.make('vh_graph-v0')
     #dataset_agent()

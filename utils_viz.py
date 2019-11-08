@@ -75,6 +75,7 @@ def graph2im(graph, special_nodes={}):
                 num_children_subgraph[edge['to_id']] += 1
 
     subgraphs_added = {}
+    
     curr_subgraphs = [x for (x,y) in num_children_subgraph.items() if y == 0]
     # pdb.set_trace()
     while len(curr_subgraphs) > 0:
@@ -115,9 +116,10 @@ def graph2im(graph, special_nodes={}):
         curr_subgraphs = next_subgraphs
 
     colors = {
-        'INSIDE': 'orange',
+        'INSIDE': 'yellow',
         'ON': 'blue',
         'CLOSE': 'purple',
+        'CLOSE_CHAR': 'orange',
         'FACING': 'red',
         'BETWEEN': 'green'
 
@@ -127,20 +129,28 @@ def graph2im(graph, special_nodes={}):
         'ON': '',
         'CLOSE': 'invis',
         'FACING': 'invis',
-        'BETWEEN': 'invis'
+        'BETWEEN': 'invis',
+        'CLOSE_CHAR': ''
 
     }
     print('Edges...')
     max_num = 0.2
+    id_char = [x for x,y in special_nodes.items() if y == 'agent']
+    if len(id_char) > 0:
+        id_char = id_char[0]
     for edge in graph['edges']:
         rt = edge['relation_type']
         if rt != 'INSIDE' and edge['from_id'] not in ids_delete and edge['to_id'] not in ids_delete:
             if rt == 'CLOSE':
                 # print(edge['from_id'], edge['to_id'], edge['relation_type'])
-                if parent[edge['from_id']] != parent[edge['to_id']]:
-                    continue
-                if random.random() < max_num:
-                    continue
+                if edge['from_id'] == id_char:
+                    rt = 'CLOSE_CHAR'
+                    print(rt)
+                else:
+                    if parent[edge['from_id']] != parent[edge['to_id']]:
+                        continue
+                    if random.random() < max_num:
+                        continue
             # if ((edge['to_id'] in parent and parent[edge['to_id']] == edge['from_id']) or
             #    (edge['from_id'] in parent and parent[edge['from_id']] == edge['to_id'])):
             #     continue
@@ -160,9 +170,65 @@ def graph2im(graph, special_nodes={}):
     return g
 
 
+def belief2im(belief, special_nodes={}):
+    """
+    Outputs an image given a graph
+    :param graph:
+    :return:
+    """
+
+    # graph = delete_redundant_edges_and_ids(graph)
+    graph = belief.graph_init
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
+    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
+
+    graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
+    graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+
+    id2node = {x['id']: x for x in graph['nodes']}
+
+    g = graphviz.Digraph(engine='dot')
+
+    for node in graph['nodes']:
+        g.node(name=str(node['id']), label=getclass(node))
+
+    colors = {
+        'INSIDE': 'green',
+        'ON': 'blue',
+        'CLOSE': 'purple',
+        'CLOSE_CHAR': 'orange',
+        'FACING': 'red',
+        'BETWEEN': 'green'
+
+    }
+
+    ids_used = []
+    for from_id in belief.edge_belief.keys():
+        for relation in ['ON', 'INSIDE']:
+            value_belief = belief.edge_belief[from_id][relation]
+            for to_id, belief_val in zip(*value_belief):
+                if to_id is not None:
+                    if relation == 'INSIDE':
+                        ids_used.append(from_id)
+                    g.edge(str(from_id), str(to_id), color=colors[relation], penwidth=str(belief_val))
+
+    for id in belief.room_node.keys():
+        #pdb.set_trace()
+        for belief_id, belief_val in zip(*belief.room_node[id]):
+            if id not in ids_used:
+                g.edge(str(id), str(belief_id), color=colors['INSIDE'], penwidth=str(belief_val))
+    return g
+
+
+
 def print_graph(graph, output='graph_example.gv'):
     id_char = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
-    g = graph2im(graph, id_char)
+    g = graph2im(graph)
+    g.render(output)
+
+def print_belief(belief, output='belief_example.gv'):
+    id_char = [x['id'] for x in belief.sampled_graph['nodes'] if x['class_name'] == 'character'][0]
+    g = belief2im(belief, id_char)
     g.render(output)
 
 if __name__ == '__main__':
