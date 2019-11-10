@@ -187,7 +187,7 @@ def belief2im(belief, special_nodes={}):
 
     id2node = {x['id']: x for x in graph['nodes']}
 
-    g = graphviz.Digraph(engine='dot')
+    g = graphviz.Digraph(engine='fdp')
 
     for node in graph['nodes']:
         g.node(name=str(node['id']), label=getclass(node))
