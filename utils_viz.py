@@ -43,8 +43,9 @@ def graph2im(graph, special_nodes={}):
     """
     # graph = delete_redundant_edges_and_ids(graph)
 
-    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
-    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'curtain']
+    categories_delete = ['Doors']
+    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete or x['category'] in categories_delete]
 
     nodes = [x for x in graph['nodes'] if x not in ids_delete]
     edges = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
