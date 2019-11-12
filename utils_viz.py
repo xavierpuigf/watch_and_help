@@ -1,6 +1,4 @@
 import graphviz
-import copy
-import scipy.special
 import json
 import pdb
 import random
@@ -31,6 +29,11 @@ def delete_redundant_edges_and_ids(graph):
             all_children = parent_node[edge['to_id']]
             if len(set(all_parents).intersection(all_children)) > 0:
                 continue
+        # else:
+        #     if ((edge['from_id'] in children_node and edge['to_id'] in children_node[edge['from_id']]) or
+        #             (edge['to_id'] in children_node and edge['from_id'] in children_node[edge['to_id']])):
+        #         continue
+
         final_edges.append(edge)
     graph['edges'] = final_edges
     return graph
@@ -41,27 +44,27 @@ def graph2im(graph, special_nodes={}):
     :param graph:
     :return:
     """
+
     # graph = delete_redundant_edges_and_ids(graph)
 
-    class_nodes_delete = ['wall', 'floor', 'ceiling', 'curtain']
-    categories_delete = ['Doors']
-    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete or x['category'] in categories_delete]
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
+    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
 
-    nodes = [x for x in graph['nodes'] if x not in ids_delete]
-    edges = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+    graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
+    graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
 
-    id2node = {x['id']: x for x in nodes}
+    id2node = {x['id']: x for x in graph['nodes']}
 
     g = graphviz.Digraph(engine='dot')
     g.attr(compound='true')
 
     # g.attr(rank='min')
 
-    container_nodes = list(set([x['to_id'] for x in edges if x['relation_type'] == 'INSIDE']))
+    container_nodes = list(set([x['to_id'] for x in graph['edges'] if x['relation_type'] == 'INSIDE']))
     children = {}
     parent = {}
     num_children_subgraph = {}
-    for edge in edges:
+    for edge in graph['edges']:
         if edge['relation_type'] == 'INSIDE':
             if edge['to_id'] not in children:
                 children[edge['to_id']] = []
@@ -72,16 +75,14 @@ def graph2im(graph, special_nodes={}):
                 num_children_subgraph[edge['to_id']] += 1
 
     subgraphs_added = {}
-    
+
     curr_subgraphs = [x for (x,y) in num_children_subgraph.items() if y == 0]
     # pdb.set_trace()
+    #
     while len(curr_subgraphs) > 0:
         next_subgraphs = []
         for curr_subgraph_id in curr_subgraphs:
-            try:
-                name_graph = getclass(id2node[curr_subgraph_id])
-            except:
-                curr_subgraph_id
+            name_graph = getclass(id2node[curr_subgraph_id])
             cng = graphviz.Digraph(name='cluster_'+str(curr_subgraph_id))
             cng.attr(label=name_graph)
             cng.node(name=str(curr_subgraph_id), style='invis')
@@ -120,7 +121,6 @@ def graph2im(graph, special_nodes={}):
         'ON': 'blue',
         'CLOSE': 'purple',
         'CLOSE_CHAR': 'orange',
-        'FAKE_CLOSE': 'orange',
         'FACING': 'red',
         'BETWEEN': 'green'
 
@@ -131,25 +131,15 @@ def graph2im(graph, special_nodes={}):
         'CLOSE': 'invis',
         'FACING': 'invis',
         'BETWEEN': 'invis',
-        'FAKE_CLOSE': 'invis',
         'CLOSE_CHAR': ''
 
     }
-    
-    # If ther are no close edges, add close from char to objects in the room
-    close_edges = [x for x in edges if 'CLOSE' in x['relation_type']]
-    extra_edges = []
-    if len(close_edges) == 0:
-        id_char = [x['id'] for x in nodes if x['class_name'] == 'character'][0]
-        nodes_same_room = [x['id'] for x in nodes if x['id'] in parent.keys() and parent[x['id']] == parent[id_char] and id_char != x['id']]
-        for node_id in nodes_same_room:
-            extra_edges.append({'from_id': id_char, 'to_id': node_id, 'relation_type': 'FAKE_CLOSE'})
-
+    print('Edges...')
     max_num = 0.2
     id_char = [x for x,y in special_nodes.items() if y == 'agent']
     if len(id_char) > 0:
         id_char = id_char[0]
-    for edge in edges+extra_edges:
+    for edge in graph['edges']:
         rt = edge['relation_type']
         if rt != 'INSIDE' and edge['from_id'] not in ids_delete and edge['to_id'] not in ids_delete:
             if rt == 'CLOSE':
@@ -189,18 +179,18 @@ def belief2im(belief, special_nodes={}):
     """
 
     # graph = delete_redundant_edges_and_ids(graph)
-    graph = belief.sampled_graph
-    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door']
+    graph = belief.graph_init
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
     ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
 
-    nodes = [x for x in graph['nodes'] if x not in ids_delete]
-    edges = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+    graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
+    graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
 
-    id2node = {x['id']: x for x in nodes} 
+    id2node = {x['id']: x for x in graph['nodes']}
 
-    g = graphviz.Digraph(engine='fdp')
+    g = graphviz.Digraph(engine='dot')
 
-    for node in nodes:
+    for node in graph['nodes']:
         g.node(name=str(node['id']), label=getclass(node))
 
     colors = {
@@ -221,19 +211,13 @@ def belief2im(belief, special_nodes={}):
                 if to_id is not None:
                     if relation == 'INSIDE':
                         ids_used.append(from_id)
-                    if belief_val <= 0.:
-                        continue
-                    g.edge(str(from_id), str(to_id), color=colors[relation], 
-                           arrowtail=str(belief_val),
-                           penwidth=str(belief_val), weight=str(belief_val))
+                    g.edge(str(from_id), str(to_id), color=colors[relation], penwidth=str(belief_val))
 
     for id in belief.room_node.keys():
         #pdb.set_trace()
         for belief_id, belief_val in zip(*belief.room_node[id]):
             if id not in ids_used:
-                g.edge(str(id), str(belief_id), color=colors['INSIDE'],
-                           arrowtail=str(belief_val),
-                           penwidth=str(belief_val), weight=str(belief_val))
+                g.edge(str(id), str(belief_id), color=colors['INSIDE'], penwidth=str(belief_val))
     return g
 
 

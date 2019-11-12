@@ -241,8 +241,8 @@ def setup(path_name=None):
 
 def pretty_instr(instr):
     action, o1, o2 = instr
-    o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
-    o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+    o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1 is not None and o1[0] not in ['other', 'no_obj', 'stop'] else ''
+    o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2 is not None and o2[0] not in ['other', 'no_obj', 'stop'] else ''
     instr_str = '[{}] {} {}'.format(action, o1s, o2s)
     return instr_str
 
@@ -260,6 +260,10 @@ def pretty_print_program(program, other=None):
     else:
         program_joint2 = [None]*len(program_joint)
 
+    if len(program_joint) > len(program_joint2):
+        program_joint2 += [None]*(len(program_joint)-len(program_joint2))
+    else:
+        program_joint += [None]*(len(program_joint2)-len(program_joint))
 
     #if len(final_instr) > 0:
     #    program_joint = program_joint[:final_instr[0]]
@@ -267,7 +271,9 @@ def pretty_print_program(program, other=None):
     instructions = []
     instructions.append('{:70s} | {}'.format('PRED', 'GT'))
     for instr, instr2 in zip(program_joint, program_joint2):
-        instr_str = pretty_instr(instr)
+        instr_str = ''
+        if instr is not None:
+            instr_str = pretty_instr(instr)
 
         if instr2 is not None:
             instr_str2 = pretty_instr(instr2)
