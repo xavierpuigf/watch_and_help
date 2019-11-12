@@ -70,7 +70,9 @@ class SingleAgent():
         else:
             obj1_id_model = distr_object1.sample()
 
-        print(o1_logits.cpu())
+        # print(o1_logits[0,0,obj1_id_model])
+        # print(torch.log_softmax(o1_logits, -1).cpu()[0,0,obj1_id_model])
+        # print('---')
         prob_1d = distr_object1.log_prob(obj1_id_model)
         obj1_id = state[1][0,0,obj1_id_model].item()
 
@@ -182,7 +184,6 @@ class SingleAgent():
                       if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
         edge_found = len(edges_goal) > 0
         reward = 5 if goal_id in self.env.observable_object_ids_n[0] and edge_found and 'stop' in str_instruction else -1
-
         return resp, str_instruction, logits, reward
 
     def rollout(self, goal_str, pomdp):
@@ -197,6 +198,7 @@ class SingleAgent():
             instructions.append(instr)
             logits.append(log)
             rewards.append(r)
+
         return instructions, logits, rewards
 
 def dataset_agent():
@@ -349,7 +351,6 @@ def interactive_agent():
 
         instr = list(zip(*instruction))[0]
         str_instruction = utils.pretty_instr(instr)
-        pdb.set_trace()
         if str_instruction.strip() == '[stop]':
             print('Episode finished')
         else:
@@ -409,7 +410,6 @@ def train():
 
             for agent in agents:
                 instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
-                pdb.set_trace()
 
             # For now gamma = 0.9 --> REDUCE
             success = 1. if r[-1] > 0 else 0.
@@ -428,8 +428,8 @@ def train():
             pred_parsed = utils.parse_prog(instructions)
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple([gt_parsed], [pred_parsed])
             reward_tensor = torch.tensor(dr)[:, None].float().cuda()
-            std = reward_tensor.std() if len(dr) > 1 else 1.
-            reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
+            #std = reward_tensor.std() if len(dr) > 1 else 1.
+            #reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
 
             # print(reward_tensor)
             #pdb.set_trace()
@@ -446,11 +446,11 @@ def train():
                             'O2LCS': lcs_o2})
 
             if it_i % helper.args.print_freq == 0:
-                print(r)
-                print(dr)
-                print(problem['goal'])
+                # print(r)
+                # print(dr)
+                # print(problem['goal'])
                 print(utils.pretty_print_program(pred_parsed, other=gt_parsed))
-                print(pred_parsed)
+                # print(pred_parsed)
                 print('Epoch:{}. Iter {}/{}.  Losses: {}'
                       'LCS: {}'.format(
                     epoch, it_i, len(batched_indices),
@@ -529,8 +529,8 @@ def test(args, path_name, weights, epoch):
 
             lcs_action, lcs_o1, lcs_o2, lcs_triple = utils.computeLCS_multiple([gt_parsed], [pred_parsed])
             reward_tensor = torch.tensor(dr)[:, None].float().cuda()
-            std = reward_tensor.std() if len(dr) > 1 else 1.
-            reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
+            # std = reward_tensor.std() if len(dr) > 1 else 1.
+            # reward_tensor = (reward_tensor - reward_tensor.mean()) / (1e-9 + std)
 
             pg_loss = (-log_prob * reward_tensor).sum()
 
