@@ -64,7 +64,7 @@ def LCS(X, Y):
                 L[i][j] = max(L[i - 1][j], L[i][j - 1])
 
                 # L[m][n] contains the length of LCS of X[0..n-1] & Y[0..m-1]
-    return L[m][n]*1./max(m,n)
+    return L[m][n]*1./(max(m,n)+1.0e-5)
 
 
 # end of function lcs
@@ -158,6 +158,10 @@ class Helper:
         else:
             if self.dir_name is None:
                 param_name = '_'.join(['{}.{}'.format(x, y) for x, y in names_and_params])
+
+                if argvars['training_mode'] != 'bc':
+                    param_name += '/offp.{}_eps.{}_gamma.{}'.format(self.args.off_policy, self.args.eps_greedy, self.args.gamma)
+
                 fname = str(datetime.now()).replace(' ', '_').replace(':', '.')
                 self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
                 os.makedirs(self.dir_name, exist_ok=True)
@@ -183,9 +187,12 @@ class Helper:
     def log_text(self, split, text):
         with open('{}/log_{}.txt'.format(self.dir_name, split), 'a+') as f:
             f.writelines(text)
-    def log(self, epoch, metric, name, split=''):
+    def log(self, epoch, metric, name, split='', avg=True):
         for metric_name, meter in metric.metrics.items():
-            value = meter.avg
+            if avg:
+                value = meter.avg
+            else:
+                value = meter.val
             self.writer.add_scalar('{}/{}/{}'.format(name, metric_name, split), value, epoch)
 
 
@@ -216,6 +223,12 @@ def read_args():
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
     parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
+
+    # RL params
+    parser.add_argument('--eps_greedy', default=0., type=float)
+    parser.add_argument('--off_policy', action='store_true')
+    parser.add_argument('--gamma', type=float, default=1.)
+
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)

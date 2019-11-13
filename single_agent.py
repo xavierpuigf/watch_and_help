@@ -9,7 +9,8 @@ import json
 import envdataset
 import utils_viz
 import utils
-
+import random
+import numpy as np
 
 class SingleAgent():
     def __init__(self, env, goal, agent_id, dataset=None, policy=None):
@@ -18,6 +19,7 @@ class SingleAgent():
         self.agent_id = agent_id
         self.policy_net = policy
         self.dataset = dataset
+        self.clip_value = -1e9
 
 
         self.max_steps = 10
@@ -48,6 +50,7 @@ class SingleAgent():
     def get_observations(self):
         return self.env.get_observations()
 
+
     def get_top_instruction(self, dataset, state, action_logits, o1_logits, o2_logits):
         pred_action = torch.argmax(action_logits, -1)
         pred_o1 = torch.argmax(o1_logits, -1)
@@ -58,21 +61,29 @@ class SingleAgent():
                                                   [pred_action, pred_o1, pred_o2])
         return pred_instr[0]
 
-    def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits, pick_max=False):
+    def sample_instruction(self, dataset, state, action_logits, o1_logits, o2_logits, pick_max=False, offp_action=None, eps=0.):
+        be_greedy = np.random.uniform() > eps
+
         instruction = None
         object_ids = state[1]
         object_names = state[0]
 
-
         distr_object1 = distributions.categorical.Categorical(logits=o1_logits)
-        if pick_max:
-            obj1_id_model = torch.argmax(o1_logits, -1)
-        else:
-            obj1_id_model = distr_object1.sample()
+        if offp_action is not None:
+            object_id = offp_action[1][1] if offp_action[1] is not None else -1
+            obj1_id_model = torch.where(object_ids[0,0] == object_id)[0][None, :].cuda()
 
-        # print(o1_logits[0,0,obj1_id_model])
-        # print(torch.log_softmax(o1_logits, -1).cpu()[0,0,obj1_id_model])
-        # print('---')
+        else:
+            if pick_max:
+                obj1_id_model = torch.argmax(o1_logits, -1)
+            else:
+                if be_greedy:
+                    obj1_id_model = distr_object1.sample()
+                else:
+                    candidate_ids = torch.where(o1_logits > self.clip_value)[-1]
+                    obj1_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+                    # Uniform sampling
+
         prob_1d = distr_object1.log_prob(obj1_id_model)
         obj1_id = state[1][0,0,obj1_id_model].item()
 
@@ -94,12 +105,22 @@ class SingleAgent():
         mask = torch.zeros(action_logits[0,0].shape).cuda()
         mask[action_candidate_ids] = 1.
 
-        action_logits_masked = action_logits * mask + (-1e9) * (1-mask)
+        action_logits_masked = action_logits * mask + self.clip_value * (1-mask)
         distr_action1 = distributions.categorical.Categorical(logits=action_logits_masked)
-        if pick_max:
-            action_id_model = action_logits_masked.argmax(-1)
+
+        if offp_action:
+            action_name = offp_action[0]
+            action_id_model = torch.tensor([[dataset.action_dict.get_id(action_name)]]).cuda()
         else:
-            action_id_model = distr_action1.sample()
+            if pick_max:
+                action_id_model = action_logits_masked.argmax(-1)
+            else:
+                if be_greedy:
+                    action_id_model = distr_action1.sample()
+                else:
+                    candidate_ids = torch.where(action_logits_masked > self.clip_value)[-1]
+                    action_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+
         prob_action = distr_action1.log_prob(action_id_model)
 
         # Given action and object, get the last candidates
@@ -107,6 +128,8 @@ class SingleAgent():
             obj2_id_cands = torch.tensor([dataset.node_none[1]])
         else:
             action_selected = dataset.action_dict.get_el(action_id_model.item())
+            if action_selected.upper() == 'OTHER':
+                pdb.set_trace()
             triple_candidates = self.env.get_action_space(action=action_selected,
                                                           obj1=object1_node,
                                                           structured_actions=True)
@@ -115,21 +138,30 @@ class SingleAgent():
             if len(triple_candidates) == 0:
                 pdb.set_trace()
         try:
-            mask_o2 = (state[1] == obj2_id_cands).float().cuda()
+            
+            mask_o2 = (state[1] == obj2_id_cands[None, None]).float().cuda()
         except:
             import ipdb
             ipdb.set_trace()
-        o2_logits_masked = (o2_logits * mask_o2) + (1-mask_o2)*(-1e9)
+        o2_logits_masked = (o2_logits * mask_o2) + (1-mask_o2)*self.clip_value
         distr_object2 = distributions.categorical.Categorical(logits=o2_logits_masked)
 
         if pick_max:
             obj2_id_model = torch.argmax(o2_logits_masked, -1)
         else:
-            obj2_id_model = distr_object2.sample()
+            if be_greedy:
+                obj2_id_model = distr_object2.sample()
+            else:
+                candidate_ids = torch.where(o2_logits_masked > self.clip_value)[-1]
+                obj2_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+
         prob_2d = distr_object2.log_prob(obj2_id_model)
         #if instruction is None:
-        instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
-                                                   [action_id_model, obj1_id_model, obj2_id_model])
+        try:
+            instruction = utils.get_program_from_nodes(dataset, object_names, object_ids,
+                                                       [action_id_model, obj1_id_model, obj2_id_model])
+        except:
+            pdb.set_trace()
         instruction = instruction[0]
         return instruction, (prob_action, prob_1d, prob_2d)
 
@@ -151,10 +183,10 @@ class SingleAgent():
         output = self.policy_net(graph_data, goal_info, id_char)
         action_logits, o1_logits, o2_logits, _ = output
         mask_character = (graph_data[0] != id_char).float().cuda()
-        o1_logits = o1_logits * mask_character + (1 - mask_character) * (-1e9)
+        o1_logits = o1_logits * mask_character + (1 - mask_character) * self.clip_value
         return graph_data, action_logits, o1_logits, o2_logits
 
-    def one_step_rollout(self, goal_string, pomdp, remove_edges=False):
+    def one_step_rollout(self, goal_string, pomdp, remove_edges=False, offp_action=None, eps=0.):
         if pomdp:
             curr_state = self.get_observations()
             visible_ids = None
@@ -169,7 +201,7 @@ class SingleAgent():
         graph_data, action_logits, o1_logits, o2_logits = self.obtain_logits_from_observations(
             curr_state, visible_ids, goal_string)
         instruction, logits = self.sample_instruction(self.dataset, graph_data,
-                                                      action_logits, o1_logits, o2_logits)
+                                                      action_logits, o1_logits, o2_logits, offp_action=offp_action, eps=eps)
         instr = list(zip(*instruction))[0]
         str_instruction = utils.pretty_instr(instr)
         if 'stop' in str_instruction:
@@ -183,30 +215,46 @@ class SingleAgent():
         edges_goal = [x for x in self.env.vh_state.to_dict()['edges']
                       if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
         edge_found = len(edges_goal) > 0
-        reward = 5 if goal_id in self.env.observable_object_ids_n[0] and edge_found and 'stop' in str_instruction else -1
-        return resp, str_instruction, logits, reward
+        if 'stop' in str_instruction:
+            if goal_id in self.env.observable_object_ids_n[0] and edge_found:
+                reward = 1
+            else:
+                reward = 0
+        else:
+            if goal_id in self.env.observable_object_ids_n[0] and edge_found:
+                reward = 1
+            else:
+                reward = 0
+        return resp, str_instruction, logits, reward, (o1_logits, graph_data[1])
 
-    def rollout(self, goal_str, pomdp):
+    def rollout(self, goal_str, pomdp, actions_off_policy=None, eps=0.):
         max_instr = 0
         instr = ''
         instructions = []
         logits = []
         rewards = []
+        offp_actions = [None]*self.max_steps if actions_off_policy is None else list(zip(*actions_off_policy))
+        o1l_l = []
         while max_instr < self.max_steps and 'stop' not in instr:
-            _, instr, log, r = self.one_step_rollout(goal_str, pomdp, remove_edges=(max_instr==0))
+            _, instr, log, r, o1l = self.one_step_rollout(goal_str, pomdp,
+                                                     remove_edges=False,
+                                                     offp_action=offp_actions[max_instr], eps=eps)
             max_instr += 1
             instructions.append(instr)
             logits.append(log)
             rewards.append(r)
-
-        return instructions, logits, rewards
+            o1l_l.append(o1l)
+        return instructions, logits, rewards, o1l_l
 
 def dataset_agent():
     args = utils.read_args()
     if args.pomdp:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
+
     else:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
 
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
@@ -214,6 +262,7 @@ def dataset_agent():
     curr_env = gym.make('vh_graph-v0')
     args.max_steps = 1
     args.interactive = True
+    args.dataset_folder = 'dataset_toy4'
     helper = utils.Helper(args)
 
     dataset = envdataset.EnvDataset(args, split='test')
@@ -232,6 +281,7 @@ def dataset_agent():
         path_init_env = problem['graph_file']
         goal_str = problem['goal']
         print('Goal: {}'.format(goal_str))
+        print(path_init_env)
         goal_name = '(facing living_room[1] living_room[1])'
         curr_env.reset(path_init_env, {0: goal_name})
         curr_env.to_pomdp()
@@ -256,8 +306,8 @@ def dataset_agent():
                 curr_state = single_agent.env.vh_state.to_dict()
                 visible_ids = single_agent.env.observable_object_ids_n[0]
 
-            if cont == 0:
-                curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
+            #if cont == 0:
+            #    curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
             graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
                 curr_state, visible_ids, goal_str)
@@ -284,7 +334,10 @@ def dataset_agent():
         final_list.append((path_init_env, goal_id, curr_success))
         cont_episodes += 1
 
-        print(success, cont_episodes)
+        print(success, cont_episodes, cont, curr_success)
+        if cont == 4:
+            pdb.set_trace()
+        print('---')
     with open('output_{}.json'.format(args.pomdp), 'w+') as f:
         f.write(json.dumps(final_list))
 
@@ -363,6 +416,7 @@ def train():
     args.training_mode = 'pg'
     args.max_steps = 1
     args.batch_size = 1
+    args.dataset_folder = 'dataset_toy4'
 
     helper = utils.Helper(args)
     print('Creating dataset')
@@ -380,9 +434,12 @@ def train():
     policy_net = torch.nn.DataParallel(policy_net)
 
     if args.pomdp:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
+
     else:
-        weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
 
 
     if weights is not None:
@@ -391,11 +448,19 @@ def train():
         policy_net.load_state_dict(state_dict['model_params'])
 
 
-    metrics = utils.AvgMetrics(['reward', 'success', 'LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+    metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+    other_metrics = utils.AvgMetrics(['reward', 'success'], ':.2f')
     metrics_loss = utils.AvgMetrics(['PGLoss'], ':.3f')
-
+    parameters = utils.AvgMetrics(['epoch', 'eps'], ':.2f')
+    eps_value = args.eps_greedy
     for epoch in range(args.num_epochs):
-        import random
+        metrics.reset()
+        metrics_loss.reset()
+        other_metrics.reset()
+        parameters.reset()
+
+        eps_value = max(0, eps_value - 0.05)
+
         random.shuffle(shuffle_indices)
         batched_indices = [shuffle_indices[i*args.batch_size:min((i+1)*args.batch_size, len(shuffle_indices))] for i in range(num_iter)]
         for it_i, indices in enumerate(batched_indices):
@@ -409,13 +474,16 @@ def train():
                 agents.append(SingleAgent(curr_envs[it], goal_str, 0, dataset, policy_net))
 
             for agent in agents:
-                instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
+                actions_off_policy = None
+                if args.off_policy:
+                    actions_off_policy = utils.parse_prog(problem['program'])
+                instructions, logits, r, o1l = agent.rollout(agent.goal, args.pomdp, actions_off_policy, args.eps_greedy)
 
             # For now gamma = 0.9 --> REDUCE
             success = 1. if r[-1] > 0 else 0.
             log_prob = torch.cat([x[0]+x[1]+x[2] for x in logits])
             dr = []
-            gamma = 0.8
+            gamma = args.gamma
             for t in range(len(r)):
                 pw = 1.
                 Gt = 0.
@@ -435,36 +503,44 @@ def train():
             #pdb.set_trace()
             optimizer.zero_grad()
             pg_loss = (-log_prob*reward_tensor).sum()
+
             pg_loss.backward()
+
             optimizer.step()
+
             metrics_loss.update({'PGLoss': pg_loss.detach().cpu().numpy()})
-            metrics.update({'success': success,
-                            'reward': torch.tensor(r).float().mean(),
+            parameters.update({'epoch': epoch, 'eps': eps_value})
+            metrics.update({
                             'LCS': lcs_triple,
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
+            other_metrics.update({'success': success,
+                                   'reward': torch.tensor(r).float().mean()})
 
             if it_i % helper.args.print_freq == 0:
                 # print(r)
                 # print(dr)
-                # print(problem['goal'])
+
+                print(problem['goal'])
                 print(utils.pretty_print_program(pred_parsed, other=gt_parsed))
                 # print(pred_parsed)
-                print('Epoch:{}. Iter {}/{}.  Losses: {}'
-                      'LCS: {}'.format(
+                print('Epoch:{}. Iter {}/{}.  Losses: {}\n'
+                      'LCS: {}\nOther: {}'.format(
                     epoch, it_i, len(batched_indices),
                     str(metrics_loss),
-                    str(metrics)))
+                    str(metrics), str(other_metrics)))
 
                 if not helper.args.debug:
-                    helper.log(epoch, metrics, 'LCS', 'train')
-                    helper.log(epoch, metrics_loss, 'Losses', 'train')
+                    helper.log(epoch*(len(batched_indices))+it_i, metrics, 'LCS', 'train', avg=False)
+                    helper.log(epoch*(len(batched_indices))+it_i, other_metrics, 'other_metrics', 'train', avg=False)
+                    helper.log(epoch*(len(batched_indices))+it_i, metrics_loss, 'Losses', 'train', avg=False)
+                    helper.log(epoch * (len(batched_indices)) + it_i, parameters, 'parameters', 'train', avg=False)
 
 
-        #if (epoch + 1) % helper.args.save_freq == 0:
-            #weights_path = helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
-            #test(helper.args, helper.dir_name, weights_path, epoch)
+        # if (epoch + 1) % helper.args.save_freq == 0:
+        #     weights_path = helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+        #     test(helper.args, helper.dir_name, weights_path, epoch)
 
 
 def test(args, path_name, weights, epoch):
@@ -491,7 +567,8 @@ def test(args, path_name, weights, epoch):
         helper.log_text('test', 'Testing {}\n'.format(epoch))
 
     with torch.no_grad():
-        metrics = utils.AvgMetrics(['reward', 'success', 'LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+        metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
+        other_metrics = utils.AvgMetrics(['reward', 'success'], ':.2f')
         metrics_loss = utils.AvgMetrics(['PGLoss'], ':.3f')
 
         batched_indices = [shuffle_indices[i * batch_size:min((i + 1) * batch_size, len(shuffle_indices))] for
@@ -535,15 +612,28 @@ def test(args, path_name, weights, epoch):
             pg_loss = (-log_prob * reward_tensor).sum()
 
             metrics_loss.update({'PGLoss': pg_loss.detach().cpu().numpy()})
-            metrics.update({'success': success,
-                            'reward': torch.tensor(dr).mean(),
+            metrics.update({
                             'LCS': lcs_triple,
                             'ActionLCS': lcs_action,
                             'O1LCS': lcs_o1,
                             'O2LCS': lcs_o2})
+            other_metrics.update({'success': success,
+                                  'reward': torch.tensor(r).float().mean()})
+
+            if it_i % helper.args.print_freq == 0:
+                if path_name is not None:
+                    helper.log_text('test', 'Done epoch')
+                    helper.log(epoch*(len(batched_indices))+it_i, metrics, 'LCS', 'test', avg=False)
+                    helper.log(epoch*(len(batched_indices))+it_i, metrics_loss, 'Losses', 'test', avg=False)
+                    helper.log(epoch*(len(batched_indices))+it_i, other_metrics, 'other_metrics', 'test', avg=False)
+                    #helper.log(epoch * (len(batched_indices)) + it_i, parameters, 'parameters', 'test', avg=False)
 
 
 if __name__ == '__main__':
+    torch.manual_seed(0)
+    torch.cuda.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
     train()
     #curr_env = gym.make('vh_graph-v0')
     #dataset_agent()

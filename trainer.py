@@ -80,8 +80,6 @@ def test(args, path_name, weights, epoch):
         helper.log_text('test', 'Done epoch')
         helper.log(epoch, metrics, 'LCS', 'test')
         helper.log(epoch, metrics_loss, 'Losses', 'test')
-        helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}'
-              'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
 
     else:
         print('Epoch:{}. Iter {}.  Losses: {}'
