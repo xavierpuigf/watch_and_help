@@ -3,6 +3,7 @@ from models.single_policy import SinglePolicy
 import torch
 from torch import distributions
 import pdb
+from tqdm import tqdm
 import vh_graph
 import gym
 import json
@@ -100,7 +101,7 @@ class SingleAgent():
             # Given this object, get the action candidates
             action_candidates_tripl = self.env.get_action_space(obj1=object1_node, structured_actions=True)
 
-            action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl]
+            action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl if x[0].lower() != 'grab']
 
         mask = torch.zeros(action_logits[0,0].shape).cuda()
         mask[action_candidate_ids] = 1.
@@ -138,7 +139,7 @@ class SingleAgent():
             if len(triple_candidates) == 0:
                 pdb.set_trace()
         try:
-            
+
             mask_o2 = (state[1] == obj2_id_cands[None, None]).float().cuda()
         except:
             import ipdb
@@ -204,30 +205,40 @@ class SingleAgent():
                                                       action_logits, o1_logits, o2_logits, offp_action=offp_action, eps=eps)
         instr = list(zip(*instruction))[0]
         str_instruction = utils.pretty_instr(instr)
+
         if 'stop' in str_instruction:
             resp = None
         else:
-            resp = self.env.step({0: str_instruction})
-
+            try:
+                resp = self.env.step({0: str_instruction})
+            except:
+                import ipdb
+                ipdb.set_trace()
         # Measure reward
         # TODO: this should be done in the env
-        goal_id = int(goal_string.split('_')[-1])
-        edges_goal = [x for x in self.env.vh_state.to_dict()['edges']
-                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
-        edge_found = len(edges_goal) > 0
+        goal_achieved = self.goal_achieved(goal_string)
         if 'stop' in str_instruction:
-            if goal_id in self.env.observable_object_ids_n[0] and edge_found:
+            if goal_achieved:
                 reward = 1
             else:
                 reward = 0
         else:
-            if goal_id in self.env.observable_object_ids_n[0] and edge_found:
+            if goal_achieved:
                 reward = 1
             else:
                 reward = 0
         return resp, str_instruction, logits, reward, (o1_logits, graph_data[1])
 
-    def rollout(self, goal_str, pomdp, actions_off_policy=None, eps=0.):
+    def goal_achieved(self, goal_string):
+        goal_id = int(goal_string.split('_')[-1])
+        edges_goal = [x for x in self.env.vh_state.to_dict()['edges']
+                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
+        edge_found = len(edges_goal) > 0
+        goal_id in self.env.observable_object_ids_n[0] and edge_found
+        return goal_id in self.env.observable_object_ids_n[0] and edge_found
+
+
+    def rollout(self, goal_str, pomdp, actions_off_policy=None, eps=0., terminate_at_goal=False):
         max_instr = 0
         instr = ''
         instructions = []
@@ -235,10 +246,12 @@ class SingleAgent():
         rewards = []
         offp_actions = [None]*self.max_steps if actions_off_policy is None else list(zip(*actions_off_policy))
         o1l_l = []
-        while max_instr < self.max_steps and 'stop' not in instr:
+        terminate = False
+        while max_instr < self.max_steps and not terminate:
             _, instr, log, r, o1l = self.one_step_rollout(goal_str, pomdp,
                                                      remove_edges=False,
                                                      offp_action=offp_actions[max_instr], eps=eps)
+            terminate = 'stop' in instr or (terminate_at_goal and r > 0.)
             max_instr += 1
             instructions.append(instr)
             logits.append(log)
@@ -248,13 +261,16 @@ class SingleAgent():
 
 def dataset_agent():
     args = utils.read_args()
+    success_per_length = {0: [0,0], 1: [0,0], 2: [0,0], 3: [0,0], 4: [0,0], 5: [0,0], 6: [0,0]}
     if args.pomdp:
         #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
-
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-13_19.24.37.715547/chkpt/chkpt_149.pt'
     else:
         #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
 
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
@@ -275,73 +291,84 @@ def dataset_agent():
         state_dict = torch.load(weights)
         policy_net.load_state_dict(state_dict['model_params'])
 
+    print('loaded')
     final_list = []
-    success, cont_episodes = 0, 0
-    for problem in dataset.problems_dataset:
-        path_init_env = problem['graph_file']
-        goal_str = problem['goal']
-        print('Goal: {}'.format(goal_str))
-        print(path_init_env)
-        goal_name = '(facing living_room[1] living_room[1])'
-        curr_env.reset(path_init_env, {0: goal_name})
-        curr_env.to_pomdp()
+    success, cont_episodes, avg_len = 0, 0, 0
+    with torch.no_grad():
+        for problem in tqdm(dataset.problems_dataset):
+            path_init_env = problem['graph_file']
+            goal_str = problem['goal']
+            print('Goal: {}'.format(goal_str))
+            print(path_init_env)
+            goal_name = '(facing living_room[1] living_room[1])'
+            curr_env.reset(path_init_env, {0: goal_name})
+            curr_env.to_pomdp()
 
 
-        single_agent = SingleAgent(curr_env, goal_name, 0, dataset, policy_net)
+            single_agent = SingleAgent(curr_env, goal_name, 0, dataset, policy_net)
 
 
-        gt_state = single_agent.env.vh_state.to_dict()
-        node_id_char = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
-        # All the nodes
-        nodes, _, ids_used = dataset.process_graph(gt_state)
-        class_names, object_ids, _, mask_nodes, _ = nodes
+            gt_state = single_agent.env.vh_state.to_dict()
+            node_id_char = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
+            # All the nodes
+            nodes, _, ids_used = dataset.process_graph(gt_state)
+            class_names, object_ids, _, mask_nodes, _ = nodes
 
-        finished = False
-        cont = 0
-        while cont < 10 and not finished:
-            if args.pomdp:
-                curr_state = single_agent.get_observations()
-                visible_ids = None
-            else:
-                curr_state = single_agent.env.vh_state.to_dict()
-                visible_ids = single_agent.env.observable_object_ids_n[0]
+            finished = False
+            cont = 0
+            curr_success = False
+            if single_agent.goal_achieved(goal_str):
+                continue
 
-            #if cont == 0:
-            #    curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
+            while cont < 10 and not finished:
+                if args.pomdp:
+                    curr_state = single_agent.get_observations()
+                    visible_ids = None
+                else:
+                    curr_state = single_agent.env.vh_state.to_dict()
+                    visible_ids = single_agent.env.observable_object_ids_n[0]
 
-            graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
-                curr_state, visible_ids, goal_str)
+                #if cont == 0:
+                #    curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
-            instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits, pick_max=True)
-            instr = list(zip(*instruction))[0]
-            str_instruction = utils.pretty_instr(instr)
-            #print(str_instruction)
-            if str_instruction.strip() == '[stop]':
-                finished = True
-            else:
-                single_agent.env.step({0: str_instruction})
-            cont += 1
+                graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
+                    curr_state, visible_ids, goal_str)
 
-        goal_id = int(goal_str.split('_')[-1])
-        edges_goal = [x for x in single_agent.env.vh_state.to_dict()['edges']
-                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == node_id_char]
-        edge_found = len(edges_goal) > 0
-        curr_success = False
-        if goal_id in single_agent.env.observable_object_ids_n[0] and edge_found:
-            success += 1
-            curr_success = True
+                instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits, pick_max=True)
+                instr = list(zip(*instruction))[0]
+                str_instruction = utils.pretty_instr(instr)
+                #print(str_instruction)
+                goal_achieved = single_agent.goal_achieved(goal_str)
+                if goal_achieved:
+                    success += 1
+                    curr_success = True
+                    finished = True
 
-        final_list.append((path_init_env, goal_id, curr_success))
-        cont_episodes += 1
+                else:
+                    if str_instruction.strip() == '[stop]':
+                        finished = True
+                    else:
+                        single_agent.env.step({0: str_instruction})
+                    cont += 1
 
-        print(success, cont_episodes, cont, curr_success)
-        if cont == 4:
-            pdb.set_trace()
-        print('---')
-    with open('output_{}.json'.format(args.pomdp), 'w+') as f:
-        f.write(json.dumps(final_list))
+            goal_id = int(goal_str.split('_')[-1])
 
 
+            final_list.append((path_init_env, goal_id, curr_success))
+            cont_episodes += 1
+            avg_len += cont
+
+            c = success_per_length[len(problem['program'])]
+            increment = 1 if curr_success else 0
+            success_per_length[len(problem['program'])] = [c[0] + increment, c[1]+1]
+            print(success, cont_episodes, cont, curr_success, len(problem['program']))
+            print('---')
+    # with open('output_{}.json'.format(args.pomdp), 'w+') as f:
+    #     f.write(json.dumps(final_list))
+    print(success_per_length)
+    # 363 fomdp vs 296 pomdp
+    # FOMDP: {0: [0, 0], 1: [22, 0], 2: [168, 0], 3: [124, 0], 4: [13, 0], 5: [0, 0], 6: [0, 0]}  327 466
+    # POMDP: {0: [0, 0], 1: [24, 0], 2: [153, 0], 3: [176, 0], 4: [12, 0], 5: [0, 0], 6: [0, 0]}  365 466
 # def policy_gradient():
 
 def interactive_agent():
@@ -430,23 +457,23 @@ def train():
     # Set up the policy
     policy_net = SinglePolicy(dataset)
     policy_net.cuda()
-    optimizer = torch.optim.Adam(policy_net.parameters())
+    optimizer = torch.optim.Adam(policy_net.parameters(), lr=args.lr)
     policy_net = torch.nn.DataParallel(policy_net)
 
     if args.pomdp:
         #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
-
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-13_19.24.37.715547/chkpt/chkpt_149.pt'
     else:
         #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
-
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
+        # weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
 
     if weights is not None:
         print('Loading weights')
         state_dict = torch.load(weights)
         policy_net.load_state_dict(state_dict['model_params'])
-
 
     metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
     other_metrics = utils.AvgMetrics(['reward', 'success'], ':.2f')
@@ -459,7 +486,7 @@ def train():
         other_metrics.reset()
         parameters.reset()
 
-        eps_value = max(0, eps_value - 0.05)
+        eps_value = max(0, eps_value - 0.01)
 
         random.shuffle(shuffle_indices)
         batched_indices = [shuffle_indices[i*args.batch_size:min((i+1)*args.batch_size, len(shuffle_indices))] for i in range(num_iter)]
@@ -469,16 +496,20 @@ def train():
                 problem = dataset.problems_dataset[index_problem]
                 path_init_env = problem['graph_file']
                 goal_str = problem['goal']
+                if args.envstop and len(problem['program']) == 1:
+                    # means that the program stops here, nothing to do
+                    continue
                 curr_envs[it].reset(path_init_env, {0:'(facing living_room[1] living_room[1])'})
                 curr_envs[it].to_pomdp()
                 agents.append(SingleAgent(curr_envs[it], goal_str, 0, dataset, policy_net))
-
+            if len(agents) == 0:
+                continue
             for agent in agents:
                 actions_off_policy = None
                 if args.off_policy:
                     actions_off_policy = utils.parse_prog(problem['program'])
-                instructions, logits, r, o1l = agent.rollout(agent.goal, args.pomdp, actions_off_policy, args.eps_greedy)
-
+                instructions, logits, r, o1l = agent.rollout(agent.goal, args.pomdp, actions_off_policy, args.eps_greedy, args.envstop)
+                #print(logits)
             # For now gamma = 0.9 --> REDUCE
             success = 1. if r[-1] > 0 else 0.
             log_prob = torch.cat([x[0]+x[1]+x[2] for x in logits])
@@ -538,9 +569,9 @@ def train():
                     helper.log(epoch * (len(batched_indices)) + it_i, parameters, 'parameters', 'train', avg=False)
 
 
-        # if (epoch + 1) % helper.args.save_freq == 0:
-        #     weights_path = helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
-        #     test(helper.args, helper.dir_name, weights_path, epoch)
+        if (epoch + 1) % helper.args.save_freq == 0:
+            weights_path = helper.save(epoch, 0., policy_net.state_dict(), optimizer.state_dict())
+            test(helper.args, helper.dir_name, weights_path, epoch)
 
 
 def test(args, path_name, weights, epoch):
@@ -580,18 +611,28 @@ def test(args, path_name, weights, epoch):
                 problem = dataset_test.problems_dataset[index_problem]
                 path_init_env = problem['graph_file']
                 goal_str = problem['goal']
+
+                if args.envstop and len(problem['program']) == 1:
+                    # means that the program stops here, nothing to do
+                    continue
                 curr_envs[it].reset(path_init_env, {0: '(facing living_room[1] living_room[1])'})
                 curr_envs[it].to_pomdp()
                 agents.append(SingleAgent(curr_envs[it], goal_str, 0, dataset_test, policy_net))
 
+            if len(agents) == 0:
+                continue
+
             for agent in agents:
-                instructions, logits, r = agent.rollout(agent.goal, args.pomdp)
+                actions_off_policy = None
+                if args.off_policy:
+                    actions_off_policy = utils.parse_prog(problem['program'])
+                instructions, logits, r, o1l = agent.rollout(agent.goal, args.pomdp, actions_off_policy, 0., args.envstop)
 
 
             success = 1. if r[-1] > 0 else 0.
             log_prob = torch.cat([x[0] + x[1] + x[2] for x in logits])
             dr = []
-            gamma = 0.8
+            gamma = args.gamma
             for t in range(len(r)):
                 pw = 1.
                 Gt = 0.
@@ -634,7 +675,7 @@ if __name__ == '__main__':
     torch.cuda.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    train()
+    # train()
     #curr_env = gym.make('vh_graph-v0')
-    #dataset_agent()
+    dataset_agent()
     #interactive_agent()

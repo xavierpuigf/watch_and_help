@@ -223,12 +223,14 @@ def read_args():
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
     parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
+    parser.add_argument('--lr', default=1.e-3, type=float)
+
 
     # RL params
     parser.add_argument('--eps_greedy', default=0., type=float)
     parser.add_argument('--off_policy', action='store_true')
     parser.add_argument('--gamma', type=float, default=1.)
-
+    parser.add_argument('--envstop', action='store_true')
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
