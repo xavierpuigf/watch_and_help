@@ -122,24 +122,36 @@ def graph2im(graph, special_nodes={}):
         'CLOSE': 'purple',
         'CLOSE_CHAR': 'orange',
         'FACING': 'red',
-        'BETWEEN': 'green'
+        'BETWEEN': 'green',
+        'CLOSEg': 'blue'
 
     }
     style = {
         'INSIDE': '',
         'ON': '',
         'CLOSE': 'invis',
+        'CLOSEg': 'invis',
         'FACING': 'invis',
         'BETWEEN': 'invis',
         'CLOSE_CHAR': ''
-
     }
     print('Edges...')
     max_num = 0.2
     id_char = [x for x,y in special_nodes.items() if y == 'agent']
     if len(id_char) > 0:
         id_char = id_char[0]
-    for edge in graph['edges']:
+
+    # Add close edges
+    virtual_edges = []
+    rooms = [x['id'] for x in graph['nodes'] if x['category'] == 'Rooms']
+    for room_id in rooms:
+        children_nodes = children[room_id]
+        from_node = random.choices(children_nodes, k=6)
+        to_node = random.choices(children_nodes, k=6)
+        for from_id, to_id in zip(from_node, to_node):
+            virtual_edges.append({'from_id': from_id, 'to_id': to_id, 'relation_type': 'CLOSEg'})
+
+    for edge in graph['edges']+virtual_edges:
         rt = edge['relation_type']
         if rt != 'INSIDE' and edge['from_id'] not in ids_delete and edge['to_id'] not in ids_delete:
             if rt == 'CLOSE':
@@ -188,7 +200,7 @@ def belief2im(belief, special_nodes={}):
 
     id2node = {x['id']: x for x in graph['nodes']}
 
-    g = graphviz.Digraph(engine='dot')
+    g = graphviz.Digraph(engine='fdp')
 
     for node in graph['nodes']:
         g.node(name=str(node['id']), label=getclass(node))

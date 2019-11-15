@@ -219,14 +219,14 @@ class SingleAgent():
         goal_achieved = self.goal_achieved(goal_string)
         if 'stop' in str_instruction:
             if goal_achieved:
-                reward = 1
+                reward = 5
             else:
-                reward = 0
+                reward = -5
         else:
             if goal_achieved:
-                reward = 1
+                reward = 5
             else:
-                reward = 0
+                reward = -1
         return resp, str_instruction, logits, reward, (o1_logits, graph_data[1])
 
     def goal_achieved(self, goal_string):
@@ -470,6 +470,7 @@ def train():
         # weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
         weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
 
+
     if weights is not None:
         print('Loading weights')
         state_dict = torch.load(weights)
@@ -675,7 +676,7 @@ if __name__ == '__main__':
     torch.cuda.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    # train()
+    train()
     #curr_env = gym.make('vh_graph-v0')
-    dataset_agent()
+    #dataset_agent()
     #interactive_agent()
