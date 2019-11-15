@@ -135,7 +135,7 @@ def graph2im(graph, special_nodes={}):
         'BETWEEN': 'invis',
         'CLOSE_CHAR': ''
     }
-    print('Edges...')
+    print('Edges...') #
     max_num = 0.2
     id_char = [x for x,y in special_nodes.items() if y == 'agent']
     if len(id_char) > 0:
@@ -145,7 +145,9 @@ def graph2im(graph, special_nodes={}):
     virtual_edges = []
     rooms = [x['id'] for x in graph['nodes'] if x['category'] == 'Rooms']
     for room_id in rooms:
-        children_nodes = children[room_id]
+        if room_id not in children:
+            continue
+        children_nodes = children[room_id] 
         from_node = random.choices(children_nodes, k=6)
         to_node = random.choices(children_nodes, k=6)
         for from_id, to_id in zip(from_node, to_node):

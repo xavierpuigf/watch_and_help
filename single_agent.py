@@ -219,14 +219,14 @@ class SingleAgent():
         goal_achieved = self.goal_achieved(goal_string)
         if 'stop' in str_instruction:
             if goal_achieved:
-                reward = 5
+                reward = 1
             else:
                 reward = -5
         else:
             if goal_achieved:
-                reward = 5
+                reward = 1
             else:
-                reward = -1
+                reward = 0
         return resp, str_instruction, logits, reward, (o1_logits, graph_data[1])
 
     def goal_achieved(self, goal_string):
