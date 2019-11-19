@@ -5,6 +5,8 @@ from torch import distributions
 import pdb
 from tqdm import tqdm
 import vh_graph
+from vh_graph.envs import belief
+from vh_graph.envs.vh_env import VhGraphEnv
 import gym
 import json
 import envdataset
@@ -47,6 +49,24 @@ class SingleAgent():
             self.class_names = class_names
             self.object_ids = object_ids
             self.mask_nodes = mask_nodes
+            self.belief = belief.Belief(gt_state)
+
+        self.previous_belief_graph = None
+        self.belief_state = None
+        self.belief_sim = VhGraphEnv()
+        self.belief_sim.pomdp = True
+
+    def sample_belief(self, obs_graph):
+        self.belief.update_from_gt_graph(obs_graph)
+        if self.previous_belief_graph is None:
+            self.belief.reset_belief()
+            new_graph = self.belief.sample_from_belief()
+            new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+            self.previous_belief_graph = new_graph
+        else:
+            new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+            self.previous_belief_graph = new_graph
+        self.belief_sim.reset_graph(self.previous_belief_graph)
 
     def get_observations(self):
         return self.env.get_observations()
@@ -187,18 +207,23 @@ class SingleAgent():
         o1_logits = o1_logits * mask_character + (1 - mask_character) * self.clip_value
         return graph_data, action_logits, o1_logits, o2_logits
 
-    def one_step_rollout(self, goal_string, pomdp, remove_edges=False, offp_action=None, eps=0.):
-        if pomdp:
-            curr_state = self.get_observations()
-            visible_ids = None
+    def one_step_rollout(self, goal_string, pomdp, remove_edges=False, offp_action=None, use_belief=False, eps=0.):
+        if use_belief:
+            observations = self.get_observations()
+            self.sample_belief(observations)
+            curr_state = self.belief_sim.vh_state.to_dict()
+            visible_ids = self.belief_sim.observable_object_ids_n[0]
         else:
-            curr_state = self.env.vh_state.to_dict()
-            visible_ids = self.env.observable_object_ids_n[0]
+            if pomdp:
+                curr_state = self.get_observations()
+                visible_ids = None
+            else:
+                curr_state = self.env.vh_state.to_dict()
+                visible_ids = self.env.observable_object_ids_n[0]
 
         if remove_edges:
             curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
-        # pdb.set_trace()
         graph_data, action_logits, o1_logits, o2_logits = self.obtain_logits_from_observations(
             curr_state, visible_ids, goal_string)
         instruction, logits = self.sample_instruction(self.dataset, graph_data,
@@ -209,11 +234,10 @@ class SingleAgent():
         if 'stop' in str_instruction:
             resp = None
         else:
-            try:
-                resp = self.env.step({0: str_instruction})
-            except:
-                import ipdb
-                ipdb.set_trace()
+            if use_belief:
+                self.belief_sim.step({0: str_instruction})
+                self.belief.sampled_graph = self.belief_sim.vh_state.to_dict()
+            resp = self.env.step({0: str_instruction})
         # Measure reward
         # TODO: this should be done in the env
         goal_achieved = self.goal_achieved(goal_string)
@@ -227,6 +251,9 @@ class SingleAgent():
                 reward = 1
             else:
                 reward = 0
+        
+
+
         return resp, str_instruction, logits, reward, (o1_logits, graph_data[1])
 
     def goal_achieved(self, goal_string):

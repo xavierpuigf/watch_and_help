@@ -147,7 +147,7 @@ def graph2im(graph, special_nodes={}):
     for room_id in rooms:
         if room_id not in children:
             continue
-        children_nodes = children[room_id] 
+        children_nodes = children[room_id]
         from_node = random.choices(children_nodes, k=6)
         to_node = random.choices(children_nodes, k=6)
         for from_id, to_id in zip(from_node, to_node):
