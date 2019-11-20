@@ -16,19 +16,20 @@ import random
 import numpy as np
 
 class SingleAgent():
-    def __init__(self, env, goal, agent_id, dataset=None, policy=None):
+    def __init__(self, env, goal, agent_id, dataset=None, policy=None, use_belief=False):
         self.env = env
         self.goal = goal
         self.agent_id = agent_id
         self.policy_net = policy
         self.dataset = dataset
         self.clip_value = -1e9
-
+        self.use_belief = use_belief
 
         self.max_steps = 10
         #if policy is not None:
         #    self.activation_info = policy.activation_info()
-        self.beliefs = None
+        if self.use_belief:
+            self.beliefs = None
         self.finished = False
 
         self.agent_info = {
@@ -49,12 +50,15 @@ class SingleAgent():
             self.class_names = class_names
             self.object_ids = object_ids
             self.mask_nodes = mask_nodes
-            self.belief = belief.Belief(gt_state)
 
-        self.previous_belief_graph = None
-        self.belief_state = None
-        self.belief_sim = VhGraphEnv()
-        self.belief_sim.pomdp = True
+            if self.use_belief:
+                self.belief = belief.Belief(gt_state)
+
+        if self.use_belief:
+            self.previous_belief_graph = None
+            self.belief_state = None
+            self.belief_sim = VhGraphEnv()
+            self.belief_sim.pomdp = True
 
     def sample_belief(self, obs_graph):
         self.belief.update_from_gt_graph(obs_graph)
@@ -245,7 +249,7 @@ class SingleAgent():
             if goal_achieved:
                 reward = 1
             else:
-                reward = -5
+                reward = 0
         else:
             if goal_achieved:
                 reward = 1
@@ -258,11 +262,34 @@ class SingleAgent():
 
     def goal_achieved(self, goal_string):
         goal_id = int(goal_string.split('_')[-1])
-        edges_goal = [x for x in self.env.vh_state.to_dict()['edges']
-                      if x['relation_type'] == 'CLOSE' and x['from_id'] == goal_id and x['to_id'] == self.node_id_char]
-        edge_found = len(edges_goal) > 0
-        goal_id in self.env.observable_object_ids_n[0] and edge_found
-        return goal_id in self.env.observable_object_ids_n[0] and edge_found
+
+        # Similar objects, we will consider a success all objects of the same class and in the same location
+        curr_graph = self.env.vh_state.to_dict()
+        node_interest = [x for x in curr_graph['nodes'] if x['id'] == goal_id][0]
+        edges_interest = [(edge['to_id'], edge['relation_type']) for edge in curr_graph['edges'] if edge['from_id'] == node_interest['id']]
+        edges_interest += [(edge['from_id'], edge['relation_type']) for edge in curr_graph['edges'] if edge['to_id'] == node_interest['id']]
+
+        edges_interest = set(edges_interest)
+
+        nodes_with_class_name = [x['id'] for x in curr_graph['nodes'] if x['class_name'] == node_interest['class_name'] and x['id'] != node_interest['id']]
+        nodes_same_specs = [node_interest['id']]
+        for node_other in nodes_with_class_name:
+            edges_other = [(edge['from_id'], edge['relation_type']) for edge in curr_graph['edges'] if
+                            edge['to_id'] == node_other]
+            edges_other += [(edge['to_id'], edge['relation_type']) for edge in curr_graph['edges'] if
+                           edge['from_id'] == node_other]
+            edges_other = set(edges_other)
+            if edges_other == edges_interest:
+                nodes_same_specs.append(node_other)
+
+
+        for node_goal in nodes_same_specs:
+            edges_goal = [x for x in curr_graph['edges']
+                          if x['relation_type'] == 'CLOSE' and x['from_id'] == node_goal and x['to_id'] == self.node_id_char]
+            edge_found = len(edges_goal) > 0
+            if node_goal in self.env.observable_object_ids_n[0] and edge_found:
+                return True
+        return False
 
 
     def rollout(self, goal_str, pomdp, actions_off_policy=None, eps=0., terminate_at_goal=False):
@@ -301,6 +328,10 @@ def dataset_agent():
 
     # 'logdir/pomdp.True_graphsteps.3/2019-10-30_17.35.51.435717/chkpt/chkpt_61.pt'
 
+    time_agent = utils.AvgMetrics(['time_reset', 'time_get_graph', 'time_model',
+                                   'time_observations', 'time_sample', 'time_goal', 'time_step',
+                                   'time_agent_creation', 'time_total'], ':.5f')
+    print('Loaded')
     # Set up the policy
     curr_env = gym.make('vh_graph-v0')
     args.max_steps = 1
@@ -315,14 +346,17 @@ def dataset_agent():
 
     if weights is not None:
         print('Loading weights')
+
         state_dict = torch.load(weights)
         policy_net.load_state_dict(state_dict['model_params'])
 
+    import time
     print('loaded')
     final_list = []
     success, cont_episodes, avg_len = 0, 0, 0
     with torch.no_grad():
         for problem in tqdm(dataset.problems_dataset):
+            time_init = time.time()
             path_init_env = problem['graph_file']
             goal_str = problem['goal']
             print('Goal: {}'.format(goal_str))
@@ -330,24 +364,31 @@ def dataset_agent():
             goal_name = '(facing living_room[1] living_room[1])'
             curr_env.reset(path_init_env, {0: goal_name})
             curr_env.to_pomdp()
-
+            time_reset = time.time()
 
             single_agent = SingleAgent(curr_env, goal_name, 0, dataset, policy_net)
 
-
+            time_agent_creation = time.time()
             gt_state = single_agent.env.vh_state.to_dict()
             node_id_char = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
             # All the nodes
             nodes, _, ids_used = dataset.process_graph(gt_state)
             class_names, object_ids, _, mask_nodes, _ = nodes
 
+            time_get_graph = time.time()
             finished = False
             cont = 0
             curr_success = False
             if single_agent.goal_achieved(goal_str):
                 continue
 
+            time_goal = 0.
+            time_sample = 0.
+            time_obs = 0.
+            time_model = 0.
+            time_step = 0.
             while cont < 10 and not finished:
+                time1 = time.time()
                 if args.pomdp:
                     curr_state = single_agent.get_observations()
                     visible_ids = None
@@ -355,17 +396,22 @@ def dataset_agent():
                     curr_state = single_agent.env.vh_state.to_dict()
                     visible_ids = single_agent.env.observable_object_ids_n[0]
 
+                time_observations = time.time()
                 #if cont == 0:
                 #    curr_state['edges'] = [x for x in curr_state['edges'] if x['relation_type'] != 'CLOSE']
 
                 graph_data, action_logits, o1_logits, o2_logits = single_agent.obtain_logits_from_observations(
                     curr_state, visible_ids, goal_str)
 
+                time_mod = time.time()
                 instruction, _ = single_agent.sample_instruction(dataset, graph_data, action_logits, o1_logits, o2_logits, pick_max=True)
                 instr = list(zip(*instruction))[0]
                 str_instruction = utils.pretty_instr(instr)
                 #print(str_instruction)
+
+                time_sample_instruction = time.time()
                 goal_achieved = single_agent.goal_achieved(goal_str)
+                time_go = time.time()
                 if goal_achieved:
                     success += 1
                     curr_success = True
@@ -377,7 +423,24 @@ def dataset_agent():
                     else:
                         single_agent.env.step({0: str_instruction})
                     cont += 1
+                time_final = time.time()
 
+                time_step += time_final - time_go
+                time_goal += time_go - time_sample_instruction
+                time_sample += time_sample_instruction - time_mod
+                time_obs += time_observations - time1
+                time_model += time_mod - time_observations
+            time_end = time.time() - time_init
+            time_agent.update({'time_reset': time_reset - time_init,
+                               'time_agent_creation': time_agent_creation - time_reset,
+                               'time_get_graph': time_get_graph - time_agent_creation,
+                               'time_model': time_model,
+                               'time_observations': time_obs,
+                               'time_sample': time_sample,
+                               'time_goal': time_goal,
+                               'time_step': time_step,
+                               'time_total': time_end})
+            print(time_agent)
             goal_id = int(goal_str.split('_')[-1])
 
 
@@ -468,8 +531,13 @@ def interactive_agent():
 def train():
     args = utils.read_args()
     args.training_mode = 'pg'
+    args.num_epochs = 250
     args.max_steps = 1
     args.batch_size = 1
+    args.envstop = True
+    args.eps_greedy = 0.2
+    args.gamma = 0.7
+    args.lr = 1e-4
     args.dataset_folder = 'dataset_toy4'
 
     helper = utils.Helper(args)
@@ -486,21 +554,28 @@ def train():
     policy_net.cuda()
     optimizer = torch.optim.Adam(policy_net.parameters(), lr=args.lr)
     policy_net = torch.nn.DataParallel(policy_net)
-
+    weights = None
     if args.pomdp:
-        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-07_12.40.50.558146/chkpt/chkpt_49.pt'
         #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-12_21.33.22.040142/chkpt/chkpt_149.pt'
         weights = 'logdir/dataset_folder.dataset_toy4_pomdp.True_graphsteps.3_training_mode.bc/2019-11-13_19.24.37.715547/chkpt/chkpt_149.pt'
     else:
-        #weights = 'logdir/dataset_folder.dataset_toy3_pomdp.False_graphsteps.3_training_mode.bc/2019-11-07_12.38.44.852796/chkpt/chkpt_49.pt'
         #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
-        # weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
+        # NO INVERTING EDGES
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
 
+        # INVERTING EDGES
+        # weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc_invertedge.True/2019-11-19_14.55.41.122930/chkpt/chkpt_149.pt'
 
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg_invertedge.True/offp.False_eps.0.2_gamma.0.7/2019-11-19_16.00.11.419509/chkpt/chkpt_149.pt'
+
+    first_epoch = 0
     if weights is not None:
         print('Loading weights')
         state_dict = torch.load(weights)
+        if args.continueexec:
+            optimizer.load_state_dict(state_dict['optim_params'])
+            first_epoch = state_dict['epoch']
         policy_net.load_state_dict(state_dict['model_params'])
 
     metrics = utils.AvgMetrics(['LCS', 'ActionLCS', 'O1LCS', 'O2LCS'], ':.2f')
@@ -508,13 +583,14 @@ def train():
     metrics_loss = utils.AvgMetrics(['PGLoss'], ':.3f')
     parameters = utils.AvgMetrics(['epoch', 'eps'], ':.2f')
     eps_value = args.eps_greedy
-    for epoch in range(args.num_epochs):
+    print('Starting from epoch {} to {}'.format(first_epoch, args.num_epochs))
+    for epoch in range(first_epoch, args.num_epochs):
         metrics.reset()
         metrics_loss.reset()
         other_metrics.reset()
         parameters.reset()
 
-        eps_value = max(0, eps_value - 0.01)
+        eps_value = max(0, eps_value - 0.01*(epoch+1))
 
         random.shuffle(shuffle_indices)
         batched_indices = [shuffle_indices[i*args.batch_size:min((i+1)*args.batch_size, len(shuffle_indices))] for i in range(num_iter)]

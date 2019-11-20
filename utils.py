@@ -150,7 +150,7 @@ class Helper:
         if self.args.interactive:
             return
         argvars = vars(self.args)
-        names_save = ['dataset_folder', 'pomdp', 'graphsteps', 'training_mode']
+        names_save = ['dataset_folder', 'pomdp', 'graphsteps', 'training_mode', 'invertedge']
         names_and_params = [(x, argvars[x]) for x in names_save]
         if self.args.debug:
             fname = 'debug'
@@ -201,7 +201,7 @@ def read_args():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_toy3', type=str)  # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_toy4', type=str)  # dataset_subgoals
 
     # Model params
     parser.add_argument('--action_dim', default=50, type=int)
@@ -216,10 +216,12 @@ def read_args():
     parser.add_argument('--max_steps', default=10, type=int)
     parser.add_argument('--pomdp', action='store_true')  # whether to use the true state or the test state
     parser.add_argument('--graphsteps', default=3, type=int)
+    parser.add_argument('--invertedge', action='store_true')
+
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
-    parser.add_argument('--num_epochs', default=50, type=int)
+    parser.add_argument('--num_epochs', default=150, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
     parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
@@ -246,6 +248,8 @@ def read_args():
 
     # Chkpts
     parser.add_argument('--load_path', default=None, type=str)
+    parser.add_argument('--continueexec', action='store_true')
+
     args = parser.parse_args()
     return args
 

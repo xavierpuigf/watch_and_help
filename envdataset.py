@@ -487,7 +487,10 @@ class EnvDataset(Dataset):
 
             id_from = ids_used[edge['from_id']]
             id_to = ids_used[edge['to_id']]
-            edges[cont, :] = [id_from, id_to]
+            if self.args.invertedge:
+                edges[cont, :] = [id_to, id_from]
+            else:
+                edges[cont, :] = [id_from, id_to]
             edge_types[cont] = rel_id
             mask_edges[cont] = 1
             cont += 1
