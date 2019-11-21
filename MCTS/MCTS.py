@@ -17,7 +17,8 @@ class MCTS:
         np.random.seed(seed)
         
 
-    def run(self, curr_root, t):
+    def run(self, curr_root, t, obj_heuristic):
+        self.obj_heuristic = obj_heuristic
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
         for explore_step in range(self.num_simulation):
@@ -28,6 +29,7 @@ class MCTS:
 
             while curr_node.is_expanded:
                 next_node = self.select_child(curr_node)
+                # print(next_node)
                 if next_node is None: break
                 node_path.append(next_node)
                 curr_node = next_node
@@ -38,8 +40,12 @@ class MCTS:
             self.backup(value, node_path)
             
         next_root = None
-        action_taken, children_visit, next_root = self.select_next_root(curr_root)
-        return next_root, action_taken
+        plan = []
+        while curr_root.is_expanded:
+            action_taken, children_visit, next_root = self.select_next_root(curr_root)
+            curr_root = next_root
+            plan.append(action_taken)
+        return next_root, plan
 
 
     def rollout(self, leaf_node, t):
@@ -48,9 +54,18 @@ class MCTS:
         sum_reward = 0
         last_reward = 0
         for rollout_step in range(self.max_rollout_step):#min(self.max_rollout_step, self.max_episode_length - t)):
-            action_space = self.env.get_action_space(curr_vh_state)
+            action_space = []
+            for obj in self.obj_heuristic:
+                action_space += self.env.get_action_space(curr_vh_state, obj1=obj)
+            # action_space = self.env.get_action_space(curr_vh_state, obj1=self.obj_heuristic)
             rollout_policy = lambda state: random.choice(action_space)
             action = rollout_policy(curr_state)
+            # print('rollout:', [e for e in curr_state['edges'] if 2038 in e.values()])
+            # if action == '[walk] <bench> (190)':
+            #     print('here:', self.env.is_terminal(0, curr_state), self.env.reward(0, curr_state))
+            #     input('press any key to continue...')
+            # print(curr_state)
+            # print(self.env.is_terminal(0, curr_state))
             if self.env.is_terminal(0, curr_state):# or t + rollout_step + 1 >= self.max_episode_length:
                 sum_reward = self.env.reward(0, curr_state)
                 reached_terminal = True
@@ -119,8 +134,8 @@ class MCTS:
         for node in node_list:
             node.sum_value += value
             node.num_visited += 1
-            if value > 0:
-                print(value, [node.id.keys() for node in node_list])
+            # if value > 0:
+            #     print(value, [node.id.keys() for node in node_list])
             # print(value, [node.id.keys() for node in node_list])
 
 
@@ -144,10 +159,16 @@ class MCTS:
         # print(state['nodes'])
         # print('edges about character', [x for x in state['edges'] if x['from_id'] == 65])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
         # print('edges about cup', [x for x in state['edges'] if x['from_id'] == 2009])
-        action_space = self.env.get_action_space(vh_state)#, obj1=['cup', 'cupboard', 'table'])
-        # print(action_space)
+        action_space = []
+        for obj in self.obj_heuristic:
+            action_space += self.env.get_action_space(vh_state, obj1=obj)
+        # print('initialize_children:', self.env.get_action_space(vh_state))
+        # print('initialize_children:', action_space)
+        # print(self.env.observable_object_ids_n[0])
+        # input('press any key to continue....')
         init_action_prior = self.get_action_prior(action_space) # TODO: ction space decomposition -- o1, action, o2
         for action in action_space:
+            # print(action, self.env.pomdp)
             next_vh_state = self.env.transition(vh_state, {0: action})
             Node(parent=node,
                  id={action: [next_vh_state, next_vh_state.to_dict()]},
