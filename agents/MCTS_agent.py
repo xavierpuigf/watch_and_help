@@ -144,20 +144,21 @@ class MCTS_agent:
 
             # action = sampler(None, self.env, self.mcts, nb_steps, None)
             
-            # for action in plan:
-            action_space = self.env.get_action_space()
-            print('tentative action:', action)
-            print('current action space:', action_space)
-            if action in self.env.get_action_space():
-                reward, state, infos = self.env.step({0: action})
-                _, _, _ = self.sim_env.step({0: action})
-                nb_steps += 1
-                print(nb_steps, action, reward)
-                obs_graph = self.env.get_observations(0)
-                self.sample_belief(self.env.get_observations(0))
-                # self.sim_env.reset_graph(self.previous_belief_graph)
-                self.sim_env.reset(self.previous_belief_graph, task_goal)
-                # break
+            for action in plan:
+                action_space = self.env.get_action_space()
+                print('tentative action:', action)
+                # print('current action space:', action_space)
+                if action in self.env.get_action_space():
+                    reward, state, infos = self.env.step({0: action})
+                    _, _, _ = self.sim_env.step({0: action})
+                    nb_steps += 1
+                    print(nb_steps, action, reward)
+                    obs_graph = self.env.get_observations(0)
+                    self.sample_belief(self.env.get_observations(0))
+                    # self.sim_env.reset_graph(self.previous_belief_graph)
+                    self.sim_env.reset(self.previous_belief_graph, task_goal)
+                else:
+                    break
             
             # goal_string = task_goal
             # goal_id = int(goal_string.split('_')[-1])
@@ -196,7 +197,7 @@ class MCTS_agent:
             # print([[(n['id'], n['class_name']) for n in sim_state['nodes'] if n['id'] == e['from_id']] for e in sim_state['edges'] if 41 in e.values()])
             print('real state:', [e for e in state['edges'] if id_goal in e.values()])
             print('real state:', [e for e in state['edges'] if id_agent in e.values()])
-            
+
             print('sim state:', [e for e in sim_state['edges'] if id_goal in e.values()])# and e['relation_type'] == 'INSIDE'])
             print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
             # print([e for e in sim_state['edges'] if 117 in e.values() and e['relation_type'] == 'INSIDE'])

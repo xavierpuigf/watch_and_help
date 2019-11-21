@@ -72,10 +72,10 @@ np.random.seed(1)
 agent = MCTS_agent(env=env,
                    # sim_env=sim_env, 
                    # bel=bel,
-                   max_episode_length=10,
+                   max_episode_length=100,
                    num_simulation=500, 
-                   max_rollout_steps=2, 
-                   c_init=10, 
+                   max_rollout_steps=3, 
+                   c_init=1.25, 
                    c_base=1000000,
                    num_samples=1,
                    num_processes=1)
