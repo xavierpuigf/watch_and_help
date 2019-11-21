@@ -561,13 +561,14 @@ def train():
     else:
         #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-12_21.33.57.388801/chkpt/chkpt_149.pt'
         # NO INVERTING EDGES
-        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
+        #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc/2019-11-13_19.25.08.723550/chkpt/chkpt_149.pt'
 
         # INVERTING EDGES
-        # weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc_invertedge.True/2019-11-19_14.55.41.122930/chkpt/chkpt_149.pt'
+        weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.bc_invertedge.True/2019-11-19_14.55.41.122930/chkpt/chkpt_149.pt'
 
         #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg/offp.False_eps.0.2_gamma.0.7/2019-11-14_00.45.32.080556/chkpt/chkpt_149.pt'
         #weights = 'logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_training_mode.pg_invertedge.True/offp.False_eps.0.2_gamma.0.7/2019-11-19_16.00.11.419509/chkpt/chkpt_149.pt'
+
 
     first_epoch = 0
     if weights is not None:

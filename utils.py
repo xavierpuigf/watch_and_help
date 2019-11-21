@@ -227,6 +227,8 @@ def read_args():
     parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
     parser.add_argument('--lr', default=1.e-3, type=float)
 
+    parser.add_argument('--weights', default='', type=str)
+
 
     # RL params
     parser.add_argument('--eps_greedy', default=0., type=float)
