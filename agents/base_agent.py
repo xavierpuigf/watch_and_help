@@ -37,7 +37,7 @@ class BaseAgent:
             self.previous_belief_graph = new_graph
 
 
-    def sample_action(self):
+    def get_action(self):
         return self.env.get_action_space()[0]
 
 
@@ -53,7 +53,7 @@ class BaseAgent:
         self.sim_env.to_pomdp()
 
         while not done and nb_steps < self.max_episode_length:
-            action = self.sample_action()
+            action = self.get_action()
             reward, state, infos = self.env.step({0: action})
             _, _, _ = self.sim_env.step({0: action})
             nb_steps += 1
