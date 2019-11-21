@@ -17,8 +17,9 @@ class MCTS:
         np.random.seed(seed)
         
 
-    def run(self, curr_root, t, obj_heuristic):
+    def run(self, curr_root, t, obj_heuristic, action_heuristic):
         self.obj_heuristic = obj_heuristic
+        self.action_heuristic = action_heuristic
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
         for explore_step in range(self.num_simulation):
@@ -56,7 +57,8 @@ class MCTS:
         for rollout_step in range(self.max_rollout_step):#min(self.max_rollout_step, self.max_episode_length - t)):
             action_space = []
             for obj in self.obj_heuristic:
-                action_space += self.env.get_action_space(curr_vh_state, obj1=obj)
+                for action in self.action_heuristic:
+                    action_space += self.env.get_action_space(curr_vh_state, obj1=obj, action=action)
             # action_space = self.env.get_action_space(curr_vh_state, obj1=self.obj_heuristic)
             rollout_policy = lambda state: random.choice(action_space)
             action = rollout_policy(curr_state)
@@ -125,8 +127,10 @@ class MCTS:
     def expand(self, leaf_node, t):
         curr_state = list(leaf_node.id.values())[0][1]
         if t < self.max_episode_length and not self.env.is_terminal(0, curr_state):
-            leaf_node.is_expanded = True
-            leaf_node = self.initialize_children(leaf_node)
+            expanded_leaf_node = self.initialize_children(leaf_node)
+            if expanded_leaf_node is not None:
+                leaf_node.is_expanded = True
+                leaf_node = expanded_leaf_node
         return leaf_node
 
 
@@ -156,12 +160,17 @@ class MCTS:
 
     def initialize_children(self, node):
         vh_state, state = list(node.id.values())[0][0], list(node.id.values())[0][1]
+        parent_action = list(node.id.keys())[0]
         # print(state['nodes'])
-        # print('edges about character', [x for x in state['edges'] if x['from_id'] == 65])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
-        # print('edges about cup', [x for x in state['edges'] if x['from_id'] == 2009])
+        # print('edges about character', [x for x in state['edges'] if x['from_id'] == 162])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
+        # print('edges about cup', [x for x in state['edges'] if x['from_id'] == 2038])
         action_space = []
         for obj in self.obj_heuristic:
-            action_space += self.env.get_action_space(vh_state, obj1=obj)
+            for action in self.action_heuristic:
+                action_space += self.env.get_action_space(vh_state, obj1=obj, action=action)
+        action_space = [a for a in action_space if a != parent_action]
+        if not action_space:
+            return None
         # print('initialize_children:', self.env.get_action_space(vh_state))
         # print('initialize_children:', action_space)
         # print(self.env.observable_object_ids_n[0])

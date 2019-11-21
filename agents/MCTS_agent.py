@@ -28,8 +28,9 @@ def sampler(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res
     while l < len(q):
         node_id = q[l]
         l += 1
-        q += [e['to_id'] for e in init_state['edges'] if (e['from_id'] == node_id and e['relation_type'] == 'INSIDE' or \
-                                      e['from_id'] == goal_id and e['relation_type'] == 'ON') and (e['to_id'] not in q)]
+        q += [e['to_id'] for e in init_state['edges'] \
+            if e['from_id'] == node_id and e['relation_type'] == 'INSIDE' \
+                and e['to_id'] not in q]
     print(q)
     nodes = [node for node in init_state['nodes'] if node['id'] in q]
     print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
@@ -38,7 +39,8 @@ def sampler(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res
     # print('init action space:', env.get_action_space(init_vh_state, obj1=nodes))
     action_space = []
     for obj in nodes:
-        action_space += env.get_action_space(init_vh_state, obj1=obj)
+        for action in ['walk', 'open']:
+            action_space += env.get_action_space(init_vh_state, obj1=obj, action=action)
     print('init action space:', action_space)
     # input('press any key ton continue...')
     if env.is_terminal(0, init_state):
@@ -51,7 +53,10 @@ def sampler(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res
                     sum_value=0,
                     is_expanded=False)
     curr_node = root_node
-    next_root, plan  = mcts.run(curr_node, nb_steps, nodes)
+    next_root, plan  = mcts.run(curr_node, 
+                                nb_steps, 
+                                nodes,
+                                ['walk', 'open'])
     print('plan:', plan)
     # else:
     #     action, _, next_root = mcts.select_next_root(root_node)
@@ -152,7 +157,6 @@ class MCTS_agent:
                 self.sample_belief(self.env.get_observations(0))
                 # self.sim_env.reset_graph(self.previous_belief_graph)
                 self.sim_env.reset(self.previous_belief_graph, task_goal)
-                input('press any key to continue...')
                 # break
             
             # goal_string = task_goal
@@ -171,8 +175,6 @@ class MCTS_agent:
             # print(self.env.get_action_space())
 
             state = self.env.vh_state.to_dict()
-            # print([e for e in state['edges'] if 2038 in e.values()])
-            # print([e for e in state['edges'] if 284 in e.values()])
 
             # # if action == plan[-1]:
             # obs_graph = self.env.get_observations(0)
@@ -185,17 +187,21 @@ class MCTS_agent:
             # # self.sim_env.reset(new_graph, task_goal)
             sim_state = self.sim_env.vh_state.to_dict()
             self.sim_env.to_pomdp()
-            self.sim_env.vh_state._script_objects = dict(self.env.vh_state._script_objects)
-            print('sim')
+            # self.sim_env.vh_state._script_objects = dict(self.env.vh_state._script_objects)
+            # print('sim')
             id_goal = 2038
             id_agent = 162
             # print([n for n in sim_state['nodes'] if n['category'] == 'Rooms'])
             # print([n for n in sim_state['nodes'] if n['id'] == id_goal])
             # print([[(n['id'], n['class_name']) for n in sim_state['nodes'] if n['id'] == e['from_id']] for e in sim_state['edges'] if 41 in e.values()])
-            print([e for e in sim_state['edges'] if id_goal in e.values()])# and e['relation_type'] == 'INSIDE'])
-            print([e for e in sim_state['edges'] if e['from_id'] == 229])
+            print('real state:', [e for e in state['edges'] if id_goal in e.values()])
+            print('real state:', [e for e in state['edges'] if id_agent in e.values()])
+            
+            print('sim state:', [e for e in sim_state['edges'] if id_goal in e.values()])# and e['relation_type'] == 'INSIDE'])
+            print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
             # print([e for e in sim_state['edges'] if 117 in e.values() and e['relation_type'] == 'INSIDE'])
-            print([e for e in sim_state['edges'] if id_agent in e.values()])
+            print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
+            input('press any key to continue...')
 
             # print('action_space:', self.env.get_action_space(obj1=['cup', 'cupboard', 'dining_room']))
 
