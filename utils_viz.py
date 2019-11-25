@@ -1,4 +1,5 @@
 import graphviz
+from scipy.ndimage import gaussian_filter
 import json
 import pdb
 import random
@@ -246,9 +247,55 @@ def print_belief(belief, output='belief_example.gv'):
     g = belief2im(belief, id_char)
     g.render(output)
 
+
+
+#########################
+# Visualizing Belief
+########################
+
+def world2im(camera_data, wcoords):
+    proj = np.array(camera_data['projection_matrix']).reshape((4,4)).transpose()
+    w2cam = np.array(camera_data['world_to_camera_matrix']).reshape((4,4)).transpose()
+    cw = np.concatenate([wcoords, np.ones((1, wcoords.shape[1]))], 0) # 4 x N
+    pixelcoords = np.matmul(proj, np.matmul(w2cam, cw)) # 4 x N
+    pixelcoords = pixelcoords/pixelcoords[-1, :]
+    pixelcoords = (pixelcoords + 1)/2.
+    pixelcoords[1,:] = 1. - pixelcoords[1, :]
+    return pixelcoords[:2, :]
+
+def obtain_hmap(pixel_coords, probabilities, img):
+    # Given some pixel coordinates and probabilities, get a heatmap given some gaussians
+    sigma = 20 # What is the extension of the heatmap
+    norm = 2*np.pi*(sigma**2)
+    values = np.zeros(img.shape[:2])
+    pixel_coords = pixel_coords.astype(np.int32)
+    print(pixel_coords)
+    values[pixel_coords[1, :], pixel_coords[0, :]] = probabilities
+    result = gaussian_filter(values*norm, sigma, mode='nearest')
+    #print(result.shape)
+    img_heat_map = blend(img, result)
+    return img_heat_map
+
+def viz_belief(image, camera_data, object_coords, prob):
+    imgcoords = world2im(camera_data, object_coords)
+    imgcoords[0,:]*= image.shape[1]
+    imgcoords[1,:]*= image.shape[0]
+    res = obtain_hmap(imgcoords, prob, image)
+    return res
+
+def blend(img, heatmap):
+    cmap = plt.cm.jet
+    colorheatmap = cmap(heatmap)
+    contrast = 4.
+    print(heatmap.max())
+    outImage = img/255. * (1-contrast*heatmap[:, :, None]) + (contrast*heatmap[:, :, None])*colorheatmap[:,:,:3]
+    return outImage
+
+
 if __name__ == '__main__':
     input_graph = 'dataset_toy3/init_envs/TrimmedTestScene5_graph_8.json'
     with open(input_graph, 'r') as f:
         graph = json.load(f)
     g = graph2im(graph['init_graph'])
     g.render('graph_example.gv')
+
