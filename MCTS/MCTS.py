@@ -14,7 +14,7 @@ class MCTS:
         self.c_init = c_init 
         self.c_base = c_base
         self.seed = seed
-        np.random.seed(seed)
+        # np.random.seed(seed)
         
 
     def run(self, curr_root, t, obj_heuristic, action_heuristic):

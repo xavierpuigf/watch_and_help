@@ -7,6 +7,7 @@ from vh_graph.envs import belief
 import utils_viz
 import utils
 import json
+import random
 import numpy as np
 from simulation.evolving_graph.utils import load_graph_dict
 sys.argv = ['-f']
@@ -37,6 +38,7 @@ print([e for e in gt_state['edges'] if id_goal in e.values()])
 print([e for e in gt_state['edges'] if id_agent in e.values()])
 
 np.random.seed(1)
+random.seed(1)
 # bel = belief.Belief(gt_state)
 # new_graph = bel.sample_from_belief()
 # sim_env = gym.make('vh_graph-v0')
