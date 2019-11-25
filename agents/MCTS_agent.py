@@ -1,6 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
 import numpy as np
 from pathlib import Path
 import random
@@ -18,7 +15,7 @@ from vh_graph.envs.vh_env import VhGraphEnv
 from MCTS import *
 
 
-def sampler(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res):
+def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res):
     init_vh_state = env.vh_state
     init_state = env.state
     # print('init state:', init_state)
@@ -131,13 +128,14 @@ class MCTS_agent:
         root_action = None
         root_node = None
         # print(self.sim_env.pomdp)
+        history = {'belief': [], 'plan': [], 'action': [], 'sampled_state': []}
         while not done and nb_steps < self.max_episode_length:
             if nb_steps < 0:
                 action = gt_actions[nb_steps]
                 plan = [action]
             else:
                 self.mcts = MCTS(self.sim_env, self.max_episode_length, self.num_simulation, self.max_rollout_steps, self.c_init, self.c_base)
-                plan, root_node = sampler(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, 2038, None)
+                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, 2038, None)
                 action = plan[0]
                 root_action = None#action
 
@@ -149,7 +147,13 @@ class MCTS_agent:
                 print('tentative action:', action)
                 # print('current action space:', action_space)
                 if action in self.env.get_action_space():
+
+                    history['belief'].append(self.belief.edge_belief)
+                    history['plan'].append(plan)
+                    history['action'].append(action)
+
                     reward, state, infos = self.env.step({0: action})
+                    done = abs(reward[0] - 1.0) < 1e-6
                     _, _, _ = self.sim_env.step({0: action})
                     nb_steps += 1
                     print(nb_steps, action, reward)
@@ -204,50 +208,6 @@ class MCTS_agent:
             print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
             input('press any key to continue...')
 
+            pickle.dump(history, open('logdir/history.pik', 'wb'))
+
             # print('action_space:', self.env.get_action_space(obj1=['cup', 'cupboard', 'dining_room']))
-
-        # while not done and self.max_episode_length:
-        #     if nb_steps < 1:
-        #         action = gt_actions[nb_steps]
-        #     else:
-        #         manager = multiprocessing.Manager()
-        #         res = manager.dict()
-        #         for start_sample_id in range(0, self.num_samples, self.num_processes):
-        #             end_sample_id = min(start_sample_id + self.num_processes, self.num_samples)
-        #             jobs = []
-        #             for sample_id in range(start_sample_id, end_sample_id):
-        #                 p = multiprocessing.Process(target=sampler,
-        #                                             args=(sample_id,
-        #                                                   self.env,
-        #                                                   self.mcts,
-        #                                                   nb_steps,
-        #                                                   res))
-        #                 jobs.append(p)
-        #                 p.start()
-        #             for p in jobs:
-        #                 p.join()
-        #         print(res)
-        #         tmp_actions = [res[sample_id] for sample_id in range(self.num_samples)]
-        #         print(tmp_actions)
-        #         if None in tmp_actions:
-        #             terminal = True
-        #             break
-        #         action = max(set(tmp_actions), key=tmp_actions.count)
-        #         if terminal: break
-        #     if terminal: break
-        #         # print('state:', self.env.state)
-
-        #     # action = gt_actions[nb_steps]
-        #     # print("|||||||||||||||||||||||||")
-        #     # print('edges about character', [x for x in self.env.vh_state.to_dict()['edges'] if x['from_id'] == 65])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
-        #     # print('edges about cup', [x for x in self.env.vh_state.to_dict()['edges'] if x['from_id'] == 2009])
-        #     # print("|||||||||||||||||||||||||")
-        #     reward, state, infos, done = self.env.step(action)
-        #     # print(infos)
-        #     # print("+++++++++++++++++++++++++")
-        #     # print('edges about character', [x for x in self.env.vh_state.to_dict()['edges'] if x['from_id'] == 65])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
-        #     # print('edges about cup', [x for x in self.env.vh_state.to_dict()['edges'] if x['from_id'] == 2009])
-        #     # print("+++++++++++++++++++++++++")
-        #     nb_steps += 1
-        #     print(nb_steps, action, reward)
-        #     print('action_space:', self.env.get_action_space(obj1=['cup', 'cupboard', 'table']))
