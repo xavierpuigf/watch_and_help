@@ -80,8 +80,6 @@ def test(args, path_name, weights, epoch):
         helper.log_text('test', 'Done epoch')
         helper.log(epoch, metrics, 'LCS', 'test')
         helper.log(epoch, metrics_loss, 'Losses', 'test')
-        helper.log_text('test', 'Epoch:{}. Iter {}.  Losses: {}'
-              'LCS: {}'.format(epoch, it, str(metrics_loss), str(metrics)))
 
     else:
         print('Epoch:{}. Iter {}.  Losses: {}'
@@ -254,6 +252,7 @@ def start():
     torch.cuda.manual_seed(0)
     np.random.seed(0)
 
+
     helper = utils.setup()
     if helper.args.eval:
         weights = 'logdir/dataset_folder.dataset_toy3_pomdp.True_graphsteps.3_training_mode.bc/2019-11-06_23.54.52.675520/chkpt/chkpt_49.pt'
@@ -271,7 +270,7 @@ def start():
         dataset = EnvDataset(helper.args)
         train(dataset, helper, q)
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
 if __name__ == '__main__':
     start()

@@ -98,6 +98,7 @@ class MCTS_agent:
 
 
     def rollout(self, graph, task_goal):
+        goal_id = int(task_goal[0].split('_')[-1])
         nb_steps = 0
         _ = self.env.reset(graph, task_goal)
         done = False      
@@ -135,7 +136,7 @@ class MCTS_agent:
                 plan = [action]
             else:
                 self.mcts = MCTS(self.sim_env, self.max_episode_length, self.num_simulation, self.max_rollout_steps, self.c_init, self.c_base)
-                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, 2038, None)
+                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_id, None)
                 action = plan[0]
                 root_action = None#action
 
@@ -148,9 +149,10 @@ class MCTS_agent:
                 # print('current action space:', action_space)
                 if action in self.env.get_action_space():
 
-                    history['belief'].append(self.belief.edge_belief)
+                    history['belief'].append(copy.deepcopy(self.belief.edge_belief))
                     history['plan'].append(plan)
                     history['action'].append(action)
+                    history['sampled_state'].append(self.sim_env.vh_state.to_dict())
 
                     reward, state, infos = self.env.step({0: action})
                     done = abs(reward[0] - 1.0) < 1e-6

@@ -169,10 +169,10 @@ class MCTS:
             for action in self.action_heuristic:
                 action_space += self.env.get_action_space(vh_state, obj1=obj, action=action)
         action_space = [a for a in action_space if a != parent_action]
+        # print('initialize_children:', action_space)
         if not action_space:
             return None
         # print('initialize_children:', self.env.get_action_space(vh_state))
-        # print('initialize_children:', action_space)
         # print(self.env.observable_object_ids_n[0])
         # input('press any key to continue....')
         init_action_prior = self.get_action_prior(action_space) # TODO: ction space decomposition -- o1, action, o2

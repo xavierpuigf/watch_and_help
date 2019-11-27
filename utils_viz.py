@@ -1,6 +1,5 @@
 import graphviz
-import copy
-import scipy.special
+from scipy.ndimage import gaussian_filter
 import json
 import pdb
 import random
@@ -31,6 +30,11 @@ def delete_redundant_edges_and_ids(graph):
             all_children = parent_node[edge['to_id']]
             if len(set(all_parents).intersection(all_children)) > 0:
                 continue
+        # else:
+        #     if ((edge['from_id'] in children_node and edge['to_id'] in children_node[edge['from_id']]) or
+        #             (edge['to_id'] in children_node and edge['from_id'] in children_node[edge['to_id']])):
+        #         continue
+
         final_edges.append(edge)
     graph['edges'] = final_edges
     return graph
@@ -41,27 +45,27 @@ def graph2im(graph, special_nodes={}):
     :param graph:
     :return:
     """
+
     # graph = delete_redundant_edges_and_ids(graph)
 
-    class_nodes_delete = ['wall', 'floor', 'ceiling', 'curtain']
-    categories_delete = ['Doors']
-    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete or x['category'] in categories_delete]
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
+    ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
 
-    nodes = [x for x in graph['nodes'] if x not in ids_delete]
-    edges = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+    graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
+    graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
 
-    id2node = {x['id']: x for x in nodes}
+    id2node = {x['id']: x for x in graph['nodes']}
 
     g = graphviz.Digraph(engine='dot')
     g.attr(compound='true')
 
     # g.attr(rank='min')
 
-    container_nodes = list(set([x['to_id'] for x in edges if x['relation_type'] == 'INSIDE']))
+    container_nodes = list(set([x['to_id'] for x in graph['edges'] if x['relation_type'] == 'INSIDE']))
     children = {}
     parent = {}
     num_children_subgraph = {}
-    for edge in edges:
+    for edge in graph['edges']:
         if edge['relation_type'] == 'INSIDE':
             if edge['to_id'] not in children:
                 children[edge['to_id']] = []
@@ -72,16 +76,14 @@ def graph2im(graph, special_nodes={}):
                 num_children_subgraph[edge['to_id']] += 1
 
     subgraphs_added = {}
-    
+
     curr_subgraphs = [x for (x,y) in num_children_subgraph.items() if y == 0]
     # pdb.set_trace()
+    #
     while len(curr_subgraphs) > 0:
         next_subgraphs = []
         for curr_subgraph_id in curr_subgraphs:
-            try:
-                name_graph = getclass(id2node[curr_subgraph_id])
-            except:
-                curr_subgraph_id
+            name_graph = getclass(id2node[curr_subgraph_id])
             cng = graphviz.Digraph(name='cluster_'+str(curr_subgraph_id))
             cng.attr(label=name_graph)
             cng.node(name=str(curr_subgraph_id), style='invis')
@@ -120,36 +122,39 @@ def graph2im(graph, special_nodes={}):
         'ON': 'blue',
         'CLOSE': 'purple',
         'CLOSE_CHAR': 'orange',
-        'FAKE_CLOSE': 'orange',
         'FACING': 'red',
-        'BETWEEN': 'green'
+        'BETWEEN': 'green',
+        'CLOSEg': 'blue'
 
     }
     style = {
         'INSIDE': '',
         'ON': '',
         'CLOSE': 'invis',
+        'CLOSEg': 'invis',
         'FACING': 'invis',
         'BETWEEN': 'invis',
-        'FAKE_CLOSE': 'invis',
         'CLOSE_CHAR': ''
-
     }
-    
-    # If ther are no close edges, add close from char to objects in the room
-    close_edges = [x for x in edges if 'CLOSE' in x['relation_type']]
-    extra_edges = []
-    if len(close_edges) == 0:
-        id_char = [x['id'] for x in nodes if x['class_name'] == 'character'][0]
-        nodes_same_room = [x['id'] for x in nodes if x['id'] in parent.keys() and parent[x['id']] == parent[id_char] and id_char != x['id']]
-        for node_id in nodes_same_room:
-            extra_edges.append({'from_id': id_char, 'to_id': node_id, 'relation_type': 'FAKE_CLOSE'})
-
+    print('Edges...') #
     max_num = 0.2
     id_char = [x for x,y in special_nodes.items() if y == 'agent']
     if len(id_char) > 0:
         id_char = id_char[0]
-    for edge in edges+extra_edges:
+
+    # Add close edges
+    virtual_edges = []
+    rooms = [x['id'] for x in graph['nodes'] if x['category'] == 'Rooms']
+    for room_id in rooms:
+        if room_id not in children:
+            continue
+        children_nodes = children[room_id]
+        from_node = random.choices(children_nodes, k=6)
+        to_node = random.choices(children_nodes, k=6)
+        for from_id, to_id in zip(from_node, to_node):
+            virtual_edges.append({'from_id': from_id, 'to_id': to_id, 'relation_type': 'CLOSEg'})
+
+    for edge in graph['edges']+virtual_edges:
         rt = edge['relation_type']
         if rt != 'INSIDE' and edge['from_id'] not in ids_delete and edge['to_id'] not in ids_delete:
             if rt == 'CLOSE':
@@ -189,18 +194,18 @@ def belief2im(belief, special_nodes={}):
     """
 
     # graph = delete_redundant_edges_and_ids(graph)
-    graph = belief.sampled_graph
-    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door']
+    graph = belief.graph_init
+    class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain']
     ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
 
-    nodes = [x for x in graph['nodes'] if x not in ids_delete]
-    edges = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+    graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
+    graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
 
-    id2node = {x['id']: x for x in nodes} 
+    id2node = {x['id']: x for x in graph['nodes']}
 
     g = graphviz.Digraph(engine='fdp')
 
-    for node in nodes:
+    for node in graph['nodes']:
         g.node(name=str(node['id']), label=getclass(node))
 
     colors = {
@@ -221,19 +226,13 @@ def belief2im(belief, special_nodes={}):
                 if to_id is not None:
                     if relation == 'INSIDE':
                         ids_used.append(from_id)
-                    if belief_val <= 0.:
-                        continue
-                    g.edge(str(from_id), str(to_id), color=colors[relation], 
-                           arrowtail=str(belief_val),
-                           penwidth=str(belief_val), weight=str(belief_val))
+                    g.edge(str(from_id), str(to_id), color=colors[relation], penwidth=str(belief_val))
 
     for id in belief.room_node.keys():
         #pdb.set_trace()
         for belief_id, belief_val in zip(*belief.room_node[id]):
             if id not in ids_used:
-                g.edge(str(id), str(belief_id), color=colors['INSIDE'],
-                           arrowtail=str(belief_val),
-                           penwidth=str(belief_val), weight=str(belief_val))
+                g.edge(str(id), str(belief_id), color=colors['INSIDE'], penwidth=str(belief_val))
     return g
 
 
@@ -247,6 +246,51 @@ def print_belief(belief, output='belief_example.gv'):
     id_char = [x['id'] for x in belief.sampled_graph['nodes'] if x['class_name'] == 'character'][0]
     g = belief2im(belief, id_char)
     g.render(output)
+
+
+
+#########################
+# Visualizing Belief
+########################
+
+def world2im(camera_data, wcoords):
+    proj = np.array(camera_data['projection_matrix']).reshape((4,4)).transpose()
+    w2cam = np.array(camera_data['world_to_camera_matrix']).reshape((4,4)).transpose()
+    cw = np.concatenate([wcoords, np.ones((1, wcoords.shape[1]))], 0) # 4 x N
+    pixelcoords = np.matmul(proj, np.matmul(w2cam, cw)) # 4 x N
+    pixelcoords = pixelcoords/pixelcoords[-1, :]
+    pixelcoords = (pixelcoords + 1)/2.
+    pixelcoords[1,:] = 1. - pixelcoords[1, :]
+    return pixelcoords[:2, :]
+
+def obtain_hmap(pixel_coords, probabilities, img):
+    # Given some pixel coordinates and probabilities, get a heatmap given some gaussians
+    sigma = 20 # What is the extension of the heatmap
+    norm = 2*np.pi*(sigma**2)
+    values = np.zeros(img.shape[:2])
+    pixel_coords = pixel_coords.astype(np.int32)
+    print(pixel_coords)
+    values[pixel_coords[1, :], pixel_coords[0, :]] = probabilities
+    result = gaussian_filter(values*norm, sigma, mode='nearest')
+    #print(result.shape)
+    img_heat_map = blend(img, result)
+    return img_heat_map
+
+def viz_belief(image, camera_data, object_coords, prob):
+    imgcoords = world2im(camera_data, object_coords)
+    imgcoords[0,:]*= image.shape[1]
+    imgcoords[1,:]*= image.shape[0]
+    res = obtain_hmap(imgcoords, prob, image)
+    return res
+
+def blend(img, heatmap):
+    cmap = plt.cm.jet
+    colorheatmap = cmap(heatmap)
+    contrast = 4.
+    print(heatmap.max())
+    outImage = img/255. * (1-contrast*heatmap[:, :, None]) + (contrast*heatmap[:, :, None])*colorheatmap[:,:,:3]
+    return outImage
+
 
 if __name__ == '__main__':
     input_graph = 'dataset_toy3/init_envs/TrimmedTestScene5_graph_8.json'

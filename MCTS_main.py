@@ -20,16 +20,19 @@ print('Imports done')
 env = gym.make('vh_graph-v0')
 print('Env created')
 
-path_init_env = 'dataset_toy4/init_envs/TrimmedTestScene6_graph_35.json'
+# path_init_env = 'dataset_toy4/init_envs/TrimmedTestScene6_graph_35.json'
+path_init_env = 'dataset_toy4/init_envs/TrimmedTestScene1_graph_10.json'
 # goal_name = {0:'(HOLDS_RH character[240] plate[2005])'}
-goal_name = {0: 'findnode_2038'}
+# goal_name = {0: 'findnode_2038'}
+goal_name = {0: 'findnode_2007'}
 state = load_graph_dict(path_init_env)['init_graph']
 env.reset(state, goal_name)
 env.to_pomdp()
 gt_state = env.vh_state.to_dict()
 
 id_agent = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
-id_goal = 2038
+# id_goal = 2038
+id_goal = 2011
 goal_str = 'findnode_{}'.format(id_goal)
 print([n for n in gt_state['nodes'] if n['category'] == 'Rooms'])
 print([n for n in gt_state['nodes'] if n['id'] == id_goal])
@@ -37,8 +40,9 @@ print([[(n['id'], n['class_name']) for n in gt_state['nodes'] if n['id'] == e['f
 print([e for e in gt_state['edges'] if id_goal in e.values()])
 print([e for e in gt_state['edges'] if id_agent in e.values()])
 
-np.random.seed(1)
-random.seed(1)
+# np.random.seed(1)
+# random.seed(1)
+
 # bel = belief.Belief(gt_state)
 # new_graph = bel.sample_from_belief()
 # sim_env = gym.make('vh_graph-v0')
