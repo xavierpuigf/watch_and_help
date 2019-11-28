@@ -1,8 +1,11 @@
 import graphviz
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 import copy
 import scipy.special
 import json
 import pdb
+import numpy as np
 import random
 
 def getclass(node):
@@ -247,6 +250,56 @@ def print_belief(belief, output='belief_example.gv'):
     id_char = [x['id'] for x in belief.sampled_graph['nodes'] if x['class_name'] == 'character'][0]
     g = belief2im(belief, id_char)
     g.render(output)
+
+
+def world2im(camera_data, wcoords):
+    proj = np.array(camera_data['projection_matrix']).reshape((4,4)).transpose()
+    w2cam = np.array(camera_data['world_to_camera_matrix']).reshape((4,4)).transpose()
+    cw = np.concatenate([wcoords, np.ones((1, wcoords.shape[1]))], 0) # 4 x N
+    pixelcoords = np.matmul(proj, np.matmul(w2cam, cw)) # 4 x N
+    pixelcoords = pixelcoords/pixelcoords[-1, :]
+    pixelcoords = (pixelcoords + 1)/2.
+    pixelcoords[1,:] = 1. - pixelcoords[1, :]
+    return pixelcoords[:2, :]
+
+def obtain_hmap(pixel_coords, probabilities, img):
+    # Given some pixel coordinates and probabilities, get a heatmap given some gaussians
+    sigma = 20 # What is the extension of the heatmap
+    norm = 2*np.pi*(sigma**2)
+    values = np.zeros(img.shape[:2])
+    pixel_coords = pixel_coords.astype(np.int32)
+    indices_valid = np.logical_and(pixel_coords[1,:] < values.shape[0], 
+                                   pixel_coords[1,:] >= 0)
+    indices_valid2 = np.logical_and(pixel_coords[0,:] < values.shape[1], 
+                                   pixel_coords[0,:] >= 0)
+    indices_valid = np.array(np.logical_and(indices_valid, indices_valid2))
+    pixel_coords = pixel_coords[:, indices_valid]
+    probabilities = probabilities[indices_valid]
+    
+    values[pixel_coords[1, :], pixel_coords[0, :]] = probabilities
+    result = gaussian_filter(values*norm, sigma, mode='nearest')
+    #print(result.shape)
+    img_heat_map = blend(img, result)
+    return img_heat_map
+
+def viz_belief(image, camera_data, object_coords, prob):
+    imgcoords = world2im(camera_data, object_coords)
+    imgcoords[0,:]*= image.shape[1]
+    imgcoords[1,:]*= image.shape[0]
+    res = obtain_hmap(imgcoords, prob, image)
+    return res
+
+def blend(img, heatmap):
+    cmap = plt.cm.jet
+    heatmap = np.clip(heatmap, 0, 1.)
+    colorheatmap = cmap(1-heatmap)
+    contrast = 3.
+    outImage = img/255. * (1-contrast*heatmap[:, :, None]) + (contrast*heatmap[:, :, None])*colorheatmap[:,:,:3]
+    
+    return outImage
+
+
+
 
 if __name__ == '__main__':
     input_graph = 'dataset_toy3/init_envs/TrimmedTestScene5_graph_8.json'

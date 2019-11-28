@@ -21,6 +21,8 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
     # print('init state:', init_state)
 
     q = [goal_id]
+    print('INIT', q)
+
     l = 0
     while l < len(q):
         node_id = q[l]
@@ -31,13 +33,15 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
     print(q)
     nodes = [node for node in init_state['nodes'] if node['id'] in q]
     print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
-
+    
+    print(q, nodes)
     # print('init action space:', env.get_action_space(init_vh_state))
     # print('init action space:', env.get_action_space(init_vh_state, obj1=nodes))
     action_space = []
     for obj in nodes:
         for action in ['walk', 'open']:
             action_space += env.get_action_space(init_vh_state, obj1=obj, action=action)
+
     print('init action space:', action_space)
     # input('press any key ton continue...')
     if env.is_terminal(0, init_state):
@@ -99,6 +103,7 @@ class MCTS_agent:
 
     def rollout(self, graph, task_goal):
         nb_steps = 0
+        id_goal = int(task_goal[0].split('_')[-1])
         _ = self.env.reset(graph, task_goal)
         done = False      
         self.env.to_pomdp()
@@ -135,7 +140,7 @@ class MCTS_agent:
                 plan = [action]
             else:
                 self.mcts = MCTS(self.sim_env, self.max_episode_length, self.num_simulation, self.max_rollout_steps, self.c_init, self.c_base)
-                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, 2038, None)
+                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, id_goal, None)
                 action = plan[0]
                 root_action = None#action
 
@@ -148,7 +153,7 @@ class MCTS_agent:
                 # print('current action space:', action_space)
                 if action in self.env.get_action_space():
 
-                    history['belief'].append(self.belief.edge_belief)
+                    history['belief'].append(copy.deepcopy(self.belief.edge_belief))
                     history['plan'].append(plan)
                     history['action'].append(action)
 
@@ -194,7 +199,7 @@ class MCTS_agent:
             self.sim_env.to_pomdp()
             # self.sim_env.vh_state._script_objects = dict(self.env.vh_state._script_objects)
             # print('sim')
-            id_goal = 2038
+            #id_goal = 2038
             id_agent = 162
             # print([n for n in sim_state['nodes'] if n['category'] == 'Rooms'])
             # print([n for n in sim_state['nodes'] if n['id'] == id_goal])
