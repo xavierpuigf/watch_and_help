@@ -64,7 +64,7 @@ def LCS(X, Y):
                 L[i][j] = max(L[i - 1][j], L[i][j - 1])
 
                 # L[m][n] contains the length of LCS of X[0..n-1] & Y[0..m-1]
-    return L[m][n]*1./max(m,n)
+    return L[m][n]*1./(max(m,n)+1.0e-5)
 
 
 # end of function lcs
@@ -150,7 +150,7 @@ class Helper:
         if self.args.interactive:
             return
         argvars = vars(self.args)
-        names_save = ['dataset_folder', 'pomdp', 'graphsteps', 'training_mode']
+        names_save = ['dataset_folder', 'pomdp', 'graphsteps', 'training_mode', 'invertedge']
         names_and_params = [(x, argvars[x]) for x in names_save]
         if self.args.debug:
             fname = 'debug'
@@ -158,6 +158,10 @@ class Helper:
         else:
             if self.dir_name is None:
                 param_name = '_'.join(['{}.{}'.format(x, y) for x, y in names_and_params])
+
+                if argvars['training_mode'] != 'bc':
+                    param_name += '/offp.{}_eps.{}_gamma.{}'.format(self.args.off_policy, self.args.eps_greedy, self.args.gamma)
+
                 fname = str(datetime.now()).replace(' ', '_').replace(':', '.')
                 self.dir_name = '{}/{}/{}'.format(self.args.log_dir, param_name, fname)
                 os.makedirs(self.dir_name, exist_ok=True)
@@ -183,9 +187,12 @@ class Helper:
     def log_text(self, split, text):
         with open('{}/log_{}.txt'.format(self.dir_name, split), 'a+') as f:
             f.writelines(text)
-    def log(self, epoch, metric, name, split=''):
+    def log(self, epoch, metric, name, split='', avg=True):
         for metric_name, meter in metric.metrics.items():
-            value = meter.avg
+            if avg:
+                value = meter.avg
+            else:
+                value = meter.val
             self.writer.add_scalar('{}/{}/{}'.format(name, metric_name, split), value, epoch)
 
 
@@ -194,7 +201,7 @@ def read_args():
     parser = argparse.ArgumentParser(description='RL MultiAgent.')
 
     # Dataset
-    parser.add_argument('--dataset_folder', default='dataset_toy3', type=str)  # dataset_subgoals
+    parser.add_argument('--dataset_folder', default='dataset_toy4', type=str)  # dataset_subgoals
 
     # Model params
     parser.add_argument('--action_dim', default=50, type=int)
@@ -209,13 +216,25 @@ def read_args():
     parser.add_argument('--max_steps', default=10, type=int)
     parser.add_argument('--pomdp', action='store_true')  # whether to use the true state or the test state
     parser.add_argument('--graphsteps', default=3, type=int)
+    parser.add_argument('--invertedge', action='store_true')
+
 
     # Training params
     parser.add_argument('--num_rollouts', default=5, type=int)
-    parser.add_argument('--num_epochs', default=50, type=int)
+    parser.add_argument('--num_epochs', default=150, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--num_workers', default=30, type=int)
     parser.add_argument('--training_mode', default='bc', type=str, choices=['bc', 'pg'])
+    parser.add_argument('--lr', default=1.e-3, type=float)
+
+    parser.add_argument('--weights', default='', type=str)
+
+
+    # RL params
+    parser.add_argument('--eps_greedy', default=0., type=float)
+    parser.add_argument('--off_policy', action='store_true')
+    parser.add_argument('--gamma', type=float, default=1.)
+    parser.add_argument('--envstop', action='store_true')
 
     # Logging
     parser.add_argument('--log_dir', default='logdir', type=str)
@@ -231,6 +250,8 @@ def read_args():
 
     # Chkpts
     parser.add_argument('--load_path', default=None, type=str)
+    parser.add_argument('--continueexec', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -241,8 +262,8 @@ def setup(path_name=None):
 
 def pretty_instr(instr):
     action, o1, o2 = instr
-    o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1[0] not in ['other', 'no_obj', 'stop'] else ''
-    o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2[0] not in ['other', 'no_obj', 'stop'] else ''
+    o1s = '<{}> ({})'.format(o1[0], o1[1]) if o1 is not None and o1[0] not in ['other', 'no_obj', 'stop'] else ''
+    o2s = '<{}> ({})'.format(o2[0], o2[1]) if o2 is not None and o2[0] not in ['other', 'no_obj', 'stop'] else ''
     instr_str = '[{}] {} {}'.format(action, o1s, o2s)
     return instr_str
 
@@ -260,6 +281,10 @@ def pretty_print_program(program, other=None):
     else:
         program_joint2 = [None]*len(program_joint)
 
+    if len(program_joint) > len(program_joint2):
+        program_joint2 += [None]*(len(program_joint)-len(program_joint2))
+    else:
+        program_joint += [None]*(len(program_joint2)-len(program_joint))
 
     #if len(final_instr) > 0:
     #    program_joint = program_joint[:final_instr[0]]
@@ -267,7 +292,9 @@ def pretty_print_program(program, other=None):
     instructions = []
     instructions.append('{:70s} | {}'.format('PRED', 'GT'))
     for instr, instr2 in zip(program_joint, program_joint2):
-        instr_str = pretty_instr(instr)
+        instr_str = ''
+        if instr is not None:
+            instr_str = pretty_instr(instr)
 
         if instr2 is not None:
             instr_str2 = pretty_instr(instr2)

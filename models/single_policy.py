@@ -33,6 +33,7 @@ class SinglePolicy(torch.nn.Module):
 
     def __init__(self, dataset):
         super(SinglePolicy, self).__init__()
+        self.clip_value = -1e9
 
         # Network
         self.node_None = {'id': -1, 'class_name': None, 'properties': [], 'states': []}
@@ -102,8 +103,9 @@ class SinglePolicy(torch.nn.Module):
         node_2_logits = self.fc_o2(concat_nodes).squeeze(-1)
 
         # Mask out
-        node_1_logits = node_1_logits * visibility + (1-visibility) * -1e6
-        node_2_logits = node_2_logits * visibility + (1-visibility) * -1e6
+        action_logits = torch.clamp(action_logits, self.clip_value/2., -self.clip_value/2.)
+        node_1_logits = torch.clamp(node_1_logits, self.clip_value/2., -self.clip_value/2.) * visibility + (1-visibility) * self.clip_value
+        node_2_logits = torch.clamp(node_2_logits, self.clip_value/2., -self.clip_value/2.) * visibility + (1-visibility) * self.clip_value
         # Predict actions according to the global representation
         # pdb.set_trace()
         return action_logits, node_1_logits, node_2_logits, (node_repr, global_repr)

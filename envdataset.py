@@ -16,7 +16,7 @@ class EnvDataset(Dataset):
     def __init__(self, args, split='train', process_progs=True):
         self.dataset_file = args.dataset_folder
 
-        self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain']
+        self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain', 'maindoor']
         self.scenes_split = {'train': [1,2,3,4,5], 'test': [6,7], 'all': [1,2,3,4,5,6,7]}
         self.split = split
         self.args = args
@@ -113,6 +113,7 @@ class EnvDataset(Dataset):
 
         problems_dataset = []
         for id_problem, problem in enumerate(problems):
+
             graph_file = '{}/init_envs/{}'.format(folder_problem, problem['env_path'])
             goal_name = problem['goal']
             if '.txt' not in problem['program']:
@@ -139,11 +140,14 @@ class EnvDataset(Dataset):
             _, o1, o2 = utils.parse_prog(program)
             objects_prog = o1 + o2
             object_prohib = False
+
             for o in objects_prog:
-                if o is not None and o[0].lower() in self.objects_remove:
+                if o is not None and o[0].lower() in self.objects_remove+['character']:
                     object_prohib = True
+
             if object_prohib:
                 continue
+
             problems_dataset.append(
                 {
                     'id': id_problem,
@@ -269,7 +273,7 @@ class EnvDataset(Dataset):
             graphs = [(state, full_state)]
             try:
                 for instr in program[:-1]:
-
+                    #print('INSTR', instr)
                     _, state, infos = curr_env.step({0: instr})
                     full_state = curr_env.vh_state.to_dict()
                     graphs.append((state[0], full_state))
@@ -278,7 +282,7 @@ class EnvDataset(Dataset):
                     f.write(json.dumps(graphs, indent=4))
                 problem['graphs_file'] = graphs_file_name
             except:
-
+                print(init_graph, program)
                 print('Error')
                 raise Exception
         else:
@@ -330,9 +334,9 @@ class EnvDataset(Dataset):
             visible_ids = [x['id'] for x in state['nodes']]
             first_step = (it == 0)
             if self.args.pomdp:
-                nodes, edges, _ = self.process_graph(state, ids_used, visible_ids, remove_close=first_step)
+                nodes, edges, _ = self.process_graph(state, ids_used, visible_ids, remove_close=False) #first_step)
             else:
-                nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids, remove_close=first_step)
+                nodes, edges, _ = self.process_graph(state_full, ids_used, visible_ids, remove_close=False) #first_step)
             info[0].append(nodes)
             info[1].append(edges)
 
@@ -476,11 +480,17 @@ class EnvDataset(Dataset):
                 if remove_close or (edge['from_id'] != char_id and edge['to_id'] != char_id):
                     continue
 
+            if edge['relation_type'] in ['BETWEEN', 'FACING']:
+                continue
+
             rel_id = self.relation_dict.get_id(edge['relation_type'].lower())
 
             id_from = ids_used[edge['from_id']]
             id_to = ids_used[edge['to_id']]
-            edges[cont, :] = [id_from, id_to]
+            if self.args.invertedge:
+                edges[cont, :] = [id_to, id_from]
+            else:
+                edges[cont, :] = [id_from, id_to]
             edge_types[cont] = rel_id
             mask_edges[cont] = 1
             cont += 1

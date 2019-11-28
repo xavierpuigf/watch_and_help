@@ -102,8 +102,8 @@ class MCTS_agent:
 
 
     def rollout(self, graph, task_goal):
+        goal_id = int(task_goal[0].split('_')[-1])
         nb_steps = 0
-        id_goal = int(task_goal[0].split('_')[-1])
         _ = self.env.reset(graph, task_goal)
         done = False      
         self.env.to_pomdp()
@@ -140,7 +140,7 @@ class MCTS_agent:
                 plan = [action]
             else:
                 self.mcts = MCTS(self.sim_env, self.max_episode_length, self.num_simulation, self.max_rollout_steps, self.c_init, self.c_base)
-                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, id_goal, None)
+                plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_id, None)
                 action = plan[0]
                 root_action = None#action
 
@@ -156,6 +156,7 @@ class MCTS_agent:
                     history['belief'].append(copy.deepcopy(self.belief.edge_belief))
                     history['plan'].append(plan)
                     history['action'].append(action)
+                    history['sampled_state'].append(self.sim_env.vh_state.to_dict())
 
                     reward, state, infos = self.env.step({0: action})
                     done = abs(reward[0] - 1.0) < 1e-6
@@ -204,10 +205,10 @@ class MCTS_agent:
             # print([n for n in sim_state['nodes'] if n['category'] == 'Rooms'])
             # print([n for n in sim_state['nodes'] if n['id'] == id_goal])
             # print([[(n['id'], n['class_name']) for n in sim_state['nodes'] if n['id'] == e['from_id']] for e in sim_state['edges'] if 41 in e.values()])
-            print('real state:', [e for e in state['edges'] if id_goal in e.values()])
+            print('real state:', [e for e in state['edges'] if goal_id in e.values()])
             print('real state:', [e for e in state['edges'] if id_agent in e.values()])
 
-            print('sim state:', [e for e in sim_state['edges'] if id_goal in e.values()])# and e['relation_type'] == 'INSIDE'])
+            print('sim state:', [e for e in sim_state['edges'] if goal_id in e.values()])# and e['relation_type'] == 'INSIDE'])
             print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
             # print([e for e in sim_state['edges'] if 117 in e.values() and e['relation_type'] == 'INSIDE'])
             print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
