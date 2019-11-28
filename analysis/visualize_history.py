@@ -121,6 +121,7 @@ resp = comm.expand_scene(graph_modif)
 pdb.set_trace()
 with open('../logdir/history.pik', 'rb') as f:
     info = pkl.load(f)
+pdb.set_trace()
 if True: #resp[0]:
     print('Expanded')
     num_steps = len(info['belief'])

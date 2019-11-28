@@ -134,7 +134,7 @@ class EnvDataset(Dataset):
             # program = [program[0]]
             program.append('[stop]')
 
-            if not goal_str.lower().startswith('findnode'):
+            if not (goal_str.isdigit() or goal_str.lower().startswith('findnode')):
                 continue
 
             _, o1, o2 = utils.parse_prog(program)

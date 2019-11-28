@@ -12,7 +12,7 @@ import numpy as np
 from simulation.evolving_graph.utils import load_graph_dict
 sys.argv = ['-f']
 
-from agents import MCTS_agent
+from agents import MCTS_agent, PG_agent
 
 import timeit
 
@@ -71,16 +71,24 @@ print([e for e in gt_state['edges'] if id_agent in e.values()])
 # sim_env.reset(new_graph, goal_name)
 
 
-agent = MCTS_agent(env=env,
-                   # sim_env=sim_env, 
-                   # bel=bel,
-                   max_episode_length=100,
-                   num_simulation=1000, 
-                   max_rollout_steps=5, 
-                   c_init=1.25, 
-                   c_base=1000000,
-                   num_samples=1,
-                   num_processes=1)
+# agent = MCTS_agent(env=env,
+#                    # sim_env=sim_env,
+#                    # bel=bel,
+#                    max_episode_length=100,
+#                    num_simulation=1000,
+#                    max_rollout_steps=5,
+#                    c_init=1.25,
+#                    c_base=1000000,
+#                    num_samples=1,
+#                    num_processes=1)
+
+
+
+agent = PG_agent(env,
+                 max_episode_length=9,
+                 num_simulation=1000.,
+                 max_rollout_steps=5)
+
 start = timeit.default_timer()
 agent.rollout(state, goal_name)
 end = timeit.default_timer()
