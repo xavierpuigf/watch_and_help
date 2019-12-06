@@ -14,6 +14,8 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
+from simulation.unity_simulator.comm_unity import UnityCommunication
+import utils_unity_graph
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, res):
     init_vh_state = env.vh_state
@@ -113,6 +115,11 @@ class MCTS_agent:
         self.sim_env.reset(self.previous_belief_graph, task_goal)
         self.sim_env.to_pomdp()
 
+        comm = UnityCommunication()
+        
+        # corresponding to scene1 TODO: change the api to contain the scene id as input
+        scene_id = 0;
+
         # # self.sim_env.reset(graph, task_goal)
         # # self.sim_env.to_pomdp()
         # obs_graph = self.env.get_observations(0)
@@ -133,7 +140,14 @@ class MCTS_agent:
         root_action = None
         root_node = None
         # print(self.sim_env.pomdp)
-        history = {'belief': [], 'plan': [], 'action': [], 'sampled_state': []}
+        history = {'belief': [], 
+                   'plan': [], 
+                   'action': [], 
+                   'sampled_state': [], 
+                   'unity_state': [], 
+                   'egocentric_view': [],
+                   'topdown_view': []}
+        
         while not done and nb_steps < self.max_episode_length:
             if nb_steps < 0:
                 action = gt_actions[nb_steps]
@@ -147,6 +161,18 @@ class MCTS_agent:
 
             # action = sampler(None, self.env, self.mcts, nb_steps, None)
             
+            # corresponding to scene1 TODO: change the api to contain the scene id as input
+            comm.reset(scene_id)
+            comm.add_character()
+            s, unity_graph = comm.environment_graph()
+            graph = self.env.vh_state.to_dict()
+            chars = [node for node in unity_graph['nodes'] if node['class_name'] == 'character']
+            assert(len(chars) == 1)
+            char_id = chars[0]['id']
+            utils_unity_graph.update_graph(graph, unity_graph, char_id)
+            
+            comm.expand_scene(graph)
+
             for action in plan:
                 action_space = self.env.get_action_space()
                 print('tentative action:', action)
@@ -157,6 +183,24 @@ class MCTS_agent:
                     history['plan'].append(plan)
                     history['action'].append(action)
                     history['sampled_state'].append(self.sim_env.vh_state.to_dict())
+
+                    s, unity_graph = comm.environment_graph()
+                    history['unity_state'].append(unity_graph)
+                    print(1)
+                    
+                    s, camera_count = comm.camera_count()
+                    print(2)
+                    # TODO: need to find out the index of egocentric camera
+                    # s, img_egocentric = comm.camera_image()
+                    # history['egocentric_view'].append(img_egocentric)
+
+                    # s, img_topdown = comm.camera_image(camera_count-7)
+                    # history['topdown_view'].append(img_topdown)
+                    print(3)
+                    # render script in unity
+                    s, msg = comm.render_script(['<char0> {0}'.format(action)], gen_vid=False)
+                    print(s)
+                    print(msg)
 
                     reward, state, infos = self.env.step({0: action})
                     done = abs(reward[0] - 1.0) < 1e-6

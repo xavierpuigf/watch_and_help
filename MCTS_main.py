@@ -84,7 +84,7 @@ print([e for e in gt_state['edges'] if id_agent in e.values()])
 
 
 
-agent = PG_agent(env,
+""" agent = PG_agent(env,
                  max_episode_length=9,
                  num_simulation=1000.,
                  max_rollout_steps=5)
@@ -92,17 +92,17 @@ agent = PG_agent(env,
 start = timeit.default_timer()
 agent.rollout(state, goal_name)
 end = timeit.default_timer()
-print(end - start)
+print(end - start) """
 
-# agent = MCTS_agent(env=env, 
-#                    max_episode_length=5,
-#                    num_simulation=500, 
-#                    max_rollout_steps=5, 
-#                    c_init=0.1, 
-#                    c_base=1000000,
-#                    num_samples=1,
-#                    num_processes=1)
-# start = timeit.default_timer()
-# agent.rollout(state, goal_name)
-# end = timeit.default_timer()
-# print(end - start)
+agent = MCTS_agent(env=env, 
+                   max_episode_length=5,
+                   num_simulation=100, 
+                   max_rollout_steps=5, 
+                   c_init=0.1, 
+                   c_base=1000000,
+                   num_samples=1,
+                   num_processes=1)
+start = timeit.default_timer()
+agent.rollout(state, goal_name)
+end = timeit.default_timer()
+print(end - start) 
