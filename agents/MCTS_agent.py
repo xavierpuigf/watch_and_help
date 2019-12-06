@@ -167,6 +167,7 @@ class MCTS_agent:
             s, unity_graph = comm.environment_graph()
             graph = self.env.vh_state.to_dict()
             chars = [node for node in unity_graph['nodes'] if node['class_name'] == 'character']
+            print("num of characters: {0}".format(len(chars)))
             assert(len(chars) == 1)
             char_id = chars[0]['id']
             utils_unity_graph.update_graph(graph, unity_graph, char_id)
@@ -190,12 +191,12 @@ class MCTS_agent:
                     
                     s, camera_count = comm.camera_count()
                     print(2)
-                    # TODO: need to find out the index of egocentric camera
-                    # s, img_egocentric = comm.camera_image()
-                    # history['egocentric_view'].append(img_egocentric)
+                    
+                    s, img_egocentric = comm.camera_image(camera_count-5)
+                    history['egocentric_view'].append(img_egocentric)
 
-                    # s, img_topdown = comm.camera_image(camera_count-7)
-                    # history['topdown_view'].append(img_topdown)
+                    s, img_topdown = comm.camera_image(camera_count-7)
+                    history['topdown_view'].append(img_topdown)
                     print(3)
                     # render script in unity
                     s, msg = comm.render_script(['<char0> {0}'.format(action)], gen_vid=False)
