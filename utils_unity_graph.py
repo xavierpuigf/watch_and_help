@@ -76,7 +76,7 @@ def update_graph(new_graph, graph, char_id):
             # nodes[i] = char.copy()
             original_id = nodes[i]['id']
             
-    print('python id: {}'.format(original_id))
+    # print('python id: {}'.format(original_id))
     if (original_id != char_id):
         nodes[i]['id'] = char_id
         for edge in edges:

@@ -23,7 +23,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
     # print('init state:', init_state)
 
     q = [goal_id]
-    print('INIT', q)
+    #print('INIT', q)
 
     l = 0
     while l < len(q):
@@ -32,11 +32,11 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
         q += [e['to_id'] for e in init_state['edges'] \
             if e['from_id'] == node_id and e['relation_type'] == 'INSIDE' \
                 and e['to_id'] not in q]
-    print(q)
+    #print(q)
     nodes = [node for node in init_state['nodes'] if node['id'] in q]
-    print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
+    #print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
     
-    print(q, nodes)
+    #print(q, nodes)
     # print('init action space:', env.get_action_space(init_vh_state))
     # print('init action space:', env.get_action_space(init_vh_state, obj1=nodes))
     action_space = []
@@ -44,7 +44,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
         for action in ['walk', 'open']:
             action_space += env.get_action_space(init_vh_state, obj1=obj, action=action)
 
-    print('init action space:', action_space)
+    #print('init action space:', action_space)
     # input('press any key ton continue...')
     if env.is_terminal(0, init_state):
         terminal = True
@@ -60,10 +60,10 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_id, re
                                 nb_steps, 
                                 nodes,
                                 ['walk', 'open'])
-    print('plan:', plan)
+    #print('plan:', plan)
     # else:
     #     action, _, next_root = mcts.select_next_root(root_node)
-    print(root_node.sum_value)
+    #print(root_node.sum_value)
     # print(sample_id, res[sample_id])
     if sample_id is not None:
         res[sample_id] = plan
@@ -103,7 +103,9 @@ class MCTS_agent:
             self.previous_belief_graph = new_graph
 
 
-    def rollout(self, graph, task_goal):
+    # scene_index and graph_index refers to the name of a certain graph in the populated scene, 
+    # goal_index refers to a specific goal in that graph
+    def rollout(self, graph, task_goal, scene_index, graph_index, goal_index):
         goal_id = int(task_goal[0].split('_')[-1])
         nb_steps = 0
         _ = self.env.reset(graph, task_goal)
@@ -116,9 +118,6 @@ class MCTS_agent:
         self.sim_env.to_pomdp()
 
         comm = UnityCommunication()
-        
-        # corresponding to scene1 TODO: change the api to contain the scene id as input
-        scene_id = 0;
 
         # # self.sim_env.reset(graph, task_goal)
         # # self.sim_env.to_pomdp()
@@ -144,9 +143,7 @@ class MCTS_agent:
                    'plan': [], 
                    'action': [], 
                    'sampled_state': [], 
-                   'unity_state': [], 
-                   'egocentric_view': [],
-                   'topdown_view': []}
+                   'unity_state': []}
         
         while not done and nb_steps < self.max_episode_length:
             if nb_steps < 0:
@@ -160,14 +157,13 @@ class MCTS_agent:
 
 
             # action = sampler(None, self.env, self.mcts, nb_steps, None)
-            
-            # corresponding to scene1 TODO: change the api to contain the scene id as input
-            comm.reset(scene_id)
+
+            comm.reset(scene_index)
             comm.add_character()
             s, unity_graph = comm.environment_graph()
             graph = self.env.vh_state.to_dict()
             chars = [node for node in unity_graph['nodes'] if node['class_name'] == 'character']
-            print("num of characters: {0}".format(len(chars)))
+            #print("num of characters: {0}".format(len(chars)))
             assert(len(chars) == 1)
             char_id = chars[0]['id']
             utils_unity_graph.update_graph(graph, unity_graph, char_id)
@@ -176,7 +172,7 @@ class MCTS_agent:
 
             for action in plan:
                 action_space = self.env.get_action_space()
-                print('tentative action:', action)
+                #print('tentative action:', action)
                 # print('current action space:', action_space)
                 if action in self.env.get_action_space():
 
@@ -187,27 +183,26 @@ class MCTS_agent:
 
                     s, unity_graph = comm.environment_graph()
                     history['unity_state'].append(unity_graph)
-                    print(1)
                     
-                    s, camera_count = comm.camera_count()
-                    print(2)
+                    # s, camera_count = comm.camera_count()
+                    # print(2)
                     
-                    s, img_egocentric = comm.camera_image(camera_count-5)
-                    history['egocentric_view'].append(img_egocentric)
+                    # s, img_egocentric = comm.camera_image(camera_count-5)
+                    # history['egocentric_view'].append(img_egocentric)
 
-                    s, img_topdown = comm.camera_image(camera_count-7)
-                    history['topdown_view'].append(img_topdown)
-                    print(3)
+                    # s, img_topdown = comm.camera_image(camera_count-7)
+                    # history['topdown_view'].append(img_topdown)
+                    
                     # render script in unity
                     s, msg = comm.render_script(['<char0> {0}'.format(action)], gen_vid=False)
-                    print(s)
-                    print(msg)
+                    #print(s)
+                    #print(msg)
 
                     reward, state, infos = self.env.step({0: action})
                     done = abs(reward[0] - 1.0) < 1e-6
                     _, _, _ = self.sim_env.step({0: action})
                     nb_steps += 1
-                    print(nb_steps, action, reward)
+                    #print(nb_steps, action, reward)
                     obs_graph = self.env.get_observations(0)
                     self.sample_belief(self.env.get_observations(0))
                     # self.sim_env.reset_graph(self.previous_belief_graph)
@@ -250,15 +245,15 @@ class MCTS_agent:
             # print([n for n in sim_state['nodes'] if n['category'] == 'Rooms'])
             # print([n for n in sim_state['nodes'] if n['id'] == id_goal])
             # print([[(n['id'], n['class_name']) for n in sim_state['nodes'] if n['id'] == e['from_id']] for e in sim_state['edges'] if 41 in e.values()])
-            print('real state:', [e for e in state['edges'] if goal_id in e.values()])
-            print('real state:', [e for e in state['edges'] if id_agent in e.values()])
+            # print('real state:', [e for e in state['edges'] if goal_id in e.values()])
+            # print('real state:', [e for e in state['edges'] if id_agent in e.values()])
 
-            print('sim state:', [e for e in sim_state['edges'] if goal_id in e.values()])# and e['relation_type'] == 'INSIDE'])
-            print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
+            # print('sim state:', [e for e in sim_state['edges'] if goal_id in e.values()])# and e['relation_type'] == 'INSIDE'])
+            # print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
             # print([e for e in sim_state['edges'] if 117 in e.values() and e['relation_type'] == 'INSIDE'])
-            print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
-            input('press any key to continue...')
+            # print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
+            #input('press any key to continue...')
 
-            pickle.dump(history, open('logdir/history.pik', 'wb'))
+            pickle.dump(history, open('history/history_scene{}_{}_{}.pik'.format(scene_index, graph_index, goal_index), 'wb'))
 
             # print('action_space:', self.env.get_action_space(obj1=['cup', 'cupboard', 'dining_room']))
