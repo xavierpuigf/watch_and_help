@@ -2,18 +2,18 @@ from utils import DictObjId
 import json
 import pdb
 from torch.utils.data import Dataset
-import vh_graph
 import gym
 import utils
 from tqdm import tqdm
 import numpy as np
 import os
-
-
+import path_util
+import vh_graph
 
 
 class EnvDataset(Dataset):
     def __init__(self, args, split='train', process_progs=True):
+        pdb.set_trace()
         self.dataset_file = args.dataset_folder
 
         self.objects_remove = ['wall', 'floor', 'ceiling', 'door', 'curtain', 'maindoor']

@@ -11,6 +11,7 @@ from environment import Environment
 from models.single_policy import SinglePolicy
 from torch.utils import data
 
+
 def test(args, path_name, weights, epoch):
     helper = utils.Helper(args, path_name)
 
@@ -115,7 +116,7 @@ def train(dataset, helper, q):
         metrics_loss.reset()
         metrics.reset()
         for it, dp in enumerate(data_loader):
-
+            pdb.set_trace()
             state, program, goal = dp
             # pdb.set_trace()
             action_logits, o1_logits, o2_logits, repr = policy_net(state, goal, dataset.object_dict.get_id('character'))

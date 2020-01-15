@@ -31,7 +31,7 @@ def sample_instruction(env, dataset, state, action_logits, o1_logits, o2_logits,
         obj1_id_model = torch.argmax(o1_logits, -1)
     else:
         candidate_ids = torch.where(o1_logits > clip_value)[-1]
-        obj1_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+        obj1_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]])
         # Uniform sampling
 
     prob_1d = distr_object1.log_prob(obj1_id_model)
@@ -54,7 +54,7 @@ def sample_instruction(env, dataset, state, action_logits, o1_logits, o2_logits,
         action_candidate_ids = [dataset.action_dict.get_id(x[0]) for x in action_candidates_tripl if
                                 x[0].lower() in ['walk', 'open']]
 
-    mask = torch.zeros(action_logits[0, 0].shape).cuda()
+    mask = torch.zeros(action_logits[0, 0].shape)
     mask[action_candidate_ids] = 1.
 
     action_logits_masked = action_logits * mask + clip_value * (1 - mask)
@@ -63,7 +63,7 @@ def sample_instruction(env, dataset, state, action_logits, o1_logits, o2_logits,
         action_id_model = action_logits_masked.argmax(-1)
     else:
         candidate_ids = torch.where(action_logits_masked > clip_value)[-1]
-        action_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+        action_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]])
 
     prob_action = distr_action1.log_prob(action_id_model)
 
@@ -83,7 +83,7 @@ def sample_instruction(env, dataset, state, action_logits, o1_logits, o2_logits,
             pdb.set_trace()
     try:
 
-        mask_o2 = (state[1] == obj2_id_cands[None, None]).float().cuda()
+        mask_o2 = (state[1] == obj2_id_cands[None, None]).float()
     except:
         import ipdb
         ipdb.set_trace()
@@ -94,7 +94,7 @@ def sample_instruction(env, dataset, state, action_logits, o1_logits, o2_logits,
         obj2_id_model = torch.argmax(o2_logits_masked, -1)
     else:
         candidate_ids = torch.where(o2_logits_masked > clip_value)[-1]
-        obj2_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]]).cuda()
+        obj2_id_model = torch.tensor([[candidate_ids[np.random.randint(candidate_ids.shape[0])]]])
 
     prob_2d = distr_object2.log_prob(obj2_id_model)
     # if instruction is None:
@@ -129,7 +129,7 @@ class PG_agent(BaseAgent):
 
         self.dataset = envdataset.EnvDataset(args, process_progs=False)
 
-        policy_net = SinglePolicy(self.dataset).cuda()
+        policy_net = SinglePolicy(self.dataset)
         policy_net = torch.nn.DataParallel(policy_net)
 
         weights = '../../vh_multiagent_models/logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_' \
@@ -162,7 +162,7 @@ class PG_agent(BaseAgent):
 
         output = self.policy_net(graph_data, goal_info, id_char)
         action_logits, o1_logits, o2_logits, _ = output
-        mask_character = (graph_data[0] != id_char).float().cuda()
+        mask_character = (graph_data[0] != id_char).float()
         o1_logits = o1_logits * mask_character + (1 - mask_character) * self.clip_value
         return graph_data, action_logits, o1_logits, o2_logits
 

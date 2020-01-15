@@ -23,8 +23,8 @@ class MCTS:
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
         for explore_step in range(self.num_simulation):
-            if explore_step % 100 == 0 and self.num_simulation > 0:
-                print("simulation step:", explore_step, "out of", self.num_simulation)
+            # if explore_step % 100 == 0 and self.num_simulation > 0:
+            #     print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
             node_path = [curr_node]
 
@@ -148,9 +148,9 @@ class MCTS:
         children_visit = [child.num_visited for child in curr_root.children]
         children_value = [child.sum_value for child in curr_root.children]
         # print('children_ids:', children_ids)
-        print('children_visit:', children_visit)
-        print('children_value:', children_value)
-        print(list([c.id.keys() for c in curr_root.children]))
+        # print('children_visit:', children_visit)
+        # print('children_value:', children_value)
+        # print(list([c.id.keys() for c in curr_root.children]))
         maxIndex = np.argwhere(
             children_visit == np.max(children_visit)).flatten()
         selected_child_index = random.choice(maxIndex)
