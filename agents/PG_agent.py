@@ -113,8 +113,6 @@ class PG_agent(BaseAgent):
     PG agent
     """
 
-
-
     def __init__(self, env, max_episode_length, num_simulation, max_rollout_steps):
         self.env = env
         self.sim_env = VhGraphEnv()
@@ -127,10 +125,19 @@ class PG_agent(BaseAgent):
         self.clip_value = -1e9
 
         args = utils.read_args()
+        args.invert_edge = True
+
         self.dataset = envdataset.EnvDataset(args, process_progs=False)
 
         policy_net = SinglePolicy(self.dataset).cuda()
         policy_net = torch.nn.DataParallel(policy_net)
+
+        weights = '../../vh_multiagent_models/logdir/dataset_folder.dataset_toy4_pomdp.False_graphsteps.3_' \
+                  'training_mode.pg_invertedge.True/offp.False_eps.0.2_gamma.0.7/2019-11-20_15.20.44.417376/' \
+                  'chkpt/chkpt_249.pt'
+
+        state_dict = torch.load(weights)
+        policy_net.load_state_dict(state_dict['model_params'])
 
         self.policy_net = policy_net
         self.previous_belief_graph = None
@@ -177,15 +184,16 @@ class PG_agent(BaseAgent):
         iter = 0
         terminal = False
         plan = []
-
+        print(terminal, iter, nb_steps)
         while iter < nb_steps and not terminal:
             curr_vh_state = self.sim_env.vh_state.to_dict()
             visible_ids = self.sim_env.observable_object_ids_n[0]
-            instr, log = self.one_step_rollout(self.sim_env, curr_vh_state, visible_ids, goal_id)
-            print(instr)
+            instr, log = self.one_step_rollout(env, curr_vh_state, visible_ids, goal_id)
+
             iter += 1
             if 'stop' not in instr:
                 plan.append(instr)
+                print(instr)
                 _ = self.sim_env.step({0: instr})
             else:
                 terminal = True
@@ -212,29 +220,32 @@ class PG_agent(BaseAgent):
         while not done and nb_steps < self.max_episode_length:
             plan = self.get_plan(self.sim_env, self.max_episode_length - nb_steps, goal_id)
             root_action = None
-            print(plan)
-            for action in plan:
-                if action in self.env.get_action_space():
-                    history['belief'].append(copy.deepcopy(self.belief.edge_belief))
-                    history['plan'].append(plan)
-                    history['action'].append(action)
-                    history['sampled_state'].append(self.sim_env.vh_state.to_dict())
+            action = plan[0].strip()
+            print(action, 'HISTORY', history['action'])
 
-                    reward, state, infos = self.env.step({0: action})
-                    done = abs(reward[0] - 1.0) < 1e-6
-                    _, _, _ = self.sim_env.step({0: action})
-                    nb_steps += 1
-                    print(nb_steps, action, reward)
-                    self.sample_belief(self.env.get_observations(0))
-                    self.sim_env.reset(self.previous_belief_graph, task_goal)
-                else:
-                    break
+            if action in self.env.get_action_space():
+                history['belief'].append(copy.deepcopy(self.belief.edge_belief))
+                history['plan'].append(plan)
+                history['action'].append(action)
+                history['sampled_state'].append(self.sim_env.vh_state.to_dict())
+
+                reward, state, infos = self.env.step({0: action})
+                done = abs(reward[0] - 1.0) < 1e-6
+                _, _, _ = self.sim_env.step({0: action})
+                nb_steps += 1
+                print(nb_steps, action, reward)
+                self.sample_belief(self.env.get_observations(0))
+                self.sim_env.reset(self.previous_belief_graph, task_goal)
+            else:
+                import pdb
+                pdb.set_trace()
+                break
             
 
             state = self.env.vh_state.to_dict()
             sim_state = self.sim_env.vh_state.to_dict()
             self.sim_env.to_pomdp()
-            id_agent = 162
+            id_agent = [x['id'] for x in state['nodes'] if x['class_name'] == 'character'][0]
             print('real state:', [e for e in state['edges'] if goal_id in e.values()])
             print('real state:', [e for e in state['edges'] if id_agent in e.values()])
 

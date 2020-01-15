@@ -20,8 +20,8 @@ print('Imports done')
 env = gym.make('vh_graph-v0')
 print('Env created')
 
-path_init_env = 'dataset_toy4/init_envs/TrimmedTestScene1_graph_10.json'
-goal_name = {0: 'findnode_2007'}
+path_init_env = 'dataset_toy4/init_envs/TrimmedTestScene2_graph_1.json'
+goal_name = {0: 'findnode_2011'}
 state = load_graph_dict(path_init_env)['init_graph']
 env.reset(state, goal_name)
 env.to_pomdp()
@@ -71,23 +71,23 @@ print([e for e in gt_state['edges'] if id_agent in e.values()])
 # sim_env.reset(new_graph, goal_name)
 
 
-# agent = MCTS_agent(env=env,
-#                    # sim_env=sim_env,
-#                    # bel=bel,
-#                    max_episode_length=100,
-#                    num_simulation=1000,
-#                    max_rollout_steps=5,
-#                    c_init=1.25,
-#                    c_base=1000000,
-#                    num_samples=1,
-#                    num_processes=1)
+agent = MCTS_agent(env=env,
+                    # sim_env=sim_env,
+                    # bel=bel,
+                    max_episode_length=100,
+                    num_simulation=1000,
+                    max_rollout_steps=5,
+                    c_init=1.25,
+                    c_base=1000000,
+                    num_samples=1,
+                    num_processes=1)
 
 
 
-agent = PG_agent(env,
-                 max_episode_length=9,
-                 num_simulation=1000.,
-                 max_rollout_steps=5)
+#agent = PG_agent(env,
+#                 max_episode_length=9,
+#                 num_simulation=1000.,
+#                 max_rollout_steps=5)
 
 start = timeit.default_timer()
 agent.rollout(state, goal_name)
