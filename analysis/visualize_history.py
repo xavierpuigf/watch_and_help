@@ -1,5 +1,5 @@
-import pickle as pkl
 import json
+import pickle as pkl
 import cv2
 import numpy as np
 import scipy.special
@@ -11,7 +11,7 @@ import time
 sys.path.append('../../../virtualhome/simulation')
 from unity_simulator.comm_unity import UnityCommunication
 
-
+cam_id = 74
 def add_character(comm, character_resource='Chars/Male1'):
     response = comm.post_command(
         {'id': str(time.time()), 'action': 'add_character', 
@@ -69,8 +69,8 @@ def update_graph(new_graph, graph, char_id):
 
 def visualize_plan(comm, info, plan_id, time):
     print('Loading image')
-    success, camera = comm.camera_data([78])
-    success, image = comm.camera_image([78])
+    success, camera = comm.camera_data([cam_id])
+    success, image = comm.camera_image([cam_id], image_height=960, image_width=1280)
     print('Image received')
     camera = camera[0]
     image = image[0]
@@ -87,6 +87,7 @@ def visualize_plan(comm, info, plan_id, time):
     names = []
     for it, idi in enumerate(belief[0]):
         if idi is not None:
+            print(idi)
             coord_idi = [(x['bounding_box']['center']) for x in graph['nodes'] if x['id'] == idi][0]
             names.append([x['class_name'] for x in graph['nodes'] if x['id'] == idi][0])
             object_coords.append(np.array(coord_idi)[:, None])
@@ -96,7 +97,7 @@ def visualize_plan(comm, info, plan_id, time):
     img = utils_viz.viz_belief(image, camera, object_coords, prob)
     return (img*255.).astype(np.uint8)
 
-file_example = 'TrimmedTestScene1_graph_10.json'
+file_example = 'TrimmedTestScene2_graph_1.json'
 original_graph = '../dataset_toy4/init_envs/{}'.format(file_example)
 with open(original_graph, 'r') as f:
     graph_modif = json.load(f)
@@ -105,9 +106,9 @@ with open(original_graph, 'r') as f:
 #char_node_modif = [x['id'] for x in graph_modif['nodes'] if x['class_name'] == 'character'][0]
 #new_room_modif = [x['to_id'] for x in graph_modif['edges'] if x['from_id'] == char_node_modif and x['relation_type'] == 'INSIDE'][0]
 comm = UnityCommunication()
-comm.reset(0)
+comm.reset(1)
 add_character(comm)
-_ = comm.camera_image([78])
+_ = comm.camera_image([cam_id])
 s, graph = comm.environment_graph()
 char_node = [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
 #graph['edges'] = [x for x in graph['edges'] if x['from_id'] != char_node and x['to_id'] != char_node]
@@ -118,7 +119,7 @@ char = chars[0]
 char_id = char['id']
 update_graph(graph_modif, graph, char_id)
 resp = comm.expand_scene(graph_modif)
-pdb.set_trace()
+_ = comm.camera_image([cam_id])
 with open('../logdir/history.pik', 'rb') as f:
     info = pkl.load(f)
 pdb.set_trace()
@@ -134,6 +135,6 @@ if True: #resp[0]:
         aux = comm.render_script(['<char0> '+action[time]], gen_vid=False, image_synthesis=['normal'])
         print(aux)
         cv2.imwrite('res_{:02d}.png'.format(time), img)
-    s, img = comm.camera_image([78])
+    s, img = comm.camera_image([cam_id])
     cv2.imwrite('res_{:02d}.png'.format(num_steps), img[0])
 

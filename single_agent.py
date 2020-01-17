@@ -341,6 +341,7 @@ def dataset_agent():
 
     dataset = envdataset.EnvDataset(args, split='test')
     policy_net = SinglePolicy(dataset).cuda()
+    policy_net = SinglePolicy(dataset).cuda()
     policy_net = torch.nn.DataParallel(policy_net)
     policy_net.eval()
 

@@ -1,4 +1,5 @@
 import graphviz
+import cv2
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 import copy
@@ -293,6 +294,14 @@ def viz_belief(image, camera_data, object_coords, prob):
     res = obtain_hmap(imgcoords, prob, image)
     return res
 
+def viz_sampled_belief(image, camera_data, object_coords):
+    imgcoords = world2im(camera_data, object_coords)
+    imgcoords[0,:]*= image.shape[1]
+    imgcoords[1,:]*= image.shape[0]
+    cv2.circle(image, (int(imgcoords[0,0]), int(imgcoords[1,0])), 60, (0,255,0), 0)
+    return image
+
+
 def blend(img, heatmap):
     cmap = plt.cm.jet
     heatmap = np.clip(heatmap, 0, 1.)
@@ -301,6 +310,22 @@ def blend(img, heatmap):
     outImage = img/255. * (1-contrast*heatmap[:, :, None]) + (contrast*heatmap[:, :, None])*colorheatmap[:,:,:3]
     
     return outImage
+
+def plot_belief_soft(probs, names):
+    probs = probs[0]
+    names = names[0]
+    fig = plt.figure(figsize=(4, 8))
+    ind = np.arange(len(names))
+    plt.barh(ind, probs)
+    plt.xlabel('Prob')
+    plt.xlim(0, 1)
+    plt.yticks(ind, names)
+    plt.tight_layout()
+
+    return fig
+
+
+
 
 if __name__ == '__main__':
     input_graph = 'dataset_toy3/init_envs/TrimmedTestScene5_graph_8.json'

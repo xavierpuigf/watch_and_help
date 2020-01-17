@@ -1,4 +1,6 @@
 *.png
+logs/*
+analysis/*
 *.gv
 *.pdf
 __pycache__/

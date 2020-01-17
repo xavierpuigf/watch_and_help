@@ -16,7 +16,7 @@ class BaseAgent:
     """
     Base agent class
     """
-    def __init__(self, env, max_episode_length):
+    def __init__(self, env, sim_env, max_episode_length):
         self.env = env
         self.sim_env = VhGraphEnv()
         self.sim_env.pomdp = True
@@ -37,8 +37,9 @@ class BaseAgent:
             self.previous_belief_graph = new_graph
 
 
-    def get_action(self):
-        return self.env.get_action_space()[0]
+    def get_action(self, graph, task_goal):
+        return self.env.get_action_space()[0], {}
+
 
 
     def rollout(self, graph, task_goal):
@@ -54,13 +55,15 @@ class BaseAgent:
 
         while not done and nb_steps < self.max_episode_length:
             action = self.get_action()
+
+            # Take a step in the belief and in the environment
             reward, state, infos = self.env.step({0: action})
             _, _, _ = self.sim_env.step({0: action})
-            nb_steps += 1
-            print(nb_steps, action, reward)
-            obs_graph = self.env.get_observations(0)
+            self.env.get_observations(0)
             self.sample_belief(self.env.get_observations(0))
             self.sim_env.reset(self.previous_belief_graph, task_goal)
+            nb_steps += 1
+
 
             
  

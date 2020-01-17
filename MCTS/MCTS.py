@@ -3,6 +3,7 @@ import numpy as np
 from anytree import AnyNode as Node
 from anytree import RenderTree
 import copy
+import ipdb
 
 
 class MCTS:
@@ -14,52 +15,68 @@ class MCTS:
         self.c_init = c_init 
         self.c_base = c_base
         self.seed = seed
-        # np.random.seed(seed)
+        self.heuristic = None
+        np.random.seed(seed)
         
 
-    def run(self, curr_root, t, obj_heuristic, action_heuristic):
-        self.obj_heuristic = obj_heuristic
-        self.action_heuristic = action_heuristic
+    def run(self, curr_root, t, heuristic):
+
+        self.heuristic = heuristic
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
+
         for explore_step in range(self.num_simulation):
-            # if explore_step % 100 == 0 and self.num_simulation > 0:
-            #     print("simulation step:", explore_step, "out of", self.num_simulation)
+            if explore_step > 0 and explore_step % 100 == 0 and self.num_simulation > 0:
+                print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
             node_path = [curr_node]
 
             while curr_node.is_expanded:
+                #print('Select', curr_node.id.keys())
                 next_node = self.select_child(curr_node)
-                # print(next_node)
-                if next_node is None: break
+                if next_node is None:
+                    break
                 node_path.append(next_node)
                 curr_node = next_node
-            if next_node is None: continue
+
+            if next_node is None:
+                continue
+
             leaf_node = self.expand(curr_node, t)
+
             value = self.rollout(leaf_node, t)
-            # print(value)
+
             self.backup(value, node_path)
-            
+
         next_root = None
         plan = []
         while curr_root.is_expanded:
             action_taken, children_visit, next_root = self.select_next_root(curr_root)
             curr_root = next_root
             plan.append(action_taken)
+
         return next_root, plan
 
 
     def rollout(self, leaf_node, t):
         reached_terminal = False
-        curr_vh_state, curr_state = list(leaf_node.id.values())[0][0], list(leaf_node.id.values())[0][1]
+
+        leaf_node_values = list(leaf_node.id.values())[0]
+        curr_vh_state, curr_state, goal = leaf_node_values
         sum_reward = 0
         last_reward = 0
+
+        # TODO: we should start with goals at random, or with all the goals
+        # Probably not needed here since we already computed whern expanding node
+        observations = self.env.get_observations(curr_vh_state)
+        obj_heuristic, action_heuristic = self.heuristic(curr_state, observations, goal[0])
+
         for rollout_step in range(self.max_rollout_step):#min(self.max_rollout_step, self.max_episode_length - t)):
             action_space = []
-            for obj in self.obj_heuristic:
-                for action in self.action_heuristic:
+            for obj_id, obj in enumerate(obj_heuristic):
+                for action in action_heuristic[obj_id]:
                     action_space += self.env.get_action_space(curr_vh_state, obj1=obj, action=action)
-            # action_space = self.env.get_action_space(curr_vh_state, obj1=self.obj_heuristic)
+
             rollout_policy = lambda state: random.choice(action_space)
             action = rollout_policy(curr_state)
             # print('rollout:', [e for e in curr_state['edges'] if 2038 in e.values()])
@@ -159,14 +176,23 @@ class MCTS:
 
 
     def initialize_children(self, node):
-        vh_state, state = list(node.id.values())[0][0], list(node.id.values())[0][1]
+        leaf_node_values = list(node.id.values())[0]
+        vh_state, state, goal = leaf_node_values
+
         parent_action = list(node.id.keys())[0]
+        goal_id = leaf_node_values[-1]
+        observations = self.env.get_observations(vh_state)
+
         # print(state['nodes'])
         # print('edges about character', [x for x in state['edges'] if x['from_id'] == 162])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
         # print('edges about cup', [x for x in state['edges'] if x['from_id'] == 2038])
         action_space = []
-        for obj in self.obj_heuristic:
-            for action in self.action_heuristic:
+
+        obj_heuristic, action_heuristic = self.heuristic(state, observations, goal[0])
+
+
+        for obj_id, obj in enumerate(obj_heuristic):
+            for action in action_heuristic[obj_id]:
                 action_space += self.env.get_action_space(vh_state, obj1=obj, action=action)
         action_space = [a for a in action_space if a != parent_action]
         # print('initialize_children:', action_space)
@@ -175,12 +201,12 @@ class MCTS:
         # print('initialize_children:', self.env.get_action_space(vh_state))
         # print(self.env.observable_object_ids_n[0])
         # input('press any key to continue....')
-        init_action_prior = self.get_action_prior(action_space) # TODO: ction space decomposition -- o1, action, o2
+        init_action_prior = self.get_action_prior(action_space) # TODO: action space decomposition -- o1, action, o2
         for action in action_space:
             # print(action, self.env.pomdp)
             next_vh_state = self.env.transition(vh_state, {0: action})
             Node(parent=node,
-                 id={action: [next_vh_state, next_vh_state.to_dict()]},
+                 id={action: [next_vh_state, next_vh_state.to_dict(), goal_id]},
                  num_visited=0,
                  sum_value=0,
                  action_prior=init_action_prior[action],
