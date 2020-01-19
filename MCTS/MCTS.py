@@ -7,8 +7,9 @@ import ipdb
 
 
 class MCTS:
-    def __init__(self, env, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
+    def __init__(self, env, agent_id, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
         self.env = env
+        self.agent_id = agent_id
         self.max_episode_length = max_episode_length
         self.num_simulation = num_simulation
         self.max_rollout_step = max_rollout_step
@@ -51,9 +52,9 @@ class MCTS:
         next_root = None
         plan = []
         while curr_root.is_expanded:
-            action_taken, children_visit, next_root = self.select_next_root(curr_root)
+            actions_taken, children_visit, next_root = self.select_next_root(curr_root)
             curr_root = next_root
-            plan.append(action_taken)
+            plan += actions_taken
 
         return next_root, plan
 
@@ -62,41 +63,33 @@ class MCTS:
         reached_terminal = False
 
         leaf_node_values = list(leaf_node.id.values())[0]
-        curr_vh_state, curr_state, goal = leaf_node_values
-        sum_reward = 0
+        curr_vh_state, curr_state, goals, num_steps, actions_parent = leaf_node_values
+        sum_reward = 1./num_steps
         last_reward = 0
 
         # TODO: we should start with goals at random, or with all the goals
         # Probably not needed here since we already computed whern expanding node
-        observations = self.env.get_observations(curr_vh_state)
-        obj_heuristic, action_heuristic = self.heuristic(curr_state, observations, goal[0])
 
-        for rollout_step in range(self.max_rollout_step):#min(self.max_rollout_step, self.max_episode_length - t)):
-            action_space = []
-            for obj_id, obj in enumerate(obj_heuristic):
-                for action in action_heuristic[obj_id]:
-                    action_space += self.env.get_action_space(curr_vh_state, obj1=obj, action=action)
+        list_goals = list(range(len(goals)))
+        random.shuffle(list_goals)
+        for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
+            observations = self.env.get_observations(curr_vh_state)
+            goal_selected = goals[list_goals[rollout_step]]
+            actions = self.heuristic(self.agent_id, curr_state, observations, goal_selected)
+            num_steps += len(actions)
+            for action in enumerate(actions):
+                # Check if action can be performed
+                if action_performed:
+                    next_vh_state = self.env.transition(curr_vh_state, {0: action})
+                    next_state = next_vh_state.to_dict()
 
-            rollout_policy = lambda state: random.choice(action_space)
-            action = rollout_policy(curr_state)
-            # print('rollout:', [e for e in curr_state['edges'] if 2038 in e.values()])
-            # if action == '[walk] <bench> (190)':
-            #     print('here:', self.env.is_terminal(0, curr_state), self.env.reward(0, curr_state))
-            #     input('press any key to continue...')
-            # print(curr_state)
-            # print(self.env.is_terminal(0, curr_state))
-            if self.env.is_terminal(0, curr_state):# or t + rollout_step + 1 >= self.max_episode_length:
-                sum_reward = self.env.reward(0, curr_state)
-                reached_terminal = True
-                break
-            next_vh_state = self.env.transition(curr_vh_state, {0: action})
-            next_state = next_vh_state.to_dict()
-            curr_rewward = self.env.reward(0, next_state)
-            delta_reward = curr_rewward - last_reward# - 0.05
+            curr_reward = self.env.reward(0, next_state)
+            delta_reward = curr_reward - last_reward# - 0.05
             # print(curr_rewward, last_reward)
-            last_reward = curr_rewward
-            sum_reward += delta_reward
+            last_reward = curr_reward
+            sum_reward += (delta_reward*1./len(actions))
             curr_vh_state, curr_state = next_vh_state, next_state
+    
         # print(sum_reward, reached_terminal)
         return sum_reward
 
@@ -171,49 +164,46 @@ class MCTS:
         maxIndex = np.argwhere(
             children_visit == np.max(children_visit)).flatten()
         selected_child_index = random.choice(maxIndex)
-        action = list(curr_root.children[selected_child_index].id.keys())[0]
-        return action, children_visit, curr_root.children[selected_child_index]
+        actions = list(curr_root.children[selected_child_index].id.values())[-1][-1]
+        return actions, children_visit, curr_root.children[selected_child_index]
 
 
     def initialize_children(self, node):
         leaf_node_values = list(node.id.values())[0]
-        vh_state, state, goal = leaf_node_values
+        vh_state, state, goals, steps, actions_parent = leaf_node_values
+
 
         parent_action = list(node.id.keys())[0]
-        goal_id = leaf_node_values[-1]
+        goal_id = leaf_node_values[2]
         observations = self.env.get_observations(vh_state)
 
-        # print(state['nodes'])
-        # print('edges about character', [x for x in state['edges'] if x['from_id'] == 162])# and x['relation_type'] in ['INSIDE', 'CLOSE']])
-        # print('edges about cup', [x for x in state['edges'] if x['from_id'] == 2038])
         action_space = []
-
-        obj_heuristic, action_heuristic = self.heuristic(state, observations, goal[0])
-
-
-        for obj_id, obj in enumerate(obj_heuristic):
-            for action in action_heuristic[obj_id]:
-                action_space += self.env.get_action_space(vh_state, obj1=obj, action=action)
-        action_space = [a for a in action_space if a != parent_action]
-        # print('initialize_children:', action_space)
-        if not action_space:
-            return None
-        # print('initialize_children:', self.env.get_action_space(vh_state))
-        # print(self.env.observable_object_ids_n[0])
-        # input('press any key to continue....')
-        init_action_prior = self.get_action_prior(action_space) # TODO: action space decomposition -- o1, action, o2
-        for action in action_space:
-            # print(action, self.env.pomdp)
-            next_vh_state = self.env.transition(vh_state, {0: action})
+        goal_incomplete = False
+        for goal in goals:
+            actions_heuristic = self.heuristic(self.agent_id, state, observations, goal)
+            next_vh_state = vh_state
+            actions_str = []
+            for action in actions_heuristic:
+                action_str = self.get_action_str(action)
+                actions_str.append(action_str)
+                next_vh_state = self.env.transition(next_vh_state, {0: action_str})
+            goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
-                 id={action: [next_vh_state, next_vh_state.to_dict(), goal_id]},
+                id={goal: [next_vh_state, next_vh_state.to_dict(), goals_remain, 
+                    len(actions_heuristic), actions_str]},
                  num_visited=0,
                  sum_value=0,
-                 action_prior=init_action_prior[action],
+                 action_prior=len(goals),
                  is_expanded=False)
+
         return node
+    
+    def get_action_str(self, action_tuple):
+        obj_args = [x for x in list(action_tuple)[1:] if x is not None]
+        objects_str = ' '.join(['<{}> ({})'.format(x[0], x[1]) for x in obj_args])
+        return '[{}] {}'.format(action_tuple[0], objects_str)
 
 
-    def rollout_heuristic(self):
-        pass
+
+
         

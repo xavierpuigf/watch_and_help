@@ -21,7 +21,7 @@ import timeit
 
 # Options, should go as argparse arguments
 agent_type = 'MCTS' # PG/MCTS
-simulator_type = 'unity/python' # unity/python
+simulator_type = 'python' # unity/python
 dataset_path = 'dataset_toy4/init_envs/'
 
 
@@ -63,6 +63,7 @@ def rollout_from_json(info):
 
         elif agent_type == 'MCTS':
             agent = MCTS_agent(env=env,
+                               agent_id=0,
                                max_episode_length=5,
                                num_simulation=100,
                                max_rollout_steps=5,
@@ -82,6 +83,7 @@ def interactive_rollout():
     comm = comm_unity.UnityCommunication()
     comm.reset(0)
     agent = MCTS_agent(env=env,
+                       agent_id=0,
                        max_episode_length=5,
                        num_simulation=100,
                        max_rollout_steps=5,
@@ -89,16 +91,18 @@ def interactive_rollout():
                        c_base=1000000,
                        num_samples=1,
                        num_processes=1)
+
+    task_goal = 'findnode_2007'
     while True:
 
+        agent.get_action(graph, task_goal)
         input('Select next action')
 
 if __name__ == '__main__':
-    interactive_rollout()
 
 
     # Non interactive rollout
-    if False:
+    if simulator_type == 'python':
         env = gym.make('vh_graph-v0')
         print('Env created')
 
@@ -111,5 +115,7 @@ if __name__ == '__main__':
             }]
 
         rollout_from_json(info)
+    else:
+        interactive_rollout()
 
 

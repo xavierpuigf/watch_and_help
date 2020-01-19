@@ -14,20 +14,40 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
-def find_heuristic(env_graph, observations, object_target):
+def find_heuristic(agent_id, env_graph, observations, object_target):
+    id2node = {node['id']: node for node in env_graph['nodes']}
     target = int(object_target.split('_')[-1])
     observation_ids = [x['id'] for x in observations['nodes']]
+    
+    ids_character = [x['to_id'] for x in observations['edges'] if x['from_id'] == agent_id and x['relation_type'] == 'CLOSE']
 
-
+    action_list = []
     while target not in observation_ids:
         containers = [e['to_id'] for e in env_graph['edges']
                       if e['from_id'] == target and e['relation_type'] == 'INSIDE']
         target = containers[0]
+        if 'CLOSED' in id2node[target]['states']:
+            action = ('open', (id2node[target]['class_name'], target), None)
+            action_list = [action] + action_list
 
-    target_node = [node for node in observations['nodes'] if node['id'] == target][0]
+    if target not in ids_character:
+        # If character is not next to the object, walk there
+        action_list = [('walk', (id2node[target]['class_name'], target), None)]+ action_list
 
-    return [target_node], [['walk', 'open']]
+    return action_list
 
+
+def grab_heuristic(agent_id, env_graph, observations, object_target):
+    target_id = int(object_target.split('_')[-1])
+    agent_close = [edge for edge in env_graph['edges'] if (
+        edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
+
+    target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
+    target_action = [('grab', (target_node['class_name'], target_id), None)]
+    if len(agent_close) > 0:
+        return target_action
+    else:
+        return find_heuristic(agent_id, env_graph, observations, object_target)+ target_action
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, res):
     init_vh_state = env.vh_state
@@ -52,14 +72,14 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
         res[sample_id] = None
         return
     # if root_action is None:
-    root_node = Node(id={root_action: [init_vh_state, init_state, goal_ids]},
+    root_node = Node(id={root_action: [init_vh_state, init_state, goal_ids, 0, []]},
                      num_visited=0,
                      sum_value=0,
                      is_expanded=False)
     curr_node = root_node
     next_root, plan = mcts.run(curr_node,
                                nb_steps,
-                               find_heuristic)
+                               grab_heuristic)
     print('TS', time.time() - t1)
     print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
     print('plan:', plan)
@@ -77,8 +97,11 @@ class MCTS_agent:
     """
     MCTS for a single agent
     """
-    def __init__(self, env, max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, num_samples=1, num_processes=1, comm=None):
+    def __init__(self, env, agent_id,
+                 max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
+                 num_samples=1, num_processes=1, comm=None):
         self.env = env
+        self.agent_id = agent_id
         self.sim_env = VhGraphEnv()
         self.sim_env.pomdp = True
         self.belief = None
@@ -109,7 +132,8 @@ class MCTS_agent:
 
     def get_action(self, graph, task_goal):
         first_time = time.time()
-        self.mcts = MCTS(self.sim_env, self.max_episode_length, self.num_simulation, self.max_rollout_steps,
+        self.mcts = MCTS(self.sim_env, self.agent_id, self.max_episode_length,
+                         self.num_simulation, self.max_rollout_steps,
                          self.c_init, self.c_base)
         if self.mcts is None:
             raise Exception
@@ -170,16 +194,17 @@ class MCTS_agent:
                 action, info = self.get_action(graph, task_goal[0])
                 plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
 
-
+            
+            ipdb.set_trace()
 
             history['belief'].append(belief)
             history['plan'].append(plan)
             history['action'].append(action)
             history['belief_graph'].append(belief_graph)
 
-            reward, state, infos = self.env.step({0: action})
+            reward, state, infos = self.env.step({self.agent_id: action})
             done = abs(reward[0] - 1.0) < 1e-6
-            _, _, _ = self.sim_env.step({0: action})
+            _, _, _ = self.sim_env.step({self.agent_id: action})
             nb_steps += 1
 
 
