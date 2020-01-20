@@ -72,7 +72,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
         res[sample_id] = None
         return
     # if root_action is None:
-    root_node = Node(id={root_action: [init_vh_state, init_state, goal_ids, 0, []]},
+    root_node = Node(id=(root_action, [init_vh_state, init_state, goal_ids, 0, []]),
                      num_visited=0,
                      sum_value=0,
                      is_expanded=False)

@@ -9,6 +9,7 @@ import ipdb
 class MCTS:
     def __init__(self, env, agent_id, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
         self.env = env
+        self.discount = 0.95
         self.agent_id = agent_id
         self.max_episode_length = max_episode_length
         self.num_simulation = num_simulation
@@ -46,8 +47,8 @@ class MCTS:
             leaf_node = self.expand(curr_node, t)
 
             value = self.rollout(leaf_node, t)
-
-            self.backup(value, node_path)
+            num_actions = leaf_node.id[1][-2]
+            self.backup(value*(self.discount**num_actions), node_path)
 
         next_root = None
         plan = []
@@ -62,9 +63,9 @@ class MCTS:
     def rollout(self, leaf_node, t):
         reached_terminal = False
 
-        leaf_node_values = list(leaf_node.id.values())[0]
+        leaf_node_values = leaf_node.id[1]
         curr_vh_state, curr_state, goals, num_steps, actions_parent = leaf_node_values
-        sum_reward = 1./num_steps
+        sum_reward = 0
         last_reward = 0
 
         # TODO: we should start with goals at random, or with all the goals
@@ -85,9 +86,10 @@ class MCTS:
 
             curr_reward = self.env.reward(0, next_state)
             delta_reward = curr_reward - last_reward# - 0.05
+            delta_reward = delta_reward * self.discount**(len(actions))
             # print(curr_rewward, last_reward)
             last_reward = curr_reward
-            sum_reward += (delta_reward*1./len(actions))
+            sum_reward += delta_reward
             curr_vh_state, curr_state = next_vh_state, next_state
     
         # print(sum_reward, reached_terminal)
@@ -135,7 +137,7 @@ class MCTS:
 
 
     def expand(self, leaf_node, t):
-        curr_state = list(leaf_node.id.values())[0][1]
+        curr_state = leaf_node.id[1][1]
         if t < self.max_episode_length and not self.env.is_terminal(0, curr_state):
             expanded_leaf_node = self.initialize_children(leaf_node)
             if expanded_leaf_node is not None:
@@ -154,7 +156,6 @@ class MCTS:
 
 
     def select_next_root(self, curr_root):
-        # children_ids = [list(child.id.values())[0] for child in curr_root.children]
         children_visit = [child.num_visited for child in curr_root.children]
         children_value = [child.sum_value for child in curr_root.children]
         # print('children_ids:', children_ids)
@@ -164,16 +165,16 @@ class MCTS:
         maxIndex = np.argwhere(
             children_visit == np.max(children_visit)).flatten()
         selected_child_index = random.choice(maxIndex)
-        actions = list(curr_root.children[selected_child_index].id.values())[-1][-1]
+        actions = curr_root.children[selected_child_index].id[1][-1]
         return actions, children_visit, curr_root.children[selected_child_index]
 
 
     def initialize_children(self, node):
-        leaf_node_values = list(node.id.values())[0]
+        leaf_node_values = node.id[1]
         vh_state, state, goals, steps, actions_parent = leaf_node_values
 
 
-        parent_action = list(node.id.keys())[0]
+        parent_action = node.id[0]
         goal_id = leaf_node_values[2]
         observations = self.env.get_observations(vh_state)
 
@@ -189,8 +190,8 @@ class MCTS:
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
-                id={goal: [next_vh_state, next_vh_state.to_dict(), goals_remain, 
-                    len(actions_heuristic), actions_str]},
+                id=(goal, [next_vh_state, next_vh_state.to_dict(), goals_remain, 
+                    len(actions_heuristic), actions_str]),
                  num_visited=0,
                  sum_value=0,
                  action_prior=len(goals),
