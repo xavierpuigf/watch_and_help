@@ -19,7 +19,6 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
     target = int(object_target.split('_')[-1])
     observation_ids = [x['id'] for x in observations['nodes']]
     
-    ids_character = [x['to_id'] for x in observations['edges'] if x['from_id'] == agent_id and x['relation_type'] == 'CLOSE']
 
     action_list = []
     while target not in observation_ids:
@@ -30,6 +29,9 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
             action = ('open', (id2node[target]['class_name'], target), None)
             action_list = [action] + action_list
 
+    ids_character = [x['to_id'] for x in observations['edges'] if
+                     x['from_id'] == agent_id and x['relation_type'] == 'CLOSE']
+
     if target not in ids_character:
         # If character is not next to the object, walk there
         action_list = [('walk', (id2node[target]['class_name'], target), None)]+ action_list
@@ -39,12 +41,14 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
 
 def grab_heuristic(agent_id, env_graph, observations, object_target):
     target_id = int(object_target.split('_')[-1])
-    agent_close = [edge for edge in env_graph['edges'] if (
-        edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
+
+    observed_ids = [node['id'] for node in observations['nodes']]
+    agent_close = [edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
+
     target_action = [('grab', (target_node['class_name'], target_id), None)]
-    if len(agent_close) > 0:
+    if len(agent_close) and target_id in observed_ids > 0:
         return target_action
     else:
         return find_heuristic(agent_id, env_graph, observations, object_target)+ target_action
@@ -130,6 +134,15 @@ class MCTS_agent:
             self.previous_belief_graph = new_graph
 
 
+    def get_relations_char(self, graph):
+        # TODO: move this in vh_mdp
+        char_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'character'][0]
+        edges = [edge for edge in graph['edges'] if edge['from_id'] == char_id]
+        print('Character:')
+        print(edges)
+        print('---')
+
+
     def get_action(self, graph, task_goal):
         first_time = time.time()
         self.mcts = MCTS(self.sim_env, self.agent_id, self.max_episode_length,
@@ -164,7 +177,7 @@ class MCTS_agent:
         self.env.reset(graph, task_goal)
         self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
-        self.belief = Belief.Belief(gt_state)
+        self.belief = Belief.Belief(gt_state, seed=0)
         self.sample_belief(self.env.get_observations(char_index=0))
         self.sim_env.reset(self.previous_belief_graph, task_goal)
         self.sim_env.to_pomdp()
@@ -179,6 +192,7 @@ class MCTS_agent:
 
         root_action = None
         root_node = None
+        obs_graph = None
         # print(self.sim_env.pomdp)
 
 
@@ -194,21 +208,19 @@ class MCTS_agent:
                 action, info = self.get_action(graph, task_goal[0])
                 plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
 
-            
-            ipdb.set_trace()
+            if obs_graph is not None:
+                self.get_relations_char(obs_graph)
 
             history['belief'].append(belief)
             history['plan'].append(plan)
             history['action'].append(action)
             history['belief_graph'].append(belief_graph)
 
-            reward, state, infos = self.env.step({self.agent_id: action})
+            reward, state, infos = self.env.step({0: action})
             done = abs(reward[0] - 1.0) < 1e-6
-            _, _, _ = self.sim_env.step({self.agent_id: action})
             nb_steps += 1
 
 
-            print(nb_steps, action, reward, plan)
             obs_graph = self.env.get_observations(char_index=0)
             self.sample_belief(self.env.get_observations(char_index=0))
             self.sim_env.reset(self.previous_belief_graph, task_goal)

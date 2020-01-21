@@ -1,7 +1,7 @@
 import gym
 import sys
-# sys.path.append('../vh_mdp')
-# sys.path.append('../virtualhome')
+sys.path.append('../vh_mdp')
+sys.path.append('../virtualhome')
 import vh_graph
 from vh_graph.envs import belief
 import utils_viz
@@ -22,7 +22,7 @@ import timeit
 # Options, should go as argparse arguments
 agent_type = 'MCTS' # PG/MCTS
 simulator_type = 'python' # unity/python
-dataset_path = 'dataset_toy4/init_envs/'
+dataset_path = '../dataset_toy4/init_envs/'
 
 
 def rollout_from_json(info):
@@ -36,19 +36,18 @@ def rollout_from_json(info):
         count += 1
         scene_index, _, graph_index = info_entry['env_path'].split('.')[0][len('TrimmedTestScene'):].split('_')
         path_init_env = '{}/{}'.format(dataset_path, info_entry['env_path'])
-        goal_str = info_entry['goal']
-        goal_name = {0: goal_str}
+        goals = info_entry['goal']
         goal_index = info_entry['goal_index']
         state = load_graph_dict(path_init_env)['init_graph']
 
-        env.reset(state, list(goal_name.values()))
+        env.reset(state, goals)
 
         env.to_pomdp()
         gt_state = env.vh_state.to_dict()
 
-        id_agent = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
+        agent_id = [x['id'] for x in gt_state['nodes'] if x['class_name'] == 'character'][0]
 
-        print("{} / {}    ###(Goal: {} in scene{}_{})".format(count, num_entries, goal_str, scene_index, graph_index))
+        print("{} / {}    ###(Goal: {} in scene{}_{})".format(count, num_entries, goals, scene_index, graph_index))
 
         if agent_type == 'PG':
             agent = PG_agent(env,
@@ -57,13 +56,13 @@ def rollout_from_json(info):
                              max_rollout_steps=5)
 
             start = timeit.default_timer()
-            agent.rollout(state, goal_name)
+            agent.rollout(state, goals)
             end = timeit.default_timer()
             print(end - start)
 
         elif agent_type == 'MCTS':
             agent = MCTS_agent(env=env,
-                               agent_id=0,
+                               agent_id=agent_id,
                                max_episode_length=5,
                                num_simulation=100,
                                max_rollout_steps=5,
@@ -75,7 +74,7 @@ def rollout_from_json(info):
             print('Agent {} not implemented'.format(agent_type))
 
         start = timeit.default_timer()
-        history = agent.rollout(state, goal_name)
+        history = agent.rollout(state, goals)
 
         end = timeit.default_timer()
 
@@ -110,7 +109,7 @@ if __name__ == '__main__':
         info = [
             {
                 'env_path': 'TrimmedTestScene1_graph_10.json',
-                'goal':  ['findnode_2007'],
+                'goal':  {0: ['findnode_2007']},
                 'goal_index': 0
             }]
 

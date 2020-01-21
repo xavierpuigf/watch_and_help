@@ -184,6 +184,7 @@ class MCTS:
             actions_heuristic = self.heuristic(self.agent_id, state, observations, goal)
             next_vh_state = vh_state
             actions_str = []
+            print('Children', actions_heuristic)
             for action in actions_heuristic:
                 action_str = self.get_action_str(action)
                 actions_str.append(action_str)
