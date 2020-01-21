@@ -40,18 +40,37 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
 
 
 def grab_heuristic(agent_id, env_graph, observations, object_target):
+    print(object_target)
     target_id = int(object_target.split('_')[-1])
 
     observed_ids = [node['id'] for node in observations['nodes']]
     agent_close = [edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
+    grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'GRABBED')]
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
 
-    target_action = [('grab', (target_node['class_name'], target_id), None)]
+    if target_id in grabbed_obj_ids:
+        target_action = [('grab', (target_node['class_name'], target_id), None)]
+    else:
+        target_action = []
+
     if len(agent_close) and target_id in observed_ids > 0:
         return target_action
     else:
-        return find_heuristic(agent_id, env_graph, observations, object_target)+ target_action
+        return find_heuristic(agent_id, env_graph, observations, object_target)+target_action
+
+
+def put_heuristic(agent_it, env_graph, observations, target):
+    target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
+    target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
+    target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
+
+    grab_obj1 = grab_heuristic(agent_id, env_graph, observations, 'grab_' + str(target))
+    find_obj2 = find_heuristic(agent_id, env_graph, observations, 'find_' + str(target))
+
+    action = [('grab', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
+    res = grab_obj1 + find_obj2 + [action]
+    return res
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, res):
     init_vh_state = env.vh_state
@@ -198,15 +217,9 @@ class MCTS_agent:
 
         history = {'belief': [], 'plan': [], 'action': [], 'belief_graph': []}
         while not done and nb_steps < self.max_episode_length:
-            if nb_steps < 0:
-                # Debug
-                action = gt_actions[nb_steps]
-                plan = [action]
-                belief_graph, belief = None, None
 
-            else:
-                action, info = self.get_action(graph, task_goal[0])
-                plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
+            action, info = self.get_action(graph, task_goal[0])
+            plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
 
             if obs_graph is not None:
                 self.get_relations_char(obs_graph)
@@ -228,32 +241,10 @@ class MCTS_agent:
 
             state = self.env.vh_state.to_dict()
 
-            # # if action == plan[-1]:
-            # obs_graph = self.env.get_observations(0)
-            # self.sample_belief(self.env.get_observations(0))
-            # # self.sim_env.reset_graph(self.previous_belief_graph)
-            # self.sim_env.reset(self.previous_belief_graph, task_goal)
-            # # # new_graph = self.bel.update_graph_from_gt_graph(obs_graph)
-            # # self.bel.update_from_gt_graph(obs_graph)
-            # # new_graph = self.bel.sample_from_belief()
-            # # self.sim_env.reset(new_graph, task_goal)
+
             sim_state = self.sim_env.vh_state.to_dict()
             self.sim_env.to_pomdp()
-            # self.sim_env.vh_state._script_objects = dict(self.env.vh_state._script_objects)
-            # print('sim')
-            #id_goal = 2038
-            # id_agent = 162
-            # print([n for n in sim_state['nodes'] if n['category'] == 'Rooms'])
-            # print([n for n in sim_state['nodes'] if n['id'] == id_goal])
-            # print([[(n['id'], n['class_name']) for n in sim_state['nodes'] if n['id'] == e['from_id']] for e in sim_state['edges'] if 41 in e.values()])
-            # print('real state:', [e for e in state['edges'] if goal_id in e.values()])
-            # print('real state:', [e for e in state['edges'] if id_agent in e.values()])
-            #
-            # print('sim state:', [e for e in sim_state['edges'] if goal_id in e.values()])# and e['relation_type'] == 'INSIDE'])
-            # print('sim state:', [e for e in sim_state['edges'] if e['from_id'] == 229])
-            # # print([e for e in sim_state['edges'] if 117 in e.values() and e['relation_type'] == 'INSIDE'])
-            # print('sim state:', [e for e in sim_state['edges'] if id_agent in e.values()])
-            #input('press any key to continue...')
+
 
         import pdb
         return history

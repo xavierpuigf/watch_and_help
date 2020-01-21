@@ -1,4 +1,5 @@
 import gym
+import ipdb
 import sys
 sys.path.append('../vh_mdp')
 sys.path.append('../virtualhome')
@@ -9,6 +10,7 @@ import utils
 import json
 import random
 import numpy as np
+import ipdb
 from simulation.evolving_graph.utils import load_graph_dict
 from simulation.unity_simulator import comm_unity as comm_unity
 
@@ -21,7 +23,7 @@ import timeit
 
 # Options, should go as argparse arguments
 agent_type = 'MCTS' # PG/MCTS
-simulator_type = 'python' # unity/python
+simulator_type = 'unity' # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
 
 
@@ -36,9 +38,10 @@ def rollout_from_json(info):
         count += 1
         scene_index, _, graph_index = info_entry['env_path'].split('.')[0][len('TrimmedTestScene'):].split('_')
         path_init_env = '{}/{}'.format(dataset_path, info_entry['env_path'])
+        state = load_graph_dict(path_init_env)['init_graph']
         goals = info_entry['goal']
         goal_index = info_entry['goal_index']
-        state = load_graph_dict(path_init_env)['init_graph']
+
 
         env.reset(state, goals)
 
@@ -79,6 +82,8 @@ def rollout_from_json(info):
         end = timeit.default_timer()
 
 def interactive_rollout():
+    env = gym.make('vh_graph-v0')
+
     comm = comm_unity.UnityCommunication()
     comm.reset(0)
     agent = MCTS_agent(env=env,
@@ -91,10 +96,25 @@ def interactive_rollout():
                        num_samples=1,
                        num_processes=1)
 
-    task_goal = 'findnode_2007'
+    node_id = 2007
+    task_goal = {0: ['findnode_2007']}
+    s, graph = comm.environment_graph()
+    container_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['fridge', 'freezer']][0]
+    new_node = {'id': node_id, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
+    new_edge = {'from_id': node_id, 'relation_type': 'INSIDE', 'to_id': container_id}
+    graph['nodes'].append(new_node)
+    graph['edges'].append(new_edge)
+    success = comm.expand_scene(graph)
+    print(success)
     while True:
-
-        agent.get_action(graph, task_goal)
+        s, graph = comm.environment_graph()
+        ipdb.set_trace()
+        id2node = {node['id']: node for node in graph['nodes']}
+        agent.reset(graph, task_goal)
+        print(graph['nodes'][-1])
+        action = agent.get_action(graph, task_goal[0])
+        ipdb.set_trace()
+        comm.render_script([action], image_synthesis=[])
         input('Select next action')
 
 if __name__ == '__main__':
