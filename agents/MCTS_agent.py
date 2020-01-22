@@ -14,25 +14,29 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
-def find_heuristic(agent_id, env_graph, observations, object_target):
+def find_heuristic(agent_id, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph)
     id2node = {node['id']: node for node in env_graph['nodes']}
+    containerdict = {edge['from_id']: edge['to_id'] for edge in env_graph['edges'] if edge['relation_type'] == 'INSIDE'}
     target = int(object_target.split('_')[-1])
     observation_ids = [x['id'] for x in observations['nodes']]
-    
-
+    try:
+        room_char = [edge['to_id'] for edge in env_graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] == 'INSIDE'][0]
+    except:
+        ipdb.set_trace()
     action_list = []
     while target not in observation_ids:
-        containers = [e['to_id'] for e in env_graph['edges']
-                      if e['from_id'] == target and e['relation_type'] == 'INSIDE']
+        container = containerdict[target]
         
         # If the object is a room, we have to walk to what is insde
-        if id2node[containers[0]]['category'] == 'Rooms':
+        if id2node[container]['category'] == 'Rooms':
             action_list = [('walk', (id2node[target]['class_name'], target), None)] + action_list 
-       
-        elif 'CLOSED' in id2node[containers[0]]['states'] or not 'OPEN' in id2node[containers[0]]['states']:
-            action = ('open', (id2node[containers[0]]['class_name'], containers[0]), None)
+
+        elif 'CLOSED' in id2node[container]['states'] or ('OPEN' not in id2node[container]['states']):
+            action = ('open', (id2node[container]['class_name'], container), None)
             action_list = [action] + action_list
-        target = containers[0]
+
+        target = container
     
     ids_character = [x['to_id'] for x in observations['edges'] if
                      x['from_id'] == agent_id and x['relation_type'] == 'CLOSE']
@@ -41,11 +45,12 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
         # If character is not next to the object, walk there
         action_list = [('walk', (id2node[target]['class_name'], target), None)]+ action_list
 
+
     return action_list
 
 
-def grab_heuristic(agent_id, env_graph, observations, object_target):
-    print(object_target)
+def grab_heuristic(agent_id, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph)
     target_id = int(object_target.split('_')[-1])
 
     observed_ids = [node['id'] for node in observations['nodes']]
@@ -62,17 +67,33 @@ def grab_heuristic(agent_id, env_graph, observations, object_target):
     if len(agent_close) > 0 and target_id in observed_ids > 0:
         return target_action
     else:
-        return find_heuristic(agent_id, env_graph, observations, object_target)+target_action
+        return find_heuristic(agent_id, env_graph, simulator, object_target)+target_action
 
 
-def put_heuristic(agent_id, env_graph, observations, target):
+def put_heuristic(agent_id, env_graph, simulator, target):
+    observations = simulator.get_observations(env_graph)
+
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
+    id2node = {node['id']: node for node in env_graph['nodes']}
 
-    grab_obj1 = grab_heuristic(agent_id, env_graph, observations, 'grab_' + str(target_node['id']))
-    find_obj2 = find_heuristic(agent_id, env_graph, observations, 'find_' + str(target_node2['id']))
+    object_diff_room = None
+    grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
+    if len(grab_obj1) > 0:
+        if grab_obj1[0][0] == 'walk':
+            id_room = grab_obj1[0][1][1]
+            if id2node[id_room]['category'] == 'Rooms':
+                object_diff_room = id_room
+    
+    env_graph_new = env_graph.copy()
+    
+    if object_diff_room:
+        env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if edge['to_id'] != agent_id and edge['from_id'] != agent_id]
+        env_graph_new['edges'].append({'from_id': agent_id, 'to_id': object_diff_room, 'relation_type': 'INSIDE'})
 
+
+    find_obj2 = find_heuristic(agent_id, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
     res = grab_obj1 + find_obj2 + action
     return res

@@ -86,16 +86,7 @@ def interactive_rollout():
 
     comm = comm_unity.UnityCommunication()
     comm.reset(0)
-    agent = MCTS_agent(env=env,
-                       agent_id=0,
-                       max_episode_length=5,
-                       num_simulation=100,
-                       max_rollout_steps=5,
-                       c_init=0.1,
-                       c_base=1000000,
-                       num_samples=1,
-                       num_processes=1)
-
+    comm.add_character()
     
     node_id_new = 2007
     s, graph = comm.environment_graph()
@@ -107,6 +98,17 @@ def interactive_rollout():
     success = comm.expand_scene(graph)
     
     s, graph = comm.environment_graph()
+    agent_id =  [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
+    agent = MCTS_agent(env=env,
+                       agent_id=agent_id,
+                       max_episode_length=5,
+                       num_simulation=100,
+                       max_rollout_steps=5,
+                       c_init=0.1,
+                       c_base=1000000,
+                       num_samples=1,
+                       num_processes=1)
+
     glasses_id = [node['id'] for node in graph['nodes'] if 'glass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
 
@@ -116,6 +118,7 @@ def interactive_rollout():
         s, graph = comm.environment_graph()
         id2node = {node['id']: node for node in graph['nodes']}
         agent.reset(graph, task_goal)
+        print('Get action...')
         action = agent.get_action(graph, task_goal[0])
         ipdb.set_trace()
         comm.render_script([action], image_synthesis=[])

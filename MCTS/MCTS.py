@@ -74,16 +74,15 @@ class MCTS:
         list_goals = list(range(len(goals)))
         random.shuffle(list_goals)
         for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
-            observations = self.env.get_observations(curr_vh_state)
             goal_selected = goals[list_goals[rollout_step]]
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
-            actions = heuristic(self.agent_id, curr_state, observations, goal_selected)
+            actions = heuristic(self.agent_id, curr_state, self.env, goal_selected)
             num_steps += len(actions)
             for action in enumerate(actions):
                 # Check if action can be performed
-                if action_performed:
-                    next_vh_state = self.env.transition(curr_vh_state, {0: action})
-                    next_state = next_vh_state.to_dict()
+                # if action_performed:
+                next_vh_state = self.env.transition(curr_vh_state, {0: action})
+                next_state = next_vh_state.to_dict()
 
             curr_reward = self.env.reward(0, next_state)
             delta_reward = curr_reward - last_reward# - 0.05
@@ -140,6 +139,7 @@ class MCTS:
     def expand(self, leaf_node, t):
         curr_state = leaf_node.id[1][1]
         if t < self.max_episode_length and not self.env.is_terminal(0, curr_state):
+            print('Expanding from {}'.format(leaf_node.id[0]))
             expanded_leaf_node = self.initialize_children(leaf_node)
             if expanded_leaf_node is not None:
                 leaf_node.is_expanded = True
@@ -177,21 +177,21 @@ class MCTS:
 
         parent_action = node.id[0]
         goal_id = leaf_node_values[2]
-        observations = self.env.get_observations(vh_state)
-
+        
         action_space = []
         goal_incomplete = False
         for goal in goals:
 
             heuristic = self.heuristic_dict[goal.split('_')[0]]
-            actions_heuristic = heuristic(self.agent_id, state, observations, goal)
+            actions_heuristic = heuristic(self.agent_id, state, self.env, goal)
+            if parent_action is not None:
+                print('Parent ', parent_action)
+            print(goal, actions_heuristic)
             next_vh_state = vh_state
             actions_str = []
-            print('Children', actions_heuristic)
             for action in actions_heuristic:
                 action_str = self.get_action_str(action)
                 actions_str.append(action_str)
-                print(action_str)
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
