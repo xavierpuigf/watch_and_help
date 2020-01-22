@@ -10,6 +10,7 @@ import utils
 import json
 import random
 import numpy as np
+import cProfile
 import ipdb
 from simulation.evolving_graph.utils import load_graph_dict
 from simulation.unity_simulator import comm_unity as comm_unity
@@ -127,6 +128,7 @@ def interactive_rollout():
 
         print('Get action...')
         action, info = agent.get_action(graph, task_goal[0])
+        exit()
         print(action, info['plan'])
         script = ['<char0> {}'.format(action)]
         success, message = comm.render_script(script, image_synthesis=[])

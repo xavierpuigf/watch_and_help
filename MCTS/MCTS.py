@@ -4,7 +4,7 @@ from anytree import AnyNode as Node
 from anytree import RenderTree
 import copy
 import ipdb
-
+from profilehooks import profile
 
 class MCTS:
     def __init__(self, env, agent_id, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
@@ -20,7 +20,7 @@ class MCTS:
         self.heuristic_dict = None
         np.random.seed(seed)
         
-
+    @profile
     def run(self, curr_root, t, heuristic_dict):
 
         self.heuristic_dict = heuristic_dict
@@ -61,6 +61,7 @@ class MCTS:
         return next_root, plan
 
 
+    @profile
     def rollout(self, leaf_node, t):
         reached_terminal = False
 
@@ -175,7 +176,7 @@ class MCTS:
         actions = curr_root.children[selected_child_index].id[1][-1]
         return actions, children_visit, curr_root.children[selected_child_index]
 
-
+    @profile
     def initialize_children(self, node):
         leaf_node_values = node.id[1]
         vh_state, state, goals, steps, actions_parent = leaf_node_values
@@ -209,6 +210,7 @@ class MCTS:
 
         return node
     
+    @profile
     def get_action_str(self, action_tuple):
         obj_args = [x for x in list(action_tuple)[1:] if x is not None]
         objects_str = ' '.join(['<{}> ({})'.format(x[0], x[1]) for x in obj_args])

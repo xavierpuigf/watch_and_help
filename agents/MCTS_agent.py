@@ -7,6 +7,7 @@ import copy
 import importlib
 import multiprocessing
 import ipdb
+from profilehooks import profile
 
 
 from vh_graph.envs import belief as Belief
@@ -14,6 +15,7 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
+@profile
 def find_heuristic(agent_id, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph)
     id2node = {node['id']: node for node in env_graph['nodes']}
@@ -51,7 +53,7 @@ def find_heuristic(agent_id, env_graph, simulator, object_target):
 
     return action_list
 
-
+@profile
 def grab_heuristic(agent_id, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph)
     target_id = int(object_target.split('_')[-1])
@@ -72,7 +74,7 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
     else:
         return find_heuristic(agent_id, env_graph, simulator, object_target)+target_action
 
-
+@profile
 def put_heuristic(agent_id, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph)
 
