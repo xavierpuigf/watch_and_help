@@ -26,8 +26,11 @@ def find_heuristic(agent_id, env_graph, simulator, object_target):
         ipdb.set_trace()
     action_list = []
     while target not in observation_ids:
-        container = containerdict[target]
-        
+        try:
+            container = containerdict[target]
+        except:
+            print(id2node[target])
+            ipdb.set_trace()
         # If the object is a room, we have to walk to what is insde
         if id2node[container]['category'] == 'Rooms':
             action_list = [('walk', (id2node[target]['class_name'], target), None)] + action_list 
@@ -64,7 +67,7 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
     else:
         target_action = []
 
-    if len(agent_close) > 0 and target_id in observed_ids > 0:
+    if len(agent_close) > 0 and target_id in observed_ids:
         return target_action
     else:
         return find_heuristic(agent_id, env_graph, simulator, object_target)+target_action
@@ -91,7 +94,9 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     if object_diff_room:
         env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if edge['to_id'] != agent_id and edge['from_id'] != agent_id]
         env_graph_new['edges'].append({'from_id': agent_id, 'to_id': object_diff_room, 'relation_type': 'INSIDE'})
-
+    
+    else:
+        env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if (edge['to_id'] != agent_id and edge['from_id'] != agent_id) or edge['relation_type'] == 'INSIDE']
 
     find_obj2 = find_heuristic(agent_id, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
@@ -172,6 +177,8 @@ class MCTS_agent:
 
     def sample_belief(self, obs_graph):
         self.belief.update_from_gt_graph(obs_graph)
+
+        # TODO: probably these 2 cases are not needed
         if self.previous_belief_graph is None:
             self.belief.reset_belief()
             new_graph = self.belief.sample_from_belief()
@@ -232,6 +239,7 @@ class MCTS_agent:
 
 
 
+
     def rollout(self, graph, task_goal):
 
         self.reset(graph, task_goal)
@@ -266,13 +274,13 @@ class MCTS_agent:
             obs_graph = self.env.get_observations(char_index=0)
             self.sample_belief(self.env.get_observations(char_index=0))
             self.sim_env.reset(self.previous_belief_graph, task_goal)
-
+            self.sim_env.to_pomdp()
 
             state = self.env.vh_state.to_dict()
 
 
             sim_state = self.sim_env.vh_state.to_dict()
-            self.sim_env.to_pomdp()
+            
 
 
         import pdb

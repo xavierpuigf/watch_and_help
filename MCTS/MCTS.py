@@ -28,6 +28,7 @@ class MCTS:
             curr_root = self.expand(curr_root, t)
 
         for explore_step in range(self.num_simulation):
+            print('RUN')
             if explore_step > 0 and explore_step % 100 == 0 and self.num_simulation > 0:
                 print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
@@ -78,11 +79,16 @@ class MCTS:
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
             actions = heuristic(self.agent_id, curr_state, self.env, goal_selected)
             num_steps += len(actions)
-            for action in enumerate(actions):
+            for action_id, action in enumerate(actions):
                 # Check if action can be performed
                 # if action_performed:
-                next_vh_state = self.env.transition(curr_vh_state, {0: action})
+                action_str = self.get_action_str(action)
+                try:
+                    next_vh_state = self.env.transition(curr_vh_state, {0: action_str})
+                except:
+                    ipdb.set_trace()
                 next_state = next_vh_state.to_dict()
+                curr_vh_state, curr_state = next_vh_state, next_state
 
             curr_reward = self.env.reward(0, next_state)
             delta_reward = curr_reward - last_reward# - 0.05
@@ -90,7 +96,7 @@ class MCTS:
             # print(curr_rewward, last_reward)
             last_reward = curr_reward
             sum_reward += delta_reward
-            curr_vh_state, curr_state = next_vh_state, next_state
+            
     
         # print(sum_reward, reached_terminal)
         return sum_reward
@@ -184,14 +190,13 @@ class MCTS:
 
             heuristic = self.heuristic_dict[goal.split('_')[0]]
             actions_heuristic = heuristic(self.agent_id, state, self.env, goal)
-            if parent_action is not None:
-                print('Parent ', parent_action)
-            print(goal, actions_heuristic)
             next_vh_state = vh_state
             actions_str = []
             for action in actions_heuristic:
                 action_str = self.get_action_str(action)
                 actions_str.append(action_str)
+
+                # TODO: this could just be computed in the heuristics?
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
