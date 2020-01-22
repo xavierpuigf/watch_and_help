@@ -96,22 +96,26 @@ def interactive_rollout():
                        num_samples=1,
                        num_processes=1)
 
-    node_id = 2007
-    task_goal = {0: ['findnode_2007']}
+    
+    node_id_new = 2007
     s, graph = comm.environment_graph()
     container_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['fridge', 'freezer']][0]
-    new_node = {'id': node_id, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
-    new_edge = {'from_id': node_id, 'relation_type': 'INSIDE', 'to_id': container_id}
+    new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
+    new_edge = {'from_id': node_id_new, 'relation_type': 'INSIDE', 'to_id': container_id}
     graph['nodes'].append(new_node)
     graph['edges'].append(new_edge)
     success = comm.expand_scene(graph)
-    print(success)
+    
+    s, graph = comm.environment_graph()
+    glasses_id = [node['id'] for node in graph['nodes'] if 'glass' in node['class_name']]
+    table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
+
+    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id]
+    task_goal = {0: goals}
     while True:
         s, graph = comm.environment_graph()
-        ipdb.set_trace()
         id2node = {node['id']: node for node in graph['nodes']}
         agent.reset(graph, task_goal)
-        print(graph['nodes'][-1])
         action = agent.get_action(graph, task_goal[0])
         ipdb.set_trace()
         comm.render_script([action], image_synthesis=[])

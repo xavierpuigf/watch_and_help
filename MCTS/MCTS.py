@@ -17,13 +17,13 @@ class MCTS:
         self.c_init = c_init 
         self.c_base = c_base
         self.seed = seed
-        self.heuristic = None
+        self.heuristic_dict = None
         np.random.seed(seed)
         
 
-    def run(self, curr_root, t, heuristic):
+    def run(self, curr_root, t, heuristic_dict):
 
-        self.heuristic = heuristic
+        self.heuristic_dict = heuristic_dict
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
 
@@ -76,7 +76,8 @@ class MCTS:
         for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
             observations = self.env.get_observations(curr_vh_state)
             goal_selected = goals[list_goals[rollout_step]]
-            actions = self.heuristic(self.agent_id, curr_state, observations, goal_selected)
+            heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
+            actions = heuristic(self.agent_id, curr_state, observations, goal_selected)
             num_steps += len(actions)
             for action in enumerate(actions):
                 # Check if action can be performed
@@ -181,13 +182,16 @@ class MCTS:
         action_space = []
         goal_incomplete = False
         for goal in goals:
-            actions_heuristic = self.heuristic(self.agent_id, state, observations, goal)
+
+            heuristic = self.heuristic_dict[goal.split('_')[0]]
+            actions_heuristic = heuristic(self.agent_id, state, observations, goal)
             next_vh_state = vh_state
             actions_str = []
             print('Children', actions_heuristic)
             for action in actions_heuristic:
                 action_str = self.get_action_str(action)
                 actions_str.append(action_str)
+                print(action_str)
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,

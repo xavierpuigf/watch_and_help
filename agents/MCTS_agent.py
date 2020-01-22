@@ -24,11 +24,16 @@ def find_heuristic(agent_id, env_graph, observations, object_target):
     while target not in observation_ids:
         containers = [e['to_id'] for e in env_graph['edges']
                       if e['from_id'] == target and e['relation_type'] == 'INSIDE']
-        target = containers[0]
-        if 'CLOSED' in id2node[target]['states']:
-            action = ('open', (id2node[target]['class_name'], target), None)
+        
+        # If the object is a room, we have to walk to what is insde
+        if id2node[containers[0]]['category'] == 'Rooms':
+            action_list = [('walk', (id2node[target]['class_name'], target), None)] + action_list 
+       
+        elif 'CLOSED' in id2node[containers[0]]['states'] or not 'OPEN' in id2node[containers[0]]['states']:
+            action = ('open', (id2node[containers[0]]['class_name'], containers[0]), None)
             action_list = [action] + action_list
-
+        target = containers[0]
+    
     ids_character = [x['to_id'] for x in observations['edges'] if
                      x['from_id'] == agent_id and x['relation_type'] == 'CLOSE']
 
@@ -49,27 +54,27 @@ def grab_heuristic(agent_id, env_graph, observations, object_target):
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
 
-    if target_id in grabbed_obj_ids:
+    if target_id not in grabbed_obj_ids:
         target_action = [('grab', (target_node['class_name'], target_id), None)]
     else:
         target_action = []
 
-    if len(agent_close) and target_id in observed_ids > 0:
+    if len(agent_close) > 0 and target_id in observed_ids > 0:
         return target_action
     else:
         return find_heuristic(agent_id, env_graph, observations, object_target)+target_action
 
 
-def put_heuristic(agent_it, env_graph, observations, target):
+def put_heuristic(agent_id, env_graph, observations, target):
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
 
-    grab_obj1 = grab_heuristic(agent_id, env_graph, observations, 'grab_' + str(target))
-    find_obj2 = find_heuristic(agent_id, env_graph, observations, 'find_' + str(target))
+    grab_obj1 = grab_heuristic(agent_id, env_graph, observations, 'grab_' + str(target_node['id']))
+    find_obj2 = find_heuristic(agent_id, env_graph, observations, 'find_' + str(target_node2['id']))
 
-    action = [('grab', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
-    res = grab_obj1 + find_obj2 + [action]
+    action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
+    res = grab_obj1 + find_obj2 + action
     return res
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, res):
@@ -87,12 +92,10 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
     t1 = time.time()
 
 
-
-
-    
     if env.is_terminal(0, init_state):
         terminal = True
-        res[sample_id] = None
+        if sample_id is not None:
+            res[sample_id] = None
         return
     # if root_action is None:
     root_node = Node(id=(root_action, [init_vh_state, init_state, goal_ids, 0, []]),
@@ -100,9 +103,14 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
                      sum_value=0,
                      is_expanded=False)
     curr_node = root_node
+    heuristic_dict = {
+        'find': find_heuristic,
+        'grab': grab_heuristic,
+        'put': put_heuristic
+    }
     next_root, plan = mcts.run(curr_node,
                                nb_steps,
-                               grab_heuristic)
+                               heuristic_dict)
     print('TS', time.time() - t1)
     print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
     print('plan:', plan)
