@@ -150,10 +150,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
     # print('init state:', init_state)
 
     q = goal_ids
-
     l = 0
-
-
     import time
     t1 = time.time()
 
