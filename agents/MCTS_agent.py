@@ -15,7 +15,6 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
-@profile
 def find_heuristic(agent_id, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph)
     id2node = {node['id']: node for node in env_graph['nodes']}
@@ -53,7 +52,6 @@ def find_heuristic(agent_id, env_graph, simulator, object_target):
 
     return action_list
 
-@profile
 def grab_heuristic(agent_id, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph)
     target_id = int(object_target.split('_')[-1])
@@ -74,7 +72,6 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
     else:
         return find_heuristic(agent_id, env_graph, simulator, object_target)+target_action
 
-@profile
 def put_heuristic(agent_id, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph)
 
@@ -105,10 +102,51 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     res = grab_obj1 + find_obj2 + action
     return res
 
+def clean_graph(state, goal_ids):
+    new_graph = {}
+    # get all ids
+    ids_interaction = []
+    nodes_missing = []
+    for goal_name in goal_ids:
+        nodes_missing += [int(x) for x in goal_name.split('_') if x.isdigit()]
+    nodes_missing += [node['id'] for node in state['nodes'] if node['class_name'] == 'character' or node['category'] in ['Rooms', 'Doors']]
+
+    id2node = {node['id']: node for node in state['nodes']}
+    
+    print(id2node[1])
+
+    inside = {}
+    for edge in state['edges']:
+        if edge['relation_type'] == 'INSIDE':
+            if edge['from_id'] not in inside.keys():
+                inside[edge['from_id']] = []
+            inside[edge['from_id']].append(edge['to_id'])
+    
+    while (len(nodes_missing) > 0):
+        new_nodes_missing = []
+        for node_missing in nodes_missing:
+            if node_missing in inside:
+                new_nodes_missing += [node_in for node_in in inside[node_missing] if node_in not in ids_interaction]
+            ids_interaction.append(node_missing)
+        nodes_missing = list(set(new_nodes_missing))
+
+
+    new_graph = {
+            "edges": [edge for edge in state['edges'] if edge['from_id'] in ids_interaction and edge['to_id'] in ids_interaction],
+            "nodes": [id2node[id_node] for id_node in ids_interaction]
+    }
+
+    return new_graph
+
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, res):
-    init_vh_state = env.vh_state
     init_state = env.state
-    observations = env.get_observations(char_index=0)
+    if True: # clean graph
+        init_state = clean_graph(init_state, goal_ids)
+        init_vh_state = env.get_vh_state(init_state)
+    else:
+        init_vh_state = env.vh_state
+    
+    observations = env.get_observations(init_state, char_index=0)
     # print('init state:', init_state)
 
     q = goal_ids
@@ -139,13 +177,6 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
     next_root, plan = mcts.run(curr_node,
                                nb_steps,
                                heuristic_dict)
-    print('TS', time.time() - t1)
-    print('init state:', [e for e in init_state['edges'] if e['from_id'] == 162])
-    print('plan:', plan)
-    # else:
-    #     action, _, next_root = mcts.select_next_root(root_node)
-    print(root_node.sum_value)
-    # print(sample_id, res[sample_id])
     if sample_id is not None:
         res[sample_id] = plan
     else:
@@ -200,8 +231,7 @@ class MCTS_agent:
         print('---')
 
 
-    def get_action(self, graph, task_goal):
-        first_time = time.time()
+    def get_action(self, task_goal):
         self.mcts = MCTS(self.sim_env, self.agent_id, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
                          self.c_init, self.c_base)
@@ -257,7 +287,7 @@ class MCTS_agent:
         history = {'belief': [], 'plan': [], 'action': [], 'belief_graph': []}
         while not done and nb_steps < self.max_episode_length:
 
-            action, info = self.get_action(graph, task_goal[0])
+            action, info = self.get_action(task_goal[0])
             plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
 
             if obs_graph is not None:

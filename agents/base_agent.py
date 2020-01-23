@@ -40,8 +40,8 @@ class BaseAgent:
     def get_action(self, graph, task_goal):
         return self.env.get_action_space()[0], {}
 
-
-
+        
+        
     def rollout(self, graph, task_goal):
         nb_steps = 0
         done = False

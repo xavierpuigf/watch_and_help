@@ -20,7 +20,6 @@ class MCTS:
         self.heuristic_dict = None
         np.random.seed(seed)
         
-    @profile
     def run(self, curr_root, t, heuristic_dict):
 
         self.heuristic_dict = heuristic_dict
@@ -28,7 +27,6 @@ class MCTS:
             curr_root = self.expand(curr_root, t)
 
         for explore_step in range(self.num_simulation):
-            print('RUN')
             if explore_step > 0 and explore_step % 100 == 0 and self.num_simulation > 0:
                 print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
@@ -61,7 +59,6 @@ class MCTS:
         return next_root, plan
 
 
-    @profile
     def rollout(self, leaf_node, t):
         reached_terminal = False
 
@@ -146,7 +143,6 @@ class MCTS:
     def expand(self, leaf_node, t):
         curr_state = leaf_node.id[1][1]
         if t < self.max_episode_length and not self.env.is_terminal(0, curr_state):
-            print('Expanding from {}'.format(leaf_node.id[0]))
             expanded_leaf_node = self.initialize_children(leaf_node)
             if expanded_leaf_node is not None:
                 leaf_node.is_expanded = True
@@ -176,7 +172,6 @@ class MCTS:
         actions = curr_root.children[selected_child_index].id[1][-1]
         return actions, children_visit, curr_root.children[selected_child_index]
 
-    @profile
     def initialize_children(self, node):
         leaf_node_values = node.id[1]
         vh_state, state, goals, steps, actions_parent = leaf_node_values
@@ -209,8 +204,7 @@ class MCTS:
                  is_expanded=False)
 
         return node
-    
-    @profile
+
     def get_action_str(self, action_tuple):
         obj_args = [x for x in list(action_tuple)[1:] if x is not None]
         objects_str = ' '.join(['<{}> ({})'.format(x[0], x[1]) for x in obj_args])

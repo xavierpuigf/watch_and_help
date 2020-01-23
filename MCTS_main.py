@@ -103,7 +103,7 @@ def interactive_rollout():
     agent = MCTS_agent(env=env,
                        agent_id=agent_id,
                        max_episode_length=5,
-                       num_simulation=5,
+                       num_simulation=100,
                        max_rollout_steps=3,
                        c_init=0.1,
                        c_base=1000000,
@@ -127,9 +127,9 @@ def interactive_rollout():
         agent.sim_env.reset(agent.previous_belief_graph, task_goal)
 
         print('Get action...')
-        action, info = agent.get_action(graph, task_goal[0])
-        exit()
-        print(action, info['plan'])
+        action, info = agent.get_action(task_goal[0])
+
+        print(action, 'Plan: ', info['plan'][:4])
         script = ['<char0> {}'.format(action)]
         success, message = comm.render_script(script, image_synthesis=[])
         print(success)
