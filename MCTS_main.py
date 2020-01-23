@@ -117,10 +117,18 @@ def interactive_rollout():
     goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id]
     task_goal = {0: goals}
     agent.reset(graph, task_goal)
+
+    last_position = None
     while True:
         s, graph = comm.environment_graph()
         id2node = {node['id']: node for node in graph['nodes']}
         
+        if last_position is not None:
+
+            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE', 'CLOSE'] and (
+                (x['from_id'] == char_id or x['to_id'] == char_id))
+            graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+            graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
         env.reset(graph , task_goal)
         agent.sample_belief(env.get_observations(char_index=0))
@@ -132,7 +140,13 @@ def interactive_rollout():
         print(action, 'Plan: ', info['plan'][:4])
         script = ['<char0> {}'.format(action)]
         success, message = comm.render_script(script, image_synthesis=[])
-        print(success)
+        if success:
+            if 'walk' in action:
+                walk_id = int(action.split('(')[1][:-1])
+                if id2node[walk_id]['category'] == 'Rooms':
+                    last_position = walk_id
+
+
         ipdb.set_trace()
 
 if __name__ == '__main__':
