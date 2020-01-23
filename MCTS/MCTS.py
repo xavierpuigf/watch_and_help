@@ -5,6 +5,7 @@ from anytree import RenderTree
 import copy
 import ipdb
 from profilehooks import profile
+from tqdm import tqdm
 
 class MCTS:
     def __init__(self, env, agent_id, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
@@ -26,7 +27,7 @@ class MCTS:
         if not curr_root.is_expanded:
             curr_root = self.expand(curr_root, t)
 
-        for explore_step in range(self.num_simulation):
+        for explore_step in tqdm(range(self.num_simulation)):
             if explore_step > 0 and explore_step % 100 == 0 and self.num_simulation > 0:
                 print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
@@ -182,6 +183,9 @@ class MCTS:
         
         action_space = []
         goal_incomplete = False
+
+        if len(goals) == 0:
+            return None
         for goal in goals:
 
             heuristic = self.heuristic_dict[goal.split('_')[0]]

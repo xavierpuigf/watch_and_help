@@ -111,16 +111,28 @@ def interactive_rollout():
                        num_processes=1)
 
    
-    glasses_id = [node['id'] for node in graph['nodes'] if 'glass' in node['class_name']]
+    glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
 
     goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id]
     task_goal = {0: goals}
+
+    # Assumption: At the beggining the character is not close to anything
+
     agent.reset(graph, task_goal)
 
     last_position = None
+    num_steps = 0
+
+    print('Starting')
     while True:
         s, graph = comm.environment_graph()
+
+        if num_steps == 0:
+            graph['edges'] = [edge for edge in graph['edges'] if not edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id)]
+
+        num_steps += 1
+
         id2node = {node['id']: node for node in graph['nodes']}
         
         if last_position is not None:
@@ -131,6 +143,7 @@ def interactive_rollout():
             graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
         env.reset(graph , task_goal)
+        
         agent.sample_belief(env.get_observations(char_index=0))
         agent.sim_env.reset(agent.previous_belief_graph, task_goal)
 

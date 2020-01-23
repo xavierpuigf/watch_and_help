@@ -112,9 +112,6 @@ def clean_graph(state, goal_ids):
     nodes_missing += [node['id'] for node in state['nodes'] if node['class_name'] == 'character' or node['category'] in ['Rooms', 'Doors']]
 
     id2node = {node['id']: node for node in state['nodes']}
-    
-    print(id2node[1])
-
     inside = {}
     for edge in state['edges']:
         if edge['relation_type'] == 'INSIDE':
