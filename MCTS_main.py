@@ -82,6 +82,55 @@ def rollout_from_json(info):
 
         end = timeit.default_timer()
 
+def inside_not_trans(graph):
+    inside_node = {}
+    other_edges = []
+    for edge in graph['edges']:
+        if edge['relation_type'] == 'INSIDE':
+            if edge['from_id'] not in inside_node:
+                inside_node[edge['from_id']] = []
+            inside_node[edge['from_id']].append(edge['to_id'])
+        else:
+            other_edges.append(edge)
+    # Make sure we make trasnsitive first
+    inside_trans = {}
+    def inside_recursive(curr_node_id):
+        if curr_node_id in inside_trans:
+            return inside_trans[node_id]
+        if curr_node_id not in inside_node.keys():
+            return []
+        else:
+            all_parents = []
+            for node_id_parent in inside_node[curr_node_id]:
+                curr_parents = inside_recursive(node_id_parent)
+                all_parents += curr_parents
+
+            if len(all_parents) > 0:
+                inside_trans[curr_node_id] = list(set(all_parents))
+            return all_parents
+
+    for node_id in inside_node.keys():
+        if len(inside_node[node_id]) > 1:
+            inside_recursive(node_id)
+        else:
+            other_edges.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': inside_node[node_id][0]})
+
+    num_parents = {}
+    for node in graph['nodes']:
+        if node['id'] not in inside_trans.keys():
+            num_parents[node['id']] = 0
+        else:
+            num_parents[node['id']] = len(inside_trans[node['id']])
+
+    edges_inside = []
+    for node_id, nodes_inside in inside_trans.items():
+        all_num_parents = [num_parents[id_n] for id_n in nodes_inside]
+        max_np = max(all_num_parents)
+        node_select = [node_inside[i] for i, np in enumerate(all_num_parents) if np == max_np][0]
+        edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
+    graph['edges'] = edges_inside + other_edges
+    return graph
+
 def interactive_rollout():
     env = gym.make('vh_graph-v0')
 
@@ -114,7 +163,7 @@ def interactive_rollout():
     glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
 
-    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id]
+    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:1]
     task_goal = {0: goals}
 
     # Assumption: At the beggining the character is not close to anything
@@ -131,9 +180,10 @@ def interactive_rollout():
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id))]
 
         num_steps += 1
-
         id2node = {node['id']: node for node in graph['nodes']}
         
+        graph = inside_not_trans(graph)
+
         if last_position is not None:
 
             character_location = lambda x, char_id: x['relation_type'] in ['INSIDE', 'CLOSE'] and (
@@ -151,7 +201,7 @@ def interactive_rollout():
         agent.sim_env.reset(agent.previous_belief_graph, task_goal)
 
         action, info = agent.get_action(task_goal[0])
-
+        print(action, info['plan'][0:3])
         script = ['<char0> {}'.format(action)]
         success, message = comm.render_script(script, image_synthesis=[])
         if success:
