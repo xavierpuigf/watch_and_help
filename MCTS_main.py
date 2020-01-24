@@ -127,9 +127,8 @@ def interactive_rollout():
     print('Starting')
     while True:
         s, graph = comm.environment_graph()
-
         if num_steps == 0:
-            graph['edges'] = [edge for edge in graph['edges'] if not edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id)]
+            graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id))]
 
         num_steps += 1
 
@@ -142,15 +141,17 @@ def interactive_rollout():
             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
             graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
+
         env.reset(graph , task_goal)
+        
+
+
         
         agent.sample_belief(env.get_observations(char_index=0))
         agent.sim_env.reset(agent.previous_belief_graph, task_goal)
 
-        print('Get action...')
         action, info = agent.get_action(task_goal[0])
 
-        print(action, 'Plan: ', info['plan'][:4])
         script = ['<char0> {}'.format(action)]
         success, message = comm.render_script(script, image_synthesis=[])
         if success:
@@ -159,8 +160,6 @@ def interactive_rollout():
                 if id2node[walk_id]['category'] == 'Rooms':
                     last_position = walk_id
 
-
-        ipdb.set_trace()
 
 if __name__ == '__main__':
 
