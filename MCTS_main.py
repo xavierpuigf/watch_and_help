@@ -178,7 +178,6 @@ def interactive_rollout():
     while True:
         s, graph = comm.environment_graph()
 
-        print('CLOSE', [edge for edge in graph['edges'] if (edge['from_id'] == agent_id or edge['to_id'] == agent_id)])
         if num_steps == 0:
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id))]
 
@@ -211,11 +210,14 @@ def interactive_rollout():
         agent.sim_env.reset(agent.previous_belief_graph, task_goal)
 
         action, info = agent.get_action(task_goal[0])
-        print(action, info['plan'][0:3])
+        print(info['plan'][0:3])
         script = ['<char0> {}'.format(action)]
         if 'walk' not in action:
-            script = ['<char0> [Find] {}'.format(action.split('] ')[1])] + script
-        
+            if 'put' in action:
+                script = ['<char0> [Find] {}'.format(action.split(') ')[-1])] + script
+            else:
+                script = ['<char0> [Find] {}'.format(action.split('] ')[1])] + script
+        print(script)
         success, message = comm.render_script(script, image_synthesis=[])
         last_walk_room = False
         if success:

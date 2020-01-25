@@ -25,6 +25,7 @@ def find_heuristic(agent_id, env_graph, simulator, object_target):
         room_char = [edge['to_id'] for edge in env_graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] == 'INSIDE'][0]
     except:
         ipdb.set_trace()
+
     action_list = []
     while target not in observation_ids:
         try:
@@ -59,7 +60,7 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
     observed_ids = [node['id'] for node in observations['nodes']]
     agent_close = [edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
     print([edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'CLOSE')])
-    grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'GRABBED')]
+    grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'])]
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
 
@@ -80,24 +81,27 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
     id2node = {node['id']: node for node in env_graph['nodes']}
-
+    target_grabbed = len([edge for edge in env_graph['edges'] if edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'] and edge['to_id'] == target_grab]) > 0
     object_diff_room = None
-    grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
-    if len(grab_obj1) > 0:
-        if grab_obj1[0][0] == 'walk':
-            id_room = grab_obj1[0][1][1]
-            if id2node[id_room]['category'] == 'Rooms':
-                object_diff_room = id_room
-    
-    env_graph_new = env_graph.copy()
-    
-    if object_diff_room:
-        env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if edge['to_id'] != agent_id and edge['from_id'] != agent_id]
-        env_graph_new['edges'].append({'from_id': agent_id, 'to_id': object_diff_room, 'relation_type': 'INSIDE'})
-    
+    if not target_grabbed:
+        grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
+        if len(grab_obj1) > 0:
+            if grab_obj1[0][0] == 'walk':
+                id_room = grab_obj1[0][1][1]
+                if id2node[id_room]['category'] == 'Rooms':
+                    object_diff_room = id_room
+        
+        env_graph_new = env_graph.copy()
+        
+        if object_diff_room:
+            env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if edge['to_id'] != agent_id and edge['from_id'] != agent_id]
+            env_graph_new['edges'].append({'from_id': agent_id, 'to_id': object_diff_room, 'relation_type': 'INSIDE'})
+        
+        else:
+            env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if (edge['to_id'] != agent_id and edge['from_id'] != agent_id) or edge['relation_type'] == 'INSIDE']
     else:
-        env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if (edge['to_id'] != agent_id and edge['from_id'] != agent_id) or edge['relation_type'] == 'INSIDE']
-
+        env_graph_new = env_graph
+        grab_obj1 = []
     find_obj2 = find_heuristic(agent_id, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
     res = grab_obj1 + find_obj2 + action
