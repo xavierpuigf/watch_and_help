@@ -171,11 +171,14 @@ def interactive_rollout():
     agent.reset(graph, task_goal)
 
     last_position = None
+    last_walk_room = False
     num_steps = 0
 
     print('Starting')
     while True:
         s, graph = comm.environment_graph()
+
+        print('CLOSE', [edge for edge in graph['edges'] if (edge['from_id'] == agent_id or edge['to_id'] == agent_id)])
         if num_steps == 0:
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id))]
 
@@ -185,10 +188,17 @@ def interactive_rollout():
         graph = inside_not_trans(graph)
 
         if last_position is not None:
+            
 
-            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE', 'CLOSE'] and (
+            character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
                 (x['from_id'] == char_id or x['to_id'] == char_id))
-            graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                (x['from_id'] == char_id or x['to_id'] == char_id))
+            
+            if last_walk_room:
+                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+            else:
+                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
             graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
 
@@ -203,13 +213,19 @@ def interactive_rollout():
         action, info = agent.get_action(task_goal[0])
         print(action, info['plan'][0:3])
         script = ['<char0> {}'.format(action)]
+        if 'walk' not in action:
+            script = ['<char0> [Find] {}'.format(action.split('] ')[1])] + script
+        
         success, message = comm.render_script(script, image_synthesis=[])
+        last_walk_room = False
         if success:
             if 'walk' in action:
                 walk_id = int(action.split('(')[1][:-1])
                 if id2node[walk_id]['category'] == 'Rooms':
                     last_position = walk_id
-
+                    last_walk_room = True
+        else:
+            print(message)
 
 if __name__ == '__main__':
 

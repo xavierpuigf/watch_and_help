@@ -58,6 +58,7 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
 
     observed_ids = [node['id'] for node in observations['nodes']]
     agent_close = [edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
+    print([edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'CLOSE')])
     grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'GRABBED')]
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
