@@ -4,7 +4,7 @@ import sys
 sys.path.append('../vh_mdp')
 sys.path.append('../virtualhome')
 import vh_graph
-from vh_graph.envs import belief
+from vh_graph.envs import belief, vh_env
 import utils_viz
 import utils
 import json
@@ -27,6 +27,68 @@ agent_type = 'MCTS' # PG/MCTS
 simulator_type = 'unity' # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
 
+
+class UnityEnvWrapper:
+    def __init__(self, comm, num_agents):
+        self.comm = comm
+        self.num_agents = num_agents
+        self.graph = None
+
+        comm.reset(0)
+        for _ in range(self.num_agents):
+            self.comm.add_character()
+        
+        self.get_graph()
+        self.test_prep()
+
+    def get_graph(self):
+
+        _, self.graph = self.comm.environment_graph()
+        return self.graph
+
+    def test_prep(self):
+        node_id_new = 2007
+        s, graph = self.comm.environment_graph()
+        container_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['fridge', 'freezer']][0]
+        new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
+        new_edge = {'from_id': node_id_new, 'relation_type': 'INSIDE', 'to_id': container_id}
+        graph['nodes'].append(new_node)
+        graph['edges'].append(new_edge)
+        success = self.comm.expand_scene(graph)
+
+    def agent_ids(self):
+        return [x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character']
+
+    def execute(self, actions): # dictionary from agent to action
+        # Get object to interact with
+
+        # This solution only works for 2 agents, we can scale it for more agents later
+        
+        agent_do = list(actions.keys())
+        if len(actions.keys()) > 1:
+            objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
+            if len(set(objects_interaction)) == 1:
+                agent_do = random.choice([0,1])
+
+        script_list = ['']
+        for agent_id in agent_do:
+            script = actions[agent_id]
+            current_script = ['<char{}> {}'.format(agent_id, script)]
+            if 'walk' not in script:
+                current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
+            
+            if len(script_list) < len(current_script):
+                script_list.append('')
+
+            script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
+            
+        # script_all = script_list
+        success, message = self.comm.render_script(script_list, image_synthesis=[])
+        result = {}
+        for agent_id in agent_do:
+            result[agent_id] = (success, message)
+        
+        return result
 
 def rollout_from_json(info):
     num_entries = len(info)
@@ -132,43 +194,41 @@ def inside_not_trans(graph):
     return graph
 
 def interactive_rollout():
-    env = gym.make('vh_graph-v0')
+
+    num_agents = 1
+    env = vh_env.VhGraphEnv(n_chars=num_agents)
+    # env = gym.make('vh_graph-v0')
+
 
     comm = comm_unity.UnityCommunication()
-    comm.reset(0)
-    comm.add_character()
-    
-    node_id_new = 2007
-    s, graph = comm.environment_graph()
-    container_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['fridge', 'freezer']][0]
-    new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
-    new_edge = {'from_id': node_id_new, 'relation_type': 'INSIDE', 'to_id': container_id}
-    graph['nodes'].append(new_node)
-    graph['edges'].append(new_edge)
-    success = comm.expand_scene(graph)
-    
-    s, graph = comm.environment_graph()
-    agent_id =  [x['id'] for x in graph['nodes'] if x['class_name'] == 'character'][0]
-    agent = MCTS_agent(env=env,
-                       agent_id=agent_id,
-                       max_episode_length=5,
-                       num_simulation=100,
-                       max_rollout_steps=3,
-                       c_init=0.1,
-                       c_base=1000000,
-                       num_samples=1,
-                       num_processes=1)
+    unity_simulator = UnityEnvWrapper(comm, num_agents)    
+    agent_ids =  unity_simulator.agent_ids()
+    agents = []
+    for agent_id in agent_ids:
+        agents.append(MCTS_agent(env=env,
+                           agent_id=agent_id,
+                           max_episode_length=5,
+                           num_simulation=100,
+                           max_rollout_steps=3,
+                           c_init=0.1,
+                           c_base=1000000,
+                           num_samples=1,
+                           num_processes=1))
 
-   
+    # Preparing the goal
+    graph = unity_simulator.get_graph()
     glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-
     goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:1]
-    task_goal = {0: goals}
+    task_goal = {}
 
+    for i in range(num_agents):
+        task_goal[i] = goals
+    
     # Assumption: At the beggining the character is not close to anything
-
-    agent.reset(graph, task_goal)
+    graph = inside_not_trans(graph)
+    for i in range(num_agents):
+        agents[i].reset(graph, task_goal)
 
     last_position = None
     last_walk_room = False
@@ -176,56 +236,61 @@ def interactive_rollout():
 
     print('Starting')
     while True:
-        s, graph = comm.environment_graph()
+        graph = unity_simulator.get_graph()
 
-        print('CLOSE', [edge for edge in graph['edges'] if (edge['from_id'] == agent_id or edge['to_id'] == agent_id)])
+        print([edge for edge in graph['edges'] if 'HOLDS' in edge['relation_type']])
         if num_steps == 0:
-            graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] == agent_id or edge['to_id'] == agent_id))]
+            graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
 
         num_steps += 1
         id2node = {node['id']: node for node in graph['nodes']}
         
         graph = inside_not_trans(graph)
 
-        if last_position is not None:
+        # Inside seems to be working now
+        # if last_position is not None:
             
 
-            character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-                (x['from_id'] == char_id or x['to_id'] == char_id))
-            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-                (x['from_id'] == char_id or x['to_id'] == char_id))
+        #     character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+        #         (x['from_id'] == char_id or x['to_id'] == char_id))
+        #     character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+        #         (x['from_id'] == char_id or x['to_id'] == char_id))
             
-            if last_walk_room:
-                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-            else:
-                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-            graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
+        #     if last_walk_room:
+        #         graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+        #     else:
+        #         graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+        #     graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
 
         env.reset(graph , task_goal)
         
 
+        action_dict = {}
+        for i, agent in enumerate(agents):
+            agent.sample_belief(env.get_observations(char_index=i))
+            agent.sim_env.reset(agent.previous_belief_graph, task_goal)
+            action, info = agent.get_action(task_goal[0])
+            action_dict[i] = action
+            print(action, info['plan'])
 
+        dict_results = unity_simulator.execute(action_dict)
         
-        agent.sample_belief(env.get_observations(char_index=0))
-        agent.sim_env.reset(agent.previous_belief_graph, task_goal)
+        # success, message = comm.render_script(script, image_synthesis=[])
+        for char_id, (success, message) in dict_results.items():
+            if not success:
+                print(char_id, message)
 
-        action, info = agent.get_action(task_goal[0])
-        print(action, info['plan'][0:3])
-        script = ['<char0> {}'.format(action)]
-        if 'walk' not in action:
-            script = ['<char0> [Find] {}'.format(action.split('] ')[1])] + script
-        
-        success, message = comm.render_script(script, image_synthesis=[])
-        last_walk_room = False
-        if success:
-            if 'walk' in action:
-                walk_id = int(action.split('(')[1][:-1])
-                if id2node[walk_id]['category'] == 'Rooms':
-                    last_position = walk_id
-                    last_walk_room = True
-        else:
-            print(message)
+
+        # last_walk_room = False
+        # if success:
+        #     if 'walk' in action:
+        #         walk_id = int(action.split('(')[1][:-1])
+        #         if id2node[walk_id]['category'] == 'Rooms':
+        #             last_position = walk_id
+        #             last_walk_room = True
+        # else:
+        #     print(message)
 
 if __name__ == '__main__':
 
