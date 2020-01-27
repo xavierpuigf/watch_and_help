@@ -59,7 +59,6 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
 
     observed_ids = [node['id'] for node in observations['nodes']]
     agent_close = [edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['to_id'] == target_id and edge['relation_type'] == 'CLOSE')]
-    print([edge for edge in env_graph['edges'] if (edge['from_id'] == agent_id and edge['relation_type'] == 'CLOSE')])
     grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'])]
 
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
@@ -82,6 +81,8 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
     id2node = {node['id']: node for node in env_graph['nodes']}
     target_grabbed = len([edge for edge in env_graph['edges'] if edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'] and edge['to_id'] == target_grab]) > 0
+
+    print(target_grabbed)
     object_diff_room = None
     if not target_grabbed:
         grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
@@ -255,7 +256,7 @@ class MCTS_agent:
         }
         return action, info
 
-    def reset(self, graph, task_goal):
+    def reset(self, graph, task_goal, seed=0):
         if self.comm is not None:
             s, graph = self.comm.environment_graph()
 
@@ -263,7 +264,7 @@ class MCTS_agent:
         self.env.reset(graph, task_goal)
         self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
-        self.belief = Belief.Belief(gt_state, seed=0)
+        self.belief = Belief.Belief(gt_state, agent_id=self.agent_id, seed=seed)
         self.sample_belief(self.env.get_observations(char_index=0))
         self.sim_env.reset(self.previous_belief_graph, task_goal)
         self.sim_env.to_pomdp()

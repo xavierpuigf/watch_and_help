@@ -14,7 +14,7 @@ import cProfile
 import ipdb
 from simulation.evolving_graph.utils import load_graph_dict
 from simulation.unity_simulator import comm_unity as comm_unity
-
+from profilehooks import profile
 import pickle
 sys.argv = ['-f']
 
@@ -49,12 +49,26 @@ class UnityEnvWrapper:
     def test_prep(self):
         node_id_new = 2007
         s, graph = self.comm.environment_graph()
+        table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
         container_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['fridge', 'freezer']][0]
+        drawer_id = [node['id'] for node in graph['nodes'] if node['class_name'] in ['kitchencabinets']][0]
+
+
+        id2node = {node['id']: node for node in graph['nodes']}
+
+        # plates = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == table_id and id2node[edge['from_id']]['class_name'] == 'plate']
+        # graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
+        # edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
+        #ipdb.set_trace()
+
+        
         new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
         new_edge = {'from_id': node_id_new, 'relation_type': 'INSIDE', 'to_id': container_id}
         graph['nodes'].append(new_node)
         graph['edges'].append(new_edge)
+        #graph['edges'] += edge_plates
         success = self.comm.expand_scene(graph)
+        print(success)
 
     def agent_ids(self):
         return [x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character']
@@ -75,7 +89,11 @@ class UnityEnvWrapper:
             script = actions[agent_id]
             current_script = ['<char{}> {}'.format(agent_id, script)]
             if 'walk' not in script:
-                current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
+                # TODO: very hacky, improve
+                if '[put' in script:
+                    current_script = ['<char{}> [Find] {})'.format(agent_id, script.split(') ')[1])] + current_script
+                else:
+                    current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
             
             if len(script_list) < len(current_script):
                 script_list.append('')
@@ -193,6 +211,8 @@ def inside_not_trans(graph):
     graph['edges'] = edges_inside + other_edges
     return graph
 
+
+# @profile
 def interactive_rollout():
 
     num_agents = 1
@@ -201,6 +221,7 @@ def interactive_rollout():
 
 
     comm = comm_unity.UnityCommunication()
+    ipdb.set_trace()
     unity_simulator = UnityEnvWrapper(comm, num_agents)    
     agent_ids =  unity_simulator.agent_ids()
     agents = []
@@ -228,7 +249,7 @@ def interactive_rollout():
     # Assumption: At the beggining the character is not close to anything
     graph = inside_not_trans(graph)
     for i in range(num_agents):
-        agents[i].reset(graph, task_goal)
+        agents[i].reset(graph, task_goal, seed=0)
 
     last_position = None
     last_walk_room = False
@@ -237,7 +258,6 @@ def interactive_rollout():
     print('Starting')
     while True:
         graph = unity_simulator.get_graph()
-
         if num_steps == 0:
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
 
