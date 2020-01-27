@@ -238,7 +238,6 @@ def interactive_rollout():
     while True:
         graph = unity_simulator.get_graph()
 
-        print([edge for edge in graph['edges'] if 'HOLDS' in edge['relation_type']])
         if num_steps == 0:
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
 
@@ -276,6 +275,7 @@ def interactive_rollout():
 
         dict_results = unity_simulator.execute(action_dict)
         
+
         # success, message = comm.render_script(script, image_synthesis=[])
         for char_id, (success, message) in dict_results.items():
             if not success:
@@ -291,6 +291,7 @@ def interactive_rollout():
         #             last_walk_room = True
         # else:
         #     print(message)
+
 
 if __name__ == '__main__':
 
