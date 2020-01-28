@@ -56,10 +56,10 @@ class UnityEnvWrapper:
 
         id2node = {node['id']: node for node in graph['nodes']}
 
-        plates = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == table_id and id2node[edge['from_id']]['class_name'] == 'plate']
-        graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
-        edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
-        graph['edges'] += edge_plates
+        # plates = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == table_id and id2node[edge['from_id']]['class_name'] == 'plate']
+        # graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
+        # edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
+        # graph['edges'] += edge_plates
         #ipdb.set_trace()
 
 
@@ -103,6 +103,8 @@ class UnityEnvWrapper:
         # script_all = script_list
         print(script_list)
         success, message = self.comm.render_script(script_list, image_synthesis=[])
+        if not success:
+            ipdb.set_trace()
         result = {}
         for agent_id in agent_do:
             result[agent_id] = (success, message)
@@ -215,7 +217,7 @@ def inside_not_trans(graph):
 
 def interactive_rollout():
 
-    num_agents = 2
+    num_agents = 1
     env = vh_env.VhGraphEnv(n_chars=num_agents)
     # env = gym.make('vh_graph-v0')
 
@@ -263,22 +265,24 @@ def interactive_rollout():
         num_steps += 1
         id2node = {node['id']: node for node in graph['nodes']}
         
+        
+        print('CHARACTER LOCATION')
+        print([edge for edge in graph['edges'] if edge['from_id'] == agent_ids[0] and edge['relation_type'] == 'INSIDE'])
+
         graph = inside_not_trans(graph)
-
         # Inside seems to be working now
-        # if last_position is not None:
+        
+        if last_position is not None:    
+            character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+                (x['from_id'] == char_id or x['to_id'] == char_id))
+            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                (x['from_id'] == char_id or x['to_id'] == char_id))
             
-
-        #     character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-        #         (x['from_id'] == char_id or x['to_id'] == char_id))
-        #     character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-        #         (x['from_id'] == char_id or x['to_id'] == char_id))
-            
-        #     if last_walk_room:
-        #         graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-        #     else:
-        #         graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-        #     graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
+            if last_walk_room:
+                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+            else:
+                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+            graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
 
         env.reset(graph , task_goal)
@@ -294,7 +298,7 @@ def interactive_rollout():
                 exit()
             else:
                 action_dict[i] = action
-                print(action, info['plan'])
+                print(action, info['plan'][:3])
 
         dict_results = unity_simulator.execute(action_dict)
         
