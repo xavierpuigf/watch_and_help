@@ -103,7 +103,6 @@ class UnityEnvWrapper:
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
             
         # script_all = script_list
-        ipdb.set_trace()
         success, message = self.comm.render_script(script_list, image_synthesis=[], recording=False)
         print(success)
         if not success:
@@ -255,7 +254,7 @@ def interactive_rollout():
     for i in range(num_agents):
         agents[i].reset(graph, task_goal, seed=i)
 
-    last_position = None
+    last_position = [None for _ in agent_ids]
     last_walk_room = [False for _ in agent_ids]
     num_steps = 0
 
@@ -274,19 +273,18 @@ def interactive_rollout():
 
         graph = inside_not_trans(graph)
         # Inside seems to be working now
-        
-        if last_position is not None:
-            for agent_id in agent_ids:    
-                character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-                    (x['from_id'] == char_id or x['to_id'] == char_id))
-                character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-                    (x['from_id'] == char_id or x['to_id'] == char_id))
-                
-                if last_walk_room[agent_id]:
-                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-                else:
-                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-                graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
+        for it, agent_id in enumerate(agent_ids):  
+            if last_position[it] is not None: 
+                    character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+                        (x['from_id'] == char_id or x['to_id'] == char_id))
+                    character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                        (x['from_id'] == char_id or x['to_id'] == char_id))
+                    
+                    if last_walk_room[it]:
+                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+                    else:
+                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+                    graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
 
 
         env.reset(graph , task_goal)
@@ -313,13 +311,17 @@ def interactive_rollout():
                 print(char_id, message)
 
 
-        # last_walk_room = False
-        # if success:
-        #     if 'walk' in action:
-        #         walk_id = int(action.split('(')[1][:-1])
-        #         if id2node[walk_id]['category'] == 'Rooms':
-        #             last_position = walk_id
-        #             last_walk_room = True
+
+        if success:
+            last_walk_room[it] = False
+            for it, agent_id in enumerate(agent_ids):
+                action = action_dict[it]
+                if 'walk' in action:
+                    walk_id = int(action.split('(')[1][:-1])
+                    if id2node[walk_id]['category'] == 'Rooms':
+                        last_position[it] = walk_id
+                        last_walk_room[it] = True
+
         # else:
         #     print(message)
 
