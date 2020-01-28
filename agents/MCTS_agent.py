@@ -77,12 +77,17 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph)
 
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
+
+    if sum([1 for edge in observations['edges'] if edge['from_id'] == target_grab and edge['to_id'] == target_put and edge['relation_type'] == 'ON']) > 0:
+        # Object has been placed
+        return []
+
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
     id2node = {node['id']: node for node in env_graph['nodes']}
     target_grabbed = len([edge for edge in env_graph['edges'] if edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'] and edge['to_id'] == target_grab]) > 0
 
-    print(target_grabbed)
+
     object_diff_room = None
     if not target_grabbed:
         grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
@@ -247,7 +252,10 @@ class MCTS_agent:
 
         plan, root_node = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, task_goal, None)
 
-        action = plan[0]
+        if len(plan) > 0:
+            action = plan[0]
+        else:
+            action = None
         info = {
             'plan': plan,
             'action': action,

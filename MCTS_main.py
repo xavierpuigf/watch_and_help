@@ -56,17 +56,17 @@ class UnityEnvWrapper:
 
         id2node = {node['id']: node for node in graph['nodes']}
 
-        # plates = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == table_id and id2node[edge['from_id']]['class_name'] == 'plate']
-        # graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
-        # edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
+        plates = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == table_id and id2node[edge['from_id']]['class_name'] == 'plate']
+        graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
+        edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
+        graph['edges'] += edge_plates
         #ipdb.set_trace()
 
-        
+
         new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
         new_edge = {'from_id': node_id_new, 'relation_type': 'INSIDE', 'to_id': container_id}
         graph['nodes'].append(new_node)
         graph['edges'].append(new_edge)
-        #graph['edges'] += edge_plates
         success = self.comm.expand_scene(graph)
         print(success)
 
@@ -80,9 +80,9 @@ class UnityEnvWrapper:
         
         agent_do = list(actions.keys())
         if len(actions.keys()) > 1:
-            objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
+            objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values() if 'walk' not in x]
             if len(set(objects_interaction)) == 1:
-                agent_do = random.choice([0,1])
+                agent_do = [random.choice([0,1])]
 
         script_list = ['']
         for agent_id in agent_do:
@@ -101,6 +101,7 @@ class UnityEnvWrapper:
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
             
         # script_all = script_list
+        print(script_list)
         success, message = self.comm.render_script(script_list, image_synthesis=[])
         result = {}
         for agent_id in agent_do:
@@ -212,16 +213,14 @@ def inside_not_trans(graph):
     return graph
 
 
-# @profile
 def interactive_rollout():
 
-    num_agents = 1
+    num_agents = 2
     env = vh_env.VhGraphEnv(n_chars=num_agents)
     # env = gym.make('vh_graph-v0')
 
 
     comm = comm_unity.UnityCommunication()
-    ipdb.set_trace()
     unity_simulator = UnityEnvWrapper(comm, num_agents)    
     agent_ids =  unity_simulator.agent_ids()
     agents = []
@@ -240,7 +239,7 @@ def interactive_rollout():
     graph = unity_simulator.get_graph()
     glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:1]
+    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
     task_goal = {}
 
     for i in range(num_agents):
@@ -249,7 +248,7 @@ def interactive_rollout():
     # Assumption: At the beggining the character is not close to anything
     graph = inside_not_trans(graph)
     for i in range(num_agents):
-        agents[i].reset(graph, task_goal, seed=0)
+        agents[i].reset(graph, task_goal, seed=i)
 
     last_position = None
     last_walk_room = False
@@ -290,8 +289,12 @@ def interactive_rollout():
             agent.sample_belief(env.get_observations(char_index=i))
             agent.sim_env.reset(agent.previous_belief_graph, task_goal)
             action, info = agent.get_action(task_goal[0])
-            action_dict[i] = action
-            print(action, info['plan'])
+            if action is None:
+                print("DONE")
+                exit()
+            else:
+                action_dict[i] = action
+                print(action, info['plan'])
 
         dict_results = unity_simulator.execute(action_dict)
         

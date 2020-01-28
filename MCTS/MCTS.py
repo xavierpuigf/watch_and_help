@@ -198,6 +198,7 @@ class MCTS:
 
                 # TODO: this could just be computed in the heuristics?
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
+            
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
                 id=(goal, [next_vh_state, next_vh_state.to_dict(), goals_remain, 
