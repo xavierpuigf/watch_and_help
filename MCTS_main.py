@@ -26,7 +26,8 @@ import timeit
 agent_type = 'MCTS' # PG/MCTS
 simulator_type = 'unity' # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
-
+# 11.3 -8
+# 1.13 -7
 
 class UnityEnvWrapper:
     def __init__(self, comm, num_agents):
@@ -60,7 +61,7 @@ class UnityEnvWrapper:
         # graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in plates and edge['to_id'] not in plates]
         # edge_plates = [{'from_id': plate_id, 'to_id': drawer_id, 'relation_type': 'INSIDE'} for plate_id in plates] 
         # graph['edges'] += edge_plates
-        #ipdb.set_trace()
+        #self.comm.render_script(['<char0> [walk] <livingroom> (319)'], image_synthesis=[]).set_trace()
 
 
         new_node = {'id': node_id_new, 'class_name': 'glass', 'states': [], 'properties': ['GRABBABLE']}
@@ -80,9 +81,10 @@ class UnityEnvWrapper:
         
         agent_do = list(actions.keys())
         if len(actions.keys()) > 1:
-            objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values() if 'walk' not in x]
-            if len(set(objects_interaction)) == 1:
-                agent_do = [random.choice([0,1])]
+            if sum([1 for action in actions.values() if 'walk' in action]) == 0:
+                objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
+                if len(set(objects_interaction)) == 1:
+                    agent_do = [random.choice([0,1])]
 
         script_list = ['']
         for agent_id in agent_do:
@@ -101,8 +103,9 @@ class UnityEnvWrapper:
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
             
         # script_all = script_list
-        print(script_list)
-        success, message = self.comm.render_script(script_list, image_synthesis=[])
+        ipdb.set_trace()
+        success, message = self.comm.render_script(script_list, image_synthesis=[], recording=False)
+        print(success)
         if not success:
             ipdb.set_trace()
         result = {}
@@ -241,7 +244,7 @@ def interactive_rollout():
     graph = unity_simulator.get_graph()
     glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
+    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:1]
     task_goal = {}
 
     for i in range(num_agents):
@@ -253,7 +256,7 @@ def interactive_rollout():
         agents[i].reset(graph, task_goal, seed=i)
 
     last_position = None
-    last_walk_room = False
+    last_walk_room = [False for _ in agent_ids]
     num_steps = 0
 
     print('Starting')
@@ -272,17 +275,18 @@ def interactive_rollout():
         graph = inside_not_trans(graph)
         # Inside seems to be working now
         
-        if last_position is not None:    
-            character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-                (x['from_id'] == char_id or x['to_id'] == char_id))
-            character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-                (x['from_id'] == char_id or x['to_id'] == char_id))
-            
-            if last_walk_room:
-                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-            else:
-                graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-            graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
+        if last_position is not None:
+            for agent_id in agent_ids:    
+                character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+                    (x['from_id'] == char_id or x['to_id'] == char_id))
+                character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                    (x['from_id'] == char_id or x['to_id'] == char_id))
+                
+                if last_walk_room[agent_id]:
+                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+                else:
+                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+                graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position})
 
 
         env.reset(graph , task_goal)
