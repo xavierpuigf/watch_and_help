@@ -94,14 +94,22 @@ class UnityEnvWrapper:
                 # TODO: very hacky, improve
                 if '[put' in script:
                     current_script = ['<char{}> [Find] {})'.format(agent_id, script.split(') ')[1])] + current_script
+                    
                 else:
                     current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
             
             if len(script_list) < len(current_script):
                 script_list.append('')
-
-            script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
+            elif len(script_list) > len(current_script):
+                current_script.append('')
             
+            for i, (x, y) in enumerate(zip(script_list, current_script)):
+                if len(x) > 0 and len(y) > 0:
+                    script_list[i] = x+' | '+y
+                
+                elif len(y) > 0:
+                    script_list[i] = y
+        
         # script_all = script_list
         # if 'kitchencabinet' in script_list[0]:
         #     ipdb.set_trace()

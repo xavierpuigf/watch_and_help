@@ -10,7 +10,7 @@ from tqdm import tqdm
 class MCTS:
     def __init__(self, env, agent_id, char_index, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
         self.env = env
-        self.discount = 0.95
+        self.discount = 0.4
         self.agent_id = agent_id
         self.char_index = char_index
         self.max_episode_length = max_episode_length
@@ -18,9 +18,10 @@ class MCTS:
         self.max_rollout_step = max_rollout_step
         self.c_init = c_init 
         self.c_base = c_base
-        self.seed = seed
+        self.seed = 1
         self.heuristic_dict = None
-        np.random.seed(seed)
+        np.random.seed(self.seed)
+        random.seed(self.seed)
         
     def run(self, curr_root, t, heuristic_dict):
 
@@ -77,25 +78,26 @@ class MCTS:
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
             actions = heuristic(self.agent_id, self.char_index, curr_state, self.env, goal_selected)
             
-            if len(actions) == 0:
-                continue
-            num_steps += len(actions)
-            for action_id, action in enumerate(actions):
-                # Check if action can be performed
-                # if action_performed:
-                action_str = self.get_action_str(action)
-                try:
-                    next_vh_state = self.env.transition(curr_vh_state, {0: action_str})
-                except:
-                    ipdb.set_trace()
-                next_state = next_vh_state.to_dict()
-                curr_vh_state, curr_state = next_vh_state, next_state
+            if actions is None:
+                delta_reward = 0
+            else:
+                num_steps += len(actions)
+                for action_id, action in enumerate(actions):
+                    # Check if action can be performed
+                    # if action_performed:
+                    action_str = self.get_action_str(action)
+                    try:
+                        next_vh_state = self.env.transition(curr_vh_state, {0: action_str})
+                    except:
+                        ipdb.set_trace()
+                    next_state = next_vh_state.to_dict()
+                    curr_vh_state, curr_state = next_vh_state, next_state
 
-            curr_reward = self.env.reward(0, next_state)
-            delta_reward = curr_reward - last_reward# - 0.05
-            delta_reward = delta_reward * self.discount**(len(actions))
-            # print(curr_rewward, last_reward)
-            last_reward = curr_reward
+                curr_reward = 1 # self.env.reward(0, next_state)
+                delta_reward = curr_reward - last_reward# - 0.05
+                delta_reward = delta_reward * self.discount**(len(actions))
+                # print(curr_rewward, last_reward)
+                last_reward = curr_reward
             sum_reward += delta_reward
             
     
@@ -186,12 +188,13 @@ class MCTS:
         action_space = []
         goal_incomplete = False
 
-        if len(goals) == 0:
-            return None
+        goals_expanded = 0
         for goal in goals:
 
             heuristic = self.heuristic_dict[goal.split('_')[0]]
             actions_heuristic = heuristic(self.agent_id, self.char_index, state, self.env, goal)
+            if actions_heuristic is None:
+                continue
             next_vh_state = vh_state
             actions_str = []
             for action in actions_heuristic:
@@ -200,7 +203,7 @@ class MCTS:
 
                 # TODO: this could just be computed in the heuristics?
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
-            
+            goals_expanded += 1
             goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
                 id=(goal, [next_vh_state, next_vh_state.to_dict(), goals_remain, 
@@ -210,6 +213,8 @@ class MCTS:
                  action_prior=len(goals),
                  is_expanded=False)
 
+        if goals_expanded == 0:
+            return None
         return node
 
     def get_action_str(self, action_tuple):

@@ -16,8 +16,9 @@ class UnityEnvWrapper:
         self.graph = None
 
         comm.reset(0)
-        for _ in range(self.num_agents):
-            self.comm.add_character()
+        characters = ['Chars/Male1', 'Chars/Female1']
+        for i in range(self.num_agents):
+            self.comm.add_character(characters[i])
         
         self.get_graph()
         self.test_prep()
@@ -143,7 +144,7 @@ class UnityEnv:
         # else:
         #     print(action, info['plan'])
 
-        return action
+        return action, info
 
     def get_all_agent_id(self):
         return self.agent_ids

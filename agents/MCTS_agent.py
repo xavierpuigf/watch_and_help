@@ -81,6 +81,10 @@ def put_heuristic(agent_id, char_index, env_graph, simulator, target):
         # Object has been placed
         return []
 
+    if sum([1 for edge in observations['edges'] if edge['to_id'] == target_grab and edge['from_id'] != agent_id and 'HOLD' in edge['relation_type']]) > 0:
+        # Object has been placed
+        return None
+
     target_node = [node for node in env_graph['nodes'] if node['id'] == target_grab][0]
     target_node2 = [node for node in env_graph['nodes'] if node['id'] == target_put][0]
     id2node = {node['id']: node for node in env_graph['nodes']}
@@ -192,11 +196,10 @@ class MCTS_agent:
     """
     MCTS for a single agent
     """
-    def __init__(self, unity_env, agent_id, char_index,
+    def __init__(self, env, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
                  num_samples=1, num_processes=1, comm=None):
-        self.unity_env = unity_env
-        self.env = unity_env.env
+        self.env = env
         self.agent_id = agent_id
         self.char_index = char_index
         self.sim_env = VhGraphEnv()
@@ -375,7 +378,7 @@ class MCTS_agent:
 
 
             ## --------------------------------------------------------
-            system_agent_action = self.unity_env.get_system_agent_action(task_goal)
+            system_agent_action, system_agent_info = self.unity_env.get_system_agent_action(task_goal)
             ## --------------------------------------------------------
 
             if single_agent:
@@ -391,7 +394,8 @@ class MCTS_agent:
                     pdb.set_trace()
 
                 action_dict = {0: system_agent_action, 1: my_agent_action}
-            
+                print(system_agent_info['plan'][:3])
+                print(my_agent_info['plan'][:3])
 
             
             ## --------------------------------------------------------
@@ -407,8 +411,9 @@ class MCTS_agent:
 
 
             if success:
-                last_walk_room[it] = False
                 for it, agent_id in enumerate(all_agent_id):
+                    
+                    last_walk_room[it] = False
                     action = action_dict[it]
                     if 'walk' in action:
                         walk_id = int(action.split('(')[1][:-1])
