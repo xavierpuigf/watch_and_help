@@ -36,8 +36,9 @@ class UnityEnvWrapper:
         self.graph = None
 
         comm.reset(0)
-        for _ in range(self.num_agents):
-            self.comm.add_character()
+        characters = ['Chars/Male1', 'Chars/Female1']
+        for id_char in range(self.num_agents):
+            self.comm.add_character(characters[id_char])
         
         self.get_graph()
         self.test_prep()
@@ -228,7 +229,76 @@ def inside_not_trans(graph):
     graph['edges'] = edges_inside + other_edges
     return graph
 
-#@profile
+@profile
+def step_sim(num_steps, agent_ids, agents, unity_simulator, last_position, last_walk_room, env, task_goal):
+    if num_steps == 5:
+            exit()
+    graph = unity_simulator.get_graph()
+    if num_steps == 0:
+        graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
+
+    
+    id2node = {node['id']: node for node in graph['nodes']}
+    
+    
+    
+
+    graph = inside_not_trans(graph)
+    # Inside seems to be working now
+    for it, agent_id in enumerate(agent_ids):  
+        if last_position[it] is not None: 
+                character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+                    (x['from_id'] == char_id or x['to_id'] == char_id))
+                character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                    (x['from_id'] == char_id or x['to_id'] == char_id))
+                
+                if last_walk_room[it]:
+                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+                else:
+                    graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+                graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
+
+
+
+    for iti in range(len(agent_ids)):
+        print('CHARACTER {}'.format(iti))
+    env.reset(graph , task_goal)
+    
+
+    action_dict = {}
+    for i, agent in enumerate(agents):
+        agent.sample_belief(env.get_observations(char_index=i))
+        agent.sim_env.reset(agent.previous_belief_graph, task_goal)
+        action, info = agent.get_action(task_goal[0])
+        if action is None:
+            print("DONE")
+            exit()
+        else:
+            action_dict[i] = action
+            print(action, info['plan'][:3])
+
+    dict_results = unity_simulator.execute(action_dict)
+    
+
+    # success, message = comm.render_script(script, image_synthesis=[])
+    for char_id, (success, message) in dict_results.items():
+        if not success:
+            print(char_id, message)
+
+
+
+    if success:
+        for it, agent_id in enumerate(agent_ids):
+            
+            last_walk_room[it] = False
+            action = action_dict[it]
+            if 'walk' in action:
+                walk_id = int(action.split('(')[1][:-1])
+                if id2node[walk_id]['category'] == 'Rooms':
+                    last_position[it] = walk_id
+                    last_walk_room[it] = True
+
+@profile
 def interactive_rollout():
 
     num_agents = 2
@@ -245,7 +315,7 @@ def interactive_rollout():
                            agent_id=agent_id,
                            char_index=it,
                            max_episode_length=5,
-                           num_simulation=500,
+                           num_simulation=100,
                            max_rollout_steps=3,
                            c_init=0.1,
                            c_base=1000000,
@@ -273,73 +343,9 @@ def interactive_rollout():
 
     print('Starting')
     while True:
-        print('\n\nSTEP')
-        graph = unity_simulator.get_graph()
-        if num_steps == 0:
-            graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
-
+        #@profile
+        step_sim(num_steps, agent_ids, agents, unity_simulator, last_position, last_walk_room, env, task_goal)
         num_steps += 1
-        id2node = {node['id']: node for node in graph['nodes']}
-        
-        
-        
-
-        graph = inside_not_trans(graph)
-        # Inside seems to be working now
-        for it, agent_id in enumerate(agent_ids):  
-            if last_position[it] is not None: 
-                    character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-                        (x['from_id'] == char_id or x['to_id'] == char_id))
-                    character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-                        (x['from_id'] == char_id or x['to_id'] == char_id))
-                    
-                    if last_walk_room[it]:
-                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-                    else:
-                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-                    graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
-
-
-
-        for iti in range(len(agent_ids)):
-            print('CHARACTER {}'.format(iti))
-            print(last_position[iti], last_walk_room[iti])
-            print([edge for edge in graph['edges'] if edge['from_id'] == agent_ids[iti] and edge['relation_type'] in ['CLOSE','INSIDE']])
-        env.reset(graph , task_goal)
-        
-
-        action_dict = {}
-        for i, agent in enumerate(agents):
-            agent.sample_belief(env.get_observations(char_index=i))
-            agent.sim_env.reset(agent.previous_belief_graph, task_goal)
-            action, info = agent.get_action(task_goal[0])
-            if action is None:
-                print("DONE")
-                exit()
-            else:
-                action_dict[i] = action
-                print(action, info['plan'][:3])
-
-        dict_results = unity_simulator.execute(action_dict)
-        
-
-        # success, message = comm.render_script(script, image_synthesis=[])
-        for char_id, (success, message) in dict_results.items():
-            if not success:
-                print(char_id, message)
-
-
-
-        if success:
-            for it, agent_id in enumerate(agent_ids):
-                
-                last_walk_room[it] = False
-                action = action_dict[it]
-                if 'walk' in action:
-                    walk_id = int(action.split('(')[1][:-1])
-                    if id2node[walk_id]['category'] == 'Rooms':
-                        last_position[it] = walk_id
-                        last_walk_room[it] = True
 
         # else:
         #     print(message)
