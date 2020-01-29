@@ -123,6 +123,7 @@ class UnityEnv:
         ## Alice model
         self.agents[self.system_agent_id] = MCTS_agent(unity_env=self,
                                agent_id=self.system_agent_id,
+                               char_index=0,
                                max_episode_length=5,
                                num_simulation=100,
                                max_rollout_steps=3,

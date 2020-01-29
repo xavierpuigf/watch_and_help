@@ -8,10 +8,10 @@ import cProfile
 import pdb
 import timeit
 
-home_path = '/Users/shuangli/Desktop/0mit/0research/0icml2020/1virtualhome/'
+home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
 sys.path.append(home_path+'/vh_mdp')
-sys.path.append(home_path+'/virtualhome_pkg')
-sys.path.append(home_path+'/unified-agent')
+sys.path.append(home_path+'/virtualhome')
+sys.path.append(home_path+'/vh_multiagent_models')
 
 import utils
 from simulation.evolving_graph.utils import load_graph_dict
@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
         rollout_from_json(info)
     else:
-        num_agents = 1
+        num_agents = 2
         unity_env = UnityEnv(num_agents)
         
         ## ------------------------------------------------------------------------------
@@ -128,6 +128,7 @@ if __name__ == '__main__':
           my_agent_id = unity_env.get_my_agent_id()
           my_agent = MCTS_agent(unity_env=unity_env,
                                  agent_id=my_agent_id,
+                                 char_index=1,
                                  max_episode_length=5,
                                  num_simulation=100,
                                  max_rollout_steps=3,
