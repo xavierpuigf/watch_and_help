@@ -103,22 +103,8 @@ if __name__ == '__main__':
 
         rollout_from_json(info)
     else:
-        unity_env = UnityEnv()
-
-        ## ------------------------------------------------------------------------------
-        ## your agent, add your code here
-        ## ------------------------------------------------------------------------------
-        my_agent_id = unity_env.get_my_agent_id()
-        my_agent = MCTS_agent(unity_env=unity_env,
-                               agent_id=my_agent_id,
-                               max_episode_length=5,
-                               num_simulation=100,
-                               max_rollout_steps=3,
-                               c_init=0.1,
-                               c_base=1000000,
-                               num_samples=1,
-                               num_processes=1)
-
+        num_agents = 1
+        unity_env = UnityEnv(num_agents)
         
         ## ------------------------------------------------------------------------------
         ## Preparing the goal
@@ -131,8 +117,27 @@ if __name__ == '__main__':
         for i in range(2):
             task_goal[i] = goals
 
-        ## ------------------------------------------------------------------------------
-        ## run your agent
-        ## ------------------------------------------------------------------------------
-        my_agent.run(graph, task_goal)
+
+        if num_agents==1:
+          unity_env.agents[unity_env.system_agent_id].run(graph, task_goal, single_agent=True)
+
+        else:
+          ## ------------------------------------------------------------------------------
+          ## your agent, add your code here
+          ## ------------------------------------------------------------------------------
+          my_agent_id = unity_env.get_my_agent_id()
+          my_agent = MCTS_agent(unity_env=unity_env,
+                                 agent_id=my_agent_id,
+                                 max_episode_length=5,
+                                 num_simulation=100,
+                                 max_rollout_steps=3,
+                                 c_init=0.1,
+                                 c_base=1000000,
+                                 num_samples=1,
+                                 num_processes=1)
+
+          ## ------------------------------------------------------------------------------
+          ## run your agent
+          ## ------------------------------------------------------------------------------
+          my_agent.run(graph, task_goal)
 

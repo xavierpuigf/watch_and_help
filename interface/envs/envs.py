@@ -108,7 +108,9 @@ class UnityEnv:
         
 
         self.system_agent_id = self.agent_ids[0]
-        self.my_agent_id = self.agent_ids[1]
+
+        if self.num_agents>1:
+            self.my_agent_id = self.agent_ids[1]
 
         self.add_system_agent()
 
@@ -146,6 +148,8 @@ class UnityEnv:
         return self.agent_ids
 
     def get_my_agent_id(self):
+        if self.num_agents==1:
+            error("you haven't set your agent")
         return self.my_agent_id
 
     def reset(self, graph, task_goal):
@@ -213,7 +217,7 @@ class UnityEnv:
 
         print('**************************************************************************')
         for i in range(num_steps):
-            print('step %d:   |"system": %s \t\t |"my_agent": %s' % (i+1, system_agent_actions[i], my_agent_actions[i]))
+            print('step %d:\t|"system": %s \t\t\t\t\t\t |"my_agent": %s' % (i+1, system_agent_actions[i], my_agent_actions[i]))
         print('**************************************************************************')
         
 
