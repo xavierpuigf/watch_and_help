@@ -327,3 +327,95 @@ class MCTS_agent:
         import pdb
         return history
 
+
+    def run(self, graph, task_goal, single_agent=False):
+        ## --------------------------------------------------------
+        graph = self.unity_env.inside_not_trans(graph)
+        self.unity_env.reset(graph, task_goal)
+        all_agent_id = self.unity_env.get_all_agent_id()
+        ## --------------------------------------------------------
+
+        if not single_agent:
+            self.reset(graph, task_goal, seed=self.agent_id)
+        
+            
+        last_position = [None for _ in all_agent_id]
+        last_walk_room = [False for _ in all_agent_id]
+        num_steps = 0
+
+
+        print('Starting')
+        while True:
+            graph = self.unity_env.unity_simulator.get_graph()
+            if num_steps == 0:
+                graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
+
+            num_steps += 1
+            id2node = {node['id']: node for node in graph['nodes']}
+            
+            graph = self.unity_env.inside_not_trans(graph)
+            # Inside seems to be working now
+            for it, agent_id in enumerate(all_agent_id):  
+                if last_position[it] is not None: 
+                    character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+                        (x['from_id'] == char_id or x['to_id'] == char_id))
+                    character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+                        (x['from_id'] == char_id or x['to_id'] == char_id))
+                    
+                    if last_walk_room[it]:
+                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+                    else:
+                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+                    graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
+
+
+            self.unity_env.env.reset(graph , task_goal)
+            
+
+
+            ## --------------------------------------------------------
+            system_agent_action = self.unity_env.get_system_agent_action(task_goal)
+            ## --------------------------------------------------------
+
+            if single_agent:
+                my_agent_action = None
+                action_dict = {0: system_agent_action}
+            else:
+                self.sample_belief(self.env.get_observations(char_index=1))
+                self.sim_env.reset(self.previous_belief_graph, task_goal)
+                my_agent_action, my_agent_info = self.get_action(task_goal[1])
+
+                if my_agent_action is None:
+                    print("system my action is None! DONE!")
+                    pdb.set_trace()
+
+                action_dict = {0: system_agent_action, 1: my_agent_action}
+            
+
+            
+            ## --------------------------------------------------------
+            self.unity_env.print_action(system_agent_action, my_agent_action)
+            dict_results = self.unity_env.unity_simulator.execute(action_dict)
+            ## --------------------------------------------------------
+
+            # success, message = comm.render_script(script, image_synthesis=[])
+            for char_id, (success, message) in dict_results.items():
+                if not success:
+                    print(char_id, message)
+
+
+
+            if success:
+                last_walk_room[it] = False
+                for it, agent_id in enumerate(all_agent_id):
+                    action = action_dict[it]
+                    if 'walk' in action:
+                        walk_id = int(action.split('(')[1][:-1])
+                        if id2node[walk_id]['category'] == 'Rooms':
+                            last_position[it] = walk_id
+                            last_walk_room[it] = True
+
+
+
+
+
