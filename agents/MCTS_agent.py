@@ -15,8 +15,8 @@ from vh_graph.envs.vh_env import VhGraphEnv
 
 from MCTS import *
 
-def find_heuristic(agent_id, env_graph, simulator, object_target):
-    observations = simulator.get_observations(env_graph)
+def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph, char_index=char_index)
     id2node = {node['id']: node for node in env_graph['nodes']}
     containerdict = {edge['from_id']: edge['to_id'] for edge in env_graph['edges'] if edge['relation_type'] == 'INSIDE'}
     target = int(object_target.split('_')[-1])
@@ -50,11 +50,10 @@ def find_heuristic(agent_id, env_graph, simulator, object_target):
         # If character is not next to the object, walk there
         action_list = [('walk', (id2node[target]['class_name'], target), None)]+ action_list
 
-
     return action_list
 
-def grab_heuristic(agent_id, env_graph, simulator, object_target):
-    observations = simulator.get_observations(env_graph)
+def grab_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph, char_index=char_index)
     target_id = int(object_target.split('_')[-1])
 
     observed_ids = [node['id'] for node in observations['nodes']]
@@ -71,10 +70,10 @@ def grab_heuristic(agent_id, env_graph, simulator, object_target):
     if len(agent_close) > 0 and target_id in observed_ids:
         return target_action
     else:
-        return find_heuristic(agent_id, env_graph, simulator, object_target)+target_action
+        return find_heuristic(agent_id, char_index, env_graph, simulator, object_target)+target_action
 
-def put_heuristic(agent_id, env_graph, simulator, target):
-    observations = simulator.get_observations(env_graph)
+def put_heuristic(agent_id, char_index, env_graph, simulator, target):
+    observations = simulator.get_observations(env_graph, char_index=char_index)
 
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
 
@@ -90,14 +89,14 @@ def put_heuristic(agent_id, env_graph, simulator, target):
 
     object_diff_room = None
     if not target_grabbed:
-        grab_obj1 = grab_heuristic(agent_id, env_graph, simulator, 'grab_' + str(target_node['id']))
+        grab_obj1 = grab_heuristic(agent_id, char_index, env_graph, simulator, 'grab_' + str(target_node['id']))
         if len(grab_obj1) > 0:
             if grab_obj1[0][0] == 'walk':
                 id_room = grab_obj1[0][1][1]
                 if id2node[id_room]['category'] == 'Rooms':
                     object_diff_room = id_room
         
-        env_graph_new = env_graph.copy()
+        env_graph_new = copy.deepcopy(env_graph)
         
         if object_diff_room:
             env_graph_new['edges'] = [edge for edge in env_graph_new['edges'] if edge['to_id'] != agent_id and edge['from_id'] != agent_id]
@@ -108,9 +107,11 @@ def put_heuristic(agent_id, env_graph, simulator, target):
     else:
         env_graph_new = env_graph
         grab_obj1 = []
-    find_obj2 = find_heuristic(agent_id, env_graph_new, simulator, 'find_' + str(target_node2['id']))
+    find_obj2 = find_heuristic(agent_id, char_index, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
     res = grab_obj1 + find_obj2 + action
+
+    #print(res, target)
     return res
 
 def clean_graph(state, goal_ids):
@@ -154,8 +155,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_ids, r
     else:
         init_vh_state = env.vh_state
     
-    observations = env.get_observations(init_state, char_index=0)
-    # print('init state:', init_state)
+    
 
     q = goal_ids
     l = 0
@@ -192,11 +192,12 @@ class MCTS_agent:
     """
     MCTS for a single agent
     """
-    def __init__(self, env, agent_id,
+    def __init__(self, env, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
                  num_samples=1, num_processes=1, comm=None):
         self.env = env
         self.agent_id = agent_id
+        self.char_index = char_index
         self.sim_env = VhGraphEnv()
         self.sim_env.pomdp = True
         self.belief = None
@@ -237,7 +238,7 @@ class MCTS_agent:
 
 
     def get_action(self, task_goal):
-        self.mcts = MCTS(self.sim_env, self.agent_id, self.max_episode_length,
+        self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
                          self.c_init, self.c_base)
         if self.mcts is None:
@@ -273,7 +274,7 @@ class MCTS_agent:
         self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
         self.belief = Belief.Belief(gt_state, agent_id=self.agent_id, seed=seed)
-        self.sample_belief(self.env.get_observations(char_index=0))
+        self.sample_belief(self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(self.previous_belief_graph, task_goal)
         self.sim_env.to_pomdp()
 
@@ -311,8 +312,8 @@ class MCTS_agent:
             nb_steps += 1
 
 
-            obs_graph = self.env.get_observations(char_index=0)
-            self.sample_belief(self.env.get_observations(char_index=0))
+            obs_graph = self.env.get_observations(char_index=self.char_index)
+            self.sample_belief(self.env.get_observations(char_index=self.char_index))
             self.sim_env.reset(self.previous_belief_graph, task_goal)
             self.sim_env.to_pomdp()
 

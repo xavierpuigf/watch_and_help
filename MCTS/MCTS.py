@@ -8,10 +8,11 @@ from profilehooks import profile
 from tqdm import tqdm
 
 class MCTS:
-    def __init__(self, env, agent_id, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
+    def __init__(self, env, agent_id, char_index, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
         self.env = env
         self.discount = 0.95
         self.agent_id = agent_id
+        self.char_index = char_index
         self.max_episode_length = max_episode_length
         self.num_simulation = num_simulation
         self.max_rollout_step = max_rollout_step
@@ -28,8 +29,6 @@ class MCTS:
             curr_root = self.expand(curr_root, t)
 
         for explore_step in tqdm(range(self.num_simulation)):
-            if explore_step > 0 and explore_step % 100 == 0 and self.num_simulation > 0:
-                print("simulation step:", explore_step, "out of", self.num_simulation)
             curr_node = curr_root
             node_path = [curr_node]
 
@@ -76,7 +75,10 @@ class MCTS:
         for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
             goal_selected = goals[list_goals[rollout_step]]
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
-            actions = heuristic(self.agent_id, curr_state, self.env, goal_selected)
+            actions = heuristic(self.agent_id, self.char_index, curr_state, self.env, goal_selected)
+            
+            if len(actions) == 0:
+                continue
             num_steps += len(actions)
             for action_id, action in enumerate(actions):
                 # Check if action can be performed
@@ -189,7 +191,7 @@ class MCTS:
         for goal in goals:
 
             heuristic = self.heuristic_dict[goal.split('_')[0]]
-            actions_heuristic = heuristic(self.agent_id, state, self.env, goal)
+            actions_heuristic = heuristic(self.agent_id, self.char_index, state, self.env, goal)
             next_vh_state = vh_state
             actions_str = []
             for action in actions_heuristic:

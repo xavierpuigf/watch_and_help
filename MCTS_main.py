@@ -72,7 +72,7 @@ class UnityEnvWrapper:
         print(success)
 
     def agent_ids(self):
-        return [x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character']
+        return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
 
     def execute(self, actions): # dictionary from agent to action
         # Get object to interact with
@@ -105,6 +105,8 @@ class UnityEnvWrapper:
         # script_all = script_list
         # if 'kitchencabinet' in script_list[0]:
         #     ipdb.set_trace()
+
+        # ipdb.set_trace()
         success, message = self.comm.render_script(script_list, image_synthesis=[], recording=False)
         # ipdb.set_trace()
         if not success:
@@ -230,9 +232,10 @@ def interactive_rollout():
     unity_simulator = UnityEnvWrapper(comm, num_agents)    
     agent_ids =  unity_simulator.agent_ids()
     agents = []
-    for agent_id in agent_ids:
+    for it, agent_id in enumerate(agent_ids):
         agents.append(MCTS_agent(env=env,
                            agent_id=agent_id,
+                           char_index=it,
                            max_episode_length=5,
                            num_simulation=500,
                            max_rollout_steps=3,
@@ -262,6 +265,7 @@ def interactive_rollout():
 
     print('Starting')
     while True:
+        print('\n\nSTEP')
         graph = unity_simulator.get_graph()
         if num_steps == 0:
             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in agent_ids or edge['to_id'] in agent_ids))]
@@ -270,8 +274,7 @@ def interactive_rollout():
         id2node = {node['id']: node for node in graph['nodes']}
         
         
-        print('CHARACTER LOCATION')
-        print([edge for edge in graph['edges'] if edge['from_id'] == agent_ids[0] and edge['relation_type'] == 'INSIDE'])
+        
 
         graph = inside_not_trans(graph)
         # Inside seems to be working now
@@ -289,6 +292,11 @@ def interactive_rollout():
                     graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
 
 
+
+        for iti in range(len(agent_ids)):
+            print('CHARACTER {}'.format(iti))
+            print(last_position[iti], last_walk_room[iti])
+            print([edge for edge in graph['edges'] if edge['from_id'] == agent_ids[iti] and edge['relation_type'] in ['CLOSE','INSIDE']])
         env.reset(graph , task_goal)
         
 
@@ -315,8 +323,9 @@ def interactive_rollout():
 
 
         if success:
-            last_walk_room[it] = False
             for it, agent_id in enumerate(agent_ids):
+                
+                last_walk_room[it] = False
                 action = action_dict[it]
                 if 'walk' in action:
                     walk_id = int(action.split('(')[1][:-1])

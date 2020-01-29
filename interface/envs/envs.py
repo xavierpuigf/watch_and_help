@@ -52,7 +52,7 @@ class UnityEnvWrapper:
         print(success)
 
     def agent_ids(self):
-        return [x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character']
+        return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
 
     def execute(self, actions): # dictionary from agent to action
         # Get object to interact with
