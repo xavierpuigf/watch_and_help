@@ -216,10 +216,17 @@ class UnityEnv:
         num_steps = len(system_agent_actions)
 
         print('**************************************************************************')
-        for i in range(num_steps):
-            print('step %d:\t|"system": %s \t\t\t\t\t\t |"my_agent": %s' % (i+1, system_agent_actions[i], my_agent_actions[i]))
+        if self.num_agents>1:
+            for i in range(num_steps):
+                print('step %04d:\t|"system": %s \t\t\t\t\t\t |"my_agent": %s' % (i+1, system_agent_actions[i].ljust(30), my_agent_actions[i]))
+        else:
+            for i in range(num_steps):
+                print('step %04d:\t|"system": %s' % (i+1, system_agent_actions[i]))
+
         print('**************************************************************************')
         
+
+
 
 
 
