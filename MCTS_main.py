@@ -103,8 +103,10 @@ class UnityEnvWrapper:
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
             
         # script_all = script_list
+        # if 'kitchencabinet' in script_list[0]:
+        #     ipdb.set_trace()
         success, message = self.comm.render_script(script_list, image_synthesis=[], recording=False)
-        print(success)
+        # ipdb.set_trace()
         if not success:
             ipdb.set_trace()
         result = {}
@@ -216,10 +218,10 @@ def inside_not_trans(graph):
     graph['edges'] = edges_inside + other_edges
     return graph
 
-
+#@profile
 def interactive_rollout():
 
-    num_agents = 1
+    num_agents = 2
     env = vh_env.VhGraphEnv(n_chars=num_agents)
     # env = gym.make('vh_graph-v0')
 
@@ -232,7 +234,7 @@ def interactive_rollout():
         agents.append(MCTS_agent(env=env,
                            agent_id=agent_id,
                            max_episode_length=5,
-                           num_simulation=100,
+                           num_simulation=500,
                            max_rollout_steps=3,
                            c_init=0.1,
                            c_base=1000000,
@@ -243,7 +245,7 @@ def interactive_rollout():
     graph = unity_simulator.get_graph()
     glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
     table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:1]
+    goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
     task_goal = {}
 
     for i in range(num_agents):
