@@ -7,8 +7,12 @@ import numpy as np
 import cProfile
 import pdb
 import timeit
+import os
 
-home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
+# home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
+home_path = os.getcwd()
+home_path = '/'.join(home_path.split('/')[:-2])
+
 sys.path.append(home_path+'/vh_mdp')
 sys.path.append(home_path+'/virtualhome')
 sys.path.append(home_path+'/vh_multiagent_models')
@@ -109,13 +113,18 @@ if __name__ == '__main__':
         ## ------------------------------------------------------------------------------
         ## Preparing the goal
         ## ------------------------------------------------------------------------------
-        graph = unity_env.unity_simulator.get_graph()
+        graph = unity_env.get_graph()
         glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
         table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
         goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
         task_goal = {}
         for i in range(2):
             task_goal[i] = goals
+
+        ## reset unity environment based on tthe goal
+        unity_env.reset(graph, task_goal)
+
+        
 
 
         if num_agents==1:
