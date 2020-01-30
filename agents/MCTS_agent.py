@@ -336,8 +336,7 @@ class MCTS_agent:
 
     def run(self, graph, task_goal, single_agent=False):
         ## --------------------------------------------------------
-        graph = self.unity_env.inside_not_trans(graph)
-        self.unity_env.reset(graph, task_goal)
+        # graph = self.unity_env.inside_not_trans(graph)
         all_agent_id = self.unity_env.get_all_agent_id()
         ## --------------------------------------------------------
 
@@ -352,14 +351,15 @@ class MCTS_agent:
 
         print('Starting')
         while True:
-            graph = self.unity_env.unity_simulator.get_graph()
+            graph = self.unity_env.get_graph()
             if num_steps == 0:
                 graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
+            # graph = self.unity_env.inside_not_trans(graph)
+
 
             num_steps += 1
             id2node = {node['id']: node for node in graph['nodes']}
             
-            graph = self.unity_env.inside_not_trans(graph)
             # Inside seems to be working now
             for it, agent_id in enumerate(all_agent_id):  
                 if last_position[it] is not None: 
