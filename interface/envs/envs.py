@@ -154,6 +154,24 @@ class UnityEnv:
             error("you haven't set your agent")
         return self.my_agent_id
 
+
+
+
+
+    # def get_graph():
+
+    def get_system_agent_observations(self, modality=['rgb_image']):
+        observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.system_agent_id, modality)
+        return observation
+
+    def get_my_agent_observations(self, modality=['rgb_image']):
+        observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.my_agent_id, modality)
+        return observation
+
+
+
+
+
     def reset(self, graph, task_goal):
         # Assumption: At the beggining the character is not close to anything
         self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)

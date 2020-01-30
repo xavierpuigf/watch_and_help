@@ -196,10 +196,12 @@ class MCTS_agent:
     """
     MCTS for a single agent
     """
-    def __init__(self, env, agent_id, char_index,
+    def __init__(self, unity_env, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
                  num_samples=1, num_processes=1, comm=None):
-        self.env = env
+        self.unity_env = unity_env
+        self.env = unity_env.env
+        
         self.agent_id = agent_id
         self.char_index = char_index
         self.sim_env = VhGraphEnv()
