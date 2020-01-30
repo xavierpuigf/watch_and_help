@@ -121,6 +121,11 @@ if __name__ == '__main__':
         for i in range(2):
             task_goal[i] = goals
 
+        ## reset unity environment based on tthe goal
+        unity_env.reset(graph, task_goal)
+
+        
+
 
         if num_agents==1:
           unity_env.agents[unity_env.system_agent_id].run(graph, task_goal, single_agent=True)
