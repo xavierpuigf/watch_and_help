@@ -264,8 +264,8 @@ class MCTS_agent:
         info = {
             'plan': plan,
             'action': action,
-            'belief': copy.deepcopy(self.belief.edge_belief),
-            'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
+            # 'belief': copy.deepcopy(self.belief.edge_belief),
+            # 'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
         }
         return action, info
 
@@ -274,9 +274,12 @@ class MCTS_agent:
             s, graph = self.comm.environment_graph()
 
 
+
         self.env.reset(graph, task_goal)
         self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
+
+
         self.belief = Belief.Belief(gt_state, agent_id=self.agent_id, seed=seed)
         self.sample_belief(self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(self.previous_belief_graph, task_goal)

@@ -301,7 +301,7 @@ def step_sim(num_steps, agent_ids, agents, unity_simulator, last_position, last_
 @profile
 def interactive_rollout():
 
-    num_agents = 2
+    num_agents = 1
     env = vh_env.VhGraphEnv(n_chars=num_agents)
     # env = gym.make('vh_graph-v0')
 
