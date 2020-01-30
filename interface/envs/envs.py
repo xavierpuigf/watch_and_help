@@ -158,7 +158,10 @@ class UnityEnv:
 
 
 
-    # def get_graph():
+    def get_graph(self):
+        graph = self.unity_simulator.get_graph()
+        graph = self.inside_not_trans(graph)
+        return graph
 
     def get_system_agent_observations(self, modality=['rgb_image']):
         observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.system_agent_id, modality)
