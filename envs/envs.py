@@ -72,20 +72,12 @@ class UnityEnvWrapper:
         for agent_id in agent_do:
             script = actions[agent_id]
             current_script = ['<char{}> {}'.format(agent_id, script)]
-            if 'walk' not in script:
-                # TODO: very hacky, improve
-                if '[put' in script:
-                    current_script = ['<char{}> [Find] {})'.format(agent_id, script.split(') ')[1])] + current_script
-                else:
-                    current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
             
-            if len(script_list) < len(current_script):
-                script_list.append('')
 
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
             
         # script_all = script_list
-        success, message = self.comm.render_script(script_list, image_synthesis=[])
+        success, message = self.comm.render_script(script_list, image_synthesis=[], recording=False)
         
         if not success:
             ipdb.set_trace()

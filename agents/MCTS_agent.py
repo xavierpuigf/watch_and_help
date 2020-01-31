@@ -347,7 +347,7 @@ class MCTS_agent:
             self.reset(graph, task_goal, seed=self.agent_id)
         
             
-        last_position = [None for _ in all_agent_id]
+        last_position = [200 for _ in all_agent_id]
         last_walk_room = [False for _ in all_agent_id]
         num_steps = 0
 
@@ -363,6 +363,9 @@ class MCTS_agent:
             num_steps += 1
             id2node = {node['id']: node for node in graph['nodes']}
             
+            ##### We won't need this once the character location is working well ####
+
+            print('INSIDE', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id and edge['relation_type'] == 'INSIDE'])
             # Inside seems to be working now
             for it, agent_id in enumerate(all_agent_id):  
                 if last_position[it] is not None: 
@@ -380,6 +383,7 @@ class MCTS_agent:
 
             self.unity_env.env.reset(graph , task_goal)
             
+            ##########
 
 
             ## --------------------------------------------------------
@@ -391,7 +395,6 @@ class MCTS_agent:
                 action_dict = {0: system_agent_action}
             else:
                 observations = self.env.get_observations(char_index=1)
-                print('OBSERVATIONS', [node['id'] for node in observations['nodes']])
                 self.sample_belief(observations)
                 self.sim_env.reset(self.previous_belief_graph, task_goal)
                 my_agent_action, my_agent_info = self.get_action(task_goal[1])
@@ -410,7 +413,6 @@ class MCTS_agent:
             dict_results = self.unity_env.unity_simulator.execute(action_dict)
             ## --------------------------------------------------------
 
-            # success, message = comm.render_script(script, image_synthesis=[])
             for char_id, (success, message) in dict_results.items():
                 if not success:
                     print(char_id, message)
