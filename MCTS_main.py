@@ -91,13 +91,13 @@ class UnityEnvWrapper:
         for agent_id in agent_do:
             script = actions[agent_id]
             current_script = ['<char{}> {}'.format(agent_id, script)]
-            if 'walk' not in script:
-                # TODO: very hacky, improve
-                if '[put' in script:
-                    current_script = ['<char{}> [Find] {})'.format(agent_id, script.split(') ')[1])] + current_script
+            # if 'walk' not in script:
+            #     # TODO: very hacky, improve
+            #     if '[put' in script:
+            #         current_script = ['<char{}> [Find] {})'.format(agent_id, script.split(') ')[1])] + current_script
                     
-                else:
-                    current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
+            #     else:
+            #         current_script = ['<char{}> [Find] {}'.format(agent_id, script.split('] ')[1])] + current_script
             
             if len(script_list) < len(current_script):
                 script_list.append('')
@@ -163,7 +163,7 @@ def rollout_from_json(info):
             print(end - start)
 
         elif agent_type == 'MCTS':
-            agent = MCTS_agent(env=env,
+            agent = MCTS_agent(unity_env=env,
                                agent_id=agent_id,
                                max_episode_length=5,
                                num_simulation=100,
@@ -231,7 +231,7 @@ def inside_not_trans(graph):
 
 @profile
 def step_sim(num_steps, agent_ids, agents, unity_simulator, last_position, last_walk_room, env, task_goal):
-    if num_steps == 5:
+    if num_steps == 10:
             exit()
     graph = unity_simulator.get_graph()
     if num_steps == 0:
@@ -311,7 +311,7 @@ def interactive_rollout():
     agent_ids =  unity_simulator.agent_ids()
     agents = []
     for it, agent_id in enumerate(agent_ids):
-        agents.append(MCTS_agent(env=env,
+        agents.append(MCTS_agent(unity_env=env,
                            agent_id=agent_id,
                            char_index=it,
                            max_episode_length=5,
