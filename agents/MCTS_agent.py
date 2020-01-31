@@ -390,7 +390,9 @@ class MCTS_agent:
                 my_agent_action = None
                 action_dict = {0: system_agent_action}
             else:
-                self.sample_belief(self.env.get_observations(char_index=1))
+                observations = self.env.get_observations(char_index=1)
+                print('OBSERVATIONS', [node['id'] for node in observations['nodes']])
+                self.sample_belief(observations)
                 self.sim_env.reset(self.previous_belief_graph, task_goal)
                 my_agent_action, my_agent_info = self.get_action(task_goal[1])
 
