@@ -5,6 +5,7 @@ import time
 import math
 import copy
 import importlib
+import json
 import multiprocessing
 import ipdb
 from profilehooks import profile
@@ -243,6 +244,7 @@ class MCTS_agent:
         print('---')
 
 
+    @profile
     def get_action(self, task_goal):
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
@@ -352,6 +354,8 @@ class MCTS_agent:
         num_steps = 0
 
 
+        saved_info = {'action': {0: [], 1: []}, 'plan': {0: [], 1:[]}}
+
         print('Starting')
         while True:
             graph = self.unity_env.get_graph()
@@ -406,10 +410,14 @@ class MCTS_agent:
                 action_dict = {0: system_agent_action, 1: my_agent_action}
                 print(system_agent_info['plan'][:3])
                 print(my_agent_info['plan'][:3])
-
+                saved_info['action'][0].append(system_agent_action)
+                saved_info['plan'][0].append(system_agent_info['plan'][:3])
             
+
+                saved_info['action'][1].append(my_agent_action)
+                saved_info['plan'][1].append(my_agent_info['plan'][:3])
             ## --------------------------------------------------------
-            self.unity_env.print_action(system_agent_action, my_agent_action)
+            #self.unity_env.print_action(system_agent_action, my_agent_action)
             dict_results = self.unity_env.unity_simulator.execute(action_dict)
             ## --------------------------------------------------------
 
@@ -431,6 +439,7 @@ class MCTS_agent:
                             last_walk_room[it] = True
 
 
-
+                with open('../../logs_agent.json', 'w+') as f:
+                    f.write(json.dumps(saved_info, indent=4))
 
 

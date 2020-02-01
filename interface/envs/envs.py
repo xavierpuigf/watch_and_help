@@ -5,10 +5,12 @@ import torch
 import vh_graph
 from vh_graph.envs import belief, vh_env
 from simulation.unity_simulator import comm_unity as comm_unity
-import ipdb
 
 from agents import MCTS_agent, PG_agent
 from gym import spaces
+import ipdb
+from profilehooks import profile
+
 
 class UnityEnvWrapper:
     def __init__(self, comm, num_agents):
@@ -20,7 +22,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-        
+
         self.get_graph()
         self.test_prep()
 
@@ -56,17 +58,20 @@ class UnityEnvWrapper:
     def agent_ids(self):
         return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
 
+    
+    @profile
     def execute(self, actions): # dictionary from agent to action
         # Get object to interact with
 
         # This solution only works for 2 agents, we can scale it for more agents later
-        
+
         agent_do = list(actions.keys())
         if len(actions.keys()) > 1:
-            if sum([1 for action in actions.values() if 'walk' in action]) == 0:
+            if sum(['walk' in x for x in actions.values()]) == 0:
+                #continue
                 objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
                 if len(set(objects_interaction)) == 1:
-                    agent_do = [random.choice([0,1])]
+                    agent_do = [1] # [random.choice([0,1])]
 
         script_list = ['']
         for agent_id in agent_do:
@@ -75,16 +80,17 @@ class UnityEnvWrapper:
             
 
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
-            
+
+        print(script_list)
         # script_all = script_list
-        success, message = self.comm.render_script(script_list, camera_mode='FIRST_PERSON')
-        
+        success, message = self.comm.render_script(script_list, recording=False)
+
         if not success:
             ipdb.set_trace()
         result = {}
         for agent_id in agent_do:
             result[agent_id] = (success, message)
-        
+
         return result
 
 
@@ -100,7 +106,7 @@ class UnityEnv:
         self.unity_simulator = UnityEnvWrapper(comm, self.num_agents)    
         self.agent_ids =  self.unity_simulator.agent_ids()
         self.agents = {}
-        
+
 
         self.system_agent_id = self.agent_ids[0]
 
@@ -128,7 +134,7 @@ class UnityEnv:
         self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         obs = torch.zeros([1, 4, 84, 84])
         return obs
-    
+
     def step(self, my_agent_action):
         obs = torch.zeros([1, 4, 84, 84])
         reward = torch.zeros([1, 1])
@@ -154,7 +160,7 @@ class UnityEnv:
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0])
-        
+
         if action is None:
             print("system agent action is None! DONE!")
             pdb.set_trace()
@@ -256,9 +262,3 @@ class UnityEnv:
                 print('step %04d:\t|"system": %s' % (i+1, system_agent_actions[i]))
 
         print('**************************************************************************')
-        
-
-
-
-
-
