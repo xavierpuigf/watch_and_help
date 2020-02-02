@@ -81,6 +81,7 @@ class UnityEnvWrapper:
 
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
 
+        script_list = [x.replace('walk', 'walktowards') for x in script_list]
         print(script_list)
         # script_all = script_list
         success, message = self.comm.render_script(script_list, recording=False)
