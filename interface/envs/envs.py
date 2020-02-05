@@ -17,7 +17,7 @@ class UnityEnvWrapper:
         self.comm = comm
         self.num_agents = num_agents
         self.graph = None
-        self.recording = True
+        self.recording = False
         self.follow = False
 
         
@@ -25,7 +25,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-
+        comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)    
         if self.follow:
             if self.recording:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='AUTO')
@@ -92,8 +92,8 @@ class UnityEnvWrapper:
 
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
 
-        if self.follow:
-            script_list = [x.replace('walk', 'walktowards') for x in script_list]
+        #if self.follow:
+        script_list = [x.replace('walk', 'walktowards') for x in script_list]
         print(script_list)
         # script_all = script_list
         if self.recording:
