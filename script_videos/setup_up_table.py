@@ -33,13 +33,17 @@ graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in ids_
 
 ids_remove = []
 num_plates, num_glass = 0, 0
+glass_ids = []
+plate_ids = []
 for idi in ids_in_table:
 	if 'plate' in id2node[idi]['class_name'] and num_glass < 3:
 		graph['edges'].append({'from_id': idi, 'to_id': id_cabinet, 'relation_type': 'INSIDE'})
 		num_plates += 1
+		plate_ids.append(idi)
 	elif 'glass' in id2node[idi]['class_name'] and num_glass < 3:
 		graph['edges'].append({'from_id': idi, 'to_id': id_kitchencabinet, 'relation_type': 'INSIDE'})
 		num_glass += 1
+		glass_ids.append(idi)
 	else:
 		ids_remove.append(idi)
 
@@ -49,7 +53,29 @@ graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in ids_remov
 success, gr = comm.expand_scene(graph)
 ###################################
 
-comm.render_script()
+comm.render_script(['<char0> [walk] <closet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [open] <closet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [walk] <cabinet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [walk] <kitchencabinets> ({})'.format(id_kitchencabinet)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [open] <kitchencabinets> ({})'.format(id_kitchencabinet)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [grab] <glass> ({})'.format(glass_ids[0])], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [grab] <glass> ({})'.format(glass_ids[1])], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [walk] <kitchentable> ({})'.format(id_table)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(glass_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(glass_ids[1], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [walk] <cabinet> ({})'.format(id_cabinet)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [open] <cabinet> ({})'.format(id_cabinet)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [grab] <plate> ({})'.format(plate_ids[0])], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [grab] <plate> ({})'.format(plate_ids[1])], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [walk] <kitchentable> ({})'.format(id_table)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[1], id_table)], recording=False, image_synthesis=[], gen_vid=False)
 
+
+comm.render_script(['<char0> [walk] <ckitchendrawer> ({})'.format(239)], recording=False, image_synthesis=[], gen_vid=False)
+comm.render_script(['<char0> [open] <ckitchendrawer> ({})'.format(239)], recording=False, image_synthesis=[], gen_vid=False)
+
+
+comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
 
 ipdb.set_trace()
