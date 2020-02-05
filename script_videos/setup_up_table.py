@@ -11,6 +11,11 @@ from simulation.unity_simulator import comm_unity as comm_unity
 
 comm = comm_unity.UnityCommunication()
 comm.add_character()
+
+
+###################################
+# Scene preparation
+
 s, graph = comm.environment_graph()
 ipdb.set_trace()
 id2node = {node['id']: node for node in graph['nodes']}
@@ -40,5 +45,11 @@ for idi in ids_in_table:
 
 graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in ids_remove and edge['to_id'] not in ids_remove]
 graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in ids_remove]
+
 success, gr = comm.expand_scene(graph)
+###################################
+
+comm.render_script()
+
+
 ipdb.set_trace()

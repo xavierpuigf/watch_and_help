@@ -369,20 +369,20 @@ class MCTS_agent:
             
             ##### We won't need this once the character location is working well ####
 
-            print('INSIDE', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id and edge['relation_type'] == 'INSIDE'])
-            # Inside seems to be working now
-            for it, agent_id in enumerate(all_agent_id):  
-                if last_position[it] is not None: 
-                    character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-                        (x['from_id'] == char_id or x['to_id'] == char_id))
-                    character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-                        (x['from_id'] == char_id or x['to_id'] == char_id))
+            # print('INSIDE', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id and edge['relation_type'] == 'INSIDE'])
+            # # Inside seems to be working now
+            # for it, agent_id in enumerate(all_agent_id):  
+            #     if last_position[it] is not None: 
+            #         character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+            #             (x['from_id'] == char_id or x['to_id'] == char_id))
+            #         character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+            #             (x['from_id'] == char_id or x['to_id'] == char_id))
                     
-                    if last_walk_room[it]:
-                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-                    else:
-                        graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-                    graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
+            #         if last_walk_room[it]:
+            #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+            #         else:
+            #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+            #         graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
 
 
             self.unity_env.env.reset(graph , task_goal)
