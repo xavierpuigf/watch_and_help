@@ -8651,6 +8651,11 @@
             "relation_type": "FACING"
         },
         {
+            "from_id": 272,
+            "to_id": 266,
+            "relation_type": "FACING"
+        },
+        {
             "from_id": 253,
             "to_id": 266,
             "relation_type": "FACING"
@@ -9302,11 +9307,6 @@
         },
         {
             "from_id": 372,
-            "to_id": 434,
-            "relation_type": "FACING"
-        },
-        {
-            "from_id": 439,
             "to_id": 434,
             "relation_type": "FACING"
         },
