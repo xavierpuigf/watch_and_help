@@ -78,8 +78,29 @@ try:
 	comm.render_script(['<char0> [walk] <sofa> ({})'.format(369)], recording=recording, image_synthesis=[synth], gen_vid=False)
 	comm.render_script(['<char0> [sit] <sofa> ({})'.format(369)], recording=recording, image_synthesis=[synth], gen_vid=False)
 
-except:
-	ipdb.set_trace()
 
-#comm.render_script(['<char0> [watch] <tv> ({})'.format(427)], recording=recording, image_synthesis=[synth], gen_vid=False)
+# comm.render_script(['<char0> [walk] <closet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [open] <closet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [walk] <cabinet> (117)'], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [walk] <kitchencabinets> ({})'.format(id_kitchencabinet)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [open] <kitchencabinets> ({})'.format(id_kitchencabinet)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [grab] <glass> ({})'.format(glass_ids[0])], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [grab] <glass> ({})'.format(glass_ids[1])], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [walk] <kitchentable> ({})'.format(id_table)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(glass_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(glass_ids[1], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [walk] <cabinet> ({})'.format(id_cabinet)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [open] <cabinet> ({})'.format(id_cabinet)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [grab] <plate> ({})'.format(plate_ids[0])], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [grab] <plate> ({})'.format(plate_ids[1])], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [walk] <kitchentable> ({})'.format(id_table)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[1], id_table)], recording=False, image_synthesis=[], gen_vid=False)
 
+# comm.render_script(['<char0> [walk] <ckitchendrawer> ({})'.format(239)], recording=False, image_synthesis=[], gen_vid=False)
+# comm.render_script(['<char0> [open] <ckitchendrawer> ({})'.format(239)], recording=False, image_synthesis=[], gen_vid=False)
+
+
+# comm.render_script(['<char0> [put] <glass> ({}) <kitchentable> ({})'.format(plate_ids[0], id_table)], recording=False, image_synthesis=[], gen_vid=False)
+
+# ipdb.set_trace()

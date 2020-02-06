@@ -37,6 +37,10 @@ class EnvironmentCreator:
                                 'dishwasher',
                                 'microwave']
 
+        self.fixed_objects = ['clothesshirt', 'clothespants', 'hanger']
+
+        # self.fixed_objects = ['clothesshirt', 'clothespants']
+
     def get_grabbable_ids(self, environment):
         return [node['id'] for node in environment['nodes'] if 'GRABBABLE' in node['properties']]
 
@@ -76,14 +80,14 @@ class EnvironmentCreator:
             if inside_draw < self.prob_inside:
                 container_id = random.choice(nodes_inside)
                 relation_type = 'INSIDE'
-            elif ontop_draw < self.prob_ontop:
+            else: # ontop_draw < self.prob_ontop:
                 # On top of something or not
                 container_id = random.choice(nodes_ontop)
                 relation_type = 'ON'
 
-            else:
-                container_id = random.choice(room_ids)
-                relation_type = 'INSIDE'
+            # else:
+            #     container_id = random.choice(room_ids)
+            #     relation_type = 'INSIDE'
             
             edges.append({'from_id': node['id'], 'to_id': container_id, 'relation_type': relation_type})
         return edges
@@ -93,9 +97,14 @@ class EnvironmentCreator:
 
 class SetupTableCreator(EnvironmentCreator):
     def __init__(self, info, constraints=None, seed=0):
-        super().__init__(info, constraints, seed)
         self.num_people = info['num_people']
 
+        if constraints is None:
+            constraints = {}
+            constraints['prob_modify'] = {'wineglass': 0.95, 'plate': 0.95, 'forks': 0.95}
+
+        super().__init__(info, constraints, seed)
+        
     def return_objects_type(self, environment):
         glasses = [node for node in environment['nodes'] if node['class_name'] == 'wineglass']
         plates = [node for node in environment['nodes'] if node['class_name'] == 'plate']
@@ -125,7 +134,14 @@ class SetupTableCreator(EnvironmentCreator):
         
         # Which nodes we will modify
         for grabbable_id in grabbable_ids:
-            if random.uniform(0,1) < self.prob_modify_prior:
+            class_object = id2node[grabbable_id]['class_name']
+
+            if class_object not in self.constraints['prob_modify']:
+                prob_modify = self.prob_modify_prior
+            else:
+                prob_modify = self.constraints['prob_modify'][class_object]
+
+            if class_object not in self.fixed_objects and random.uniform(0,1) < prob_modify:
                 modified_ids.append(grabbable_id)
 
         # Use previous edges for non modified objects
@@ -178,6 +194,7 @@ if __name__ == '__main__':
     else:
         with open(path_file, 'r') as f:
             graph = json.load(f)
+
     new_graph = env_creator.transform_environment(graph)
     success, message = comm.expand_scene(new_graph)
     ipdb.set_trace()
