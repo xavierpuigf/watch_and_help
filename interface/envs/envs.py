@@ -25,10 +25,11 @@ class UnityEnvWrapper:
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-        comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)    
+        comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
+        comm.render_script(['<char1> [walk] <bathroom> (11)'], camera_mode=False, gen_vid=False)  
         if self.follow:
             if self.recording:
-                comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='AUTO')
+                comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
             else:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
 
@@ -97,7 +98,7 @@ class UnityEnvWrapper:
         print(script_list)
         # script_all = script_list
         if self.recording:
-            success, message = self.comm.render_script(script_list, recording=True, gen_vid=False, camera_mode='AUTO')
+            success, message = self.comm.render_script(script_list, recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
         else:
             success, message = self.comm.render_script(script_list, recording=False, gen_vid=False)
         if not success:

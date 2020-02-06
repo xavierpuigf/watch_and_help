@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
         rollout_from_json(info)
     else:
-        num_agents = 1
+        num_agents = 2
         unity_env = UnityEnv(num_agents)
         
         ## ------------------------------------------------------------------------------
