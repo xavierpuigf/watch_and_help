@@ -37,7 +37,7 @@ class EnvironmentCreator:
                                 'dishwasher',
                                 'microwave']
 
-        self.fixed_objects = ['clothesshirt', 'clothespants']
+        self.fixed_objects = ['clothesshirt', 'clothespants', 'hanger']
 
         # self.fixed_objects = ['clothesshirt', 'clothespants']
 
@@ -80,14 +80,14 @@ class EnvironmentCreator:
             if inside_draw < self.prob_inside:
                 container_id = random.choice(nodes_inside)
                 relation_type = 'INSIDE'
-            elif ontop_draw < self.prob_ontop:
+            else: # ontop_draw < self.prob_ontop:
                 # On top of something or not
                 container_id = random.choice(nodes_ontop)
                 relation_type = 'ON'
 
-            else:
-                container_id = random.choice(room_ids)
-                relation_type = 'INSIDE'
+            # else:
+            #     container_id = random.choice(room_ids)
+            #     relation_type = 'INSIDE'
             
             edges.append({'from_id': node['id'], 'to_id': container_id, 'relation_type': relation_type})
         return edges
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     else:
         with open(path_file, 'r') as f:
             graph = json.load(f)
-            
+
     new_graph = env_creator.transform_environment(graph)
     success, message = comm.expand_scene(new_graph)
     ipdb.set_trace()
