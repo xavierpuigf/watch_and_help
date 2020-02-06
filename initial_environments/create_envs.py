@@ -21,8 +21,9 @@ class EnvironmentCreator:
         self.prob_modify_prior = 0.7
 
         # Probs inside
-        self.prob_inside = 0.5
+        self.prob_inside = 0.6
         self.prob_ontop = 0.5
+        self.fixed_object_classes = []
 
         # The id where we start adding objects
         self.current_added_id = 1000
@@ -37,9 +38,8 @@ class EnvironmentCreator:
                                 'dishwasher',
                                 'microwave']
 
-        self.fixed_objects = ['clothesshirt', 'clothespants', 'hanger']
+        self.fixed_objects = ['clothesshirt', 'clothespants', 'hanger', 'drawing', 'painting', 'towel', 'towelrack']
 
-        # self.fixed_objects = ['clothesshirt', 'clothespants']
 
     def get_grabbable_ids(self, environment):
         return [node['id'] for node in environment['nodes'] if 'GRABBABLE' in node['properties']]
@@ -80,7 +80,7 @@ class EnvironmentCreator:
             if inside_draw < self.prob_inside:
                 container_id = random.choice(nodes_inside)
                 relation_type = 'INSIDE'
-            else: # ontop_draw < self.prob_ontop:
+            else: #elif ontop_draw < self.prob_ontop:
                 # On top of something or not
                 container_id = random.choice(nodes_ontop)
                 relation_type = 'ON'
@@ -101,7 +101,7 @@ class SetupTableCreator(EnvironmentCreator):
 
         if constraints is None:
             constraints = {}
-            constraints['prob_modify'] = {'wineglass': 0.95, 'plate': 0.95, 'forks': 0.95}
+            constraints['prob_modify'] = {'wineglass': 0.95, 'plate': 0.95, 'cutleryfork': 0.95, 'cutleryknife': 1.0, 'waterglass': .95}
 
         super().__init__(info, constraints, seed)
         
@@ -119,8 +119,8 @@ class SetupTableCreator(EnvironmentCreator):
         grabbable_ids = self.get_grabbable_ids(environment)
         room_ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms']
         nodes_inside = self.get_container_ids(environment)
-        nodes_ontop = self.get_surface_ids(environment)
-        
+        nodes_ontop = self.get_surface_ids(environment) + nodes_inside
+
         assert(len(nodes_ontop) > 0)
 
         modified_ids = []
@@ -195,7 +195,16 @@ if __name__ == '__main__':
         with open(path_file, 'r') as f:
             graph = json.load(f)
 
-    new_graph = env_creator.transform_environment(graph)
-    success, message = comm.expand_scene(new_graph)
-    ipdb.set_trace()
+    graph_name = 'graph_env_setup'
+    folder_name = 'data/gen_graphs'
+    if not os.path.isdir(folder_name):
+        os.makedirs(folder_name)
+
+    for it in range(20):
+        new_graph = env_creator.transform_environment(graph)
+        with open('{}/{}_{}.json'.format(folder_name, graph_name, it), 'w+') as f:
+            f.write(json.dumps(new_graph, indent=4))
+
+    # success, message = comm.expand_scene(new_graph)
+    # ipdb.set_trace()
 
