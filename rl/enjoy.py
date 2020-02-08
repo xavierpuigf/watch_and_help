@@ -21,11 +21,11 @@ parser.add_argument(
     help='log interval, one log per n updates (default: 10)')
 parser.add_argument(
     '--env-name',
-    default='PongNoFrameskip-v4',
+    default='virtualhome',
     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument(
     '--load-dir',
-    default='./trained_models/',
+    default='./trained_models/a2c',
     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument(
     '--non-det',
@@ -46,11 +46,12 @@ env = make_vec_envs(
     allow_early_resets=False)
 
 # Get a render function
+print(args.load_dir)
 render_func = get_render_func(env)
 
 # We need to use the same statistics for normalization as used in training
 actor_critic, ob_rms = \
-            torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+        torch.load(os.path.join(args.load_dir, args.env_name + ".pt"), map_location={'cuda:0': 'cpu'})
 
 vec_norm = get_vec_normalize(env)
 if vec_norm is not None:

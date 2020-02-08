@@ -15,11 +15,13 @@ import torch.optim as optim
 
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
-from a2c_ppo_acktr.arguments import get_args
 from a2c_ppo_acktr.envs import make_vec_envs
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
+
+from a2c_ppo_acktr.arguments import get_args
+
 
 
 
@@ -69,6 +71,7 @@ def main():
     ## ------------------------------------------------------------------------------
     ## Model
     ## ------------------------------------------------------------------------------
+
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space,
@@ -122,7 +125,7 @@ def main():
                               actor_critic.recurrent_hidden_state_size)
 
     if 'virtualhome' in args.env_name:
-        obs = envs.reset(graph, task_goal) # torch.Size([1, 4, 84, 84])
+        obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
     else:
         obs = envs.reset()
 
@@ -164,7 +167,7 @@ def main():
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
                 if 'virtualhome' in args.env_name:
-                    episode_rewards.append(1)
+                    episode_rewards.append(reward) # info['episode']['r'])
         
 
             # If done then clean the history of observations.

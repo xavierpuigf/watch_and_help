@@ -2,6 +2,7 @@ import numpy as np
 import pdb
 import random
 import torch
+import torchvision
 import vh_graph
 from vh_graph.envs import belief, vh_env
 from simulation.unity_simulator import comm_unity as comm_unity
@@ -19,14 +20,18 @@ class UnityEnvWrapper:
         self.graph = None
         self.recording = False
         self.follow = False
+        self.num_camera_per_agent = 6
+        self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
 
         
         comm.reset(0)
+
+        self.offset_cameras = comm.camera_count()[1]
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-        comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
-        comm.render_script(['<char1> [walk] <bathroom> (11)'], camera_mode=False, gen_vid=False)  
+        #comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
+        #comm.render_script(['<char1> [walk] <bathroom> (11)'], camera_mode=False, gen_vid=False)  
         if self.follow:
             if self.recording:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
@@ -40,6 +45,11 @@ class UnityEnvWrapper:
 
         _, self.graph = self.comm.environment_graph()
         return self.graph
+
+    def get_observations(self):
+        camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
+        s, images = self.comm.camera_image(camera_ids, image_width=128, image_height=128, mode='seg_class')
+        return images
 
     def test_prep(self):
         node_id_new = 2007
@@ -69,7 +79,6 @@ class UnityEnvWrapper:
         return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
 
     
-    @profile
     def execute(self, actions): # dictionary from agent to action
         # Get object to interact with
 
@@ -140,20 +149,32 @@ class UnityEnv:
         # envs.action_space: Discrete(6)
 
         ## ------------------------------------------------------------------------------------        
-        observation_high = np.zeros([4, 84, 84])
-        self.action_space = spaces.Discrete(6)
-        self.observation_space = spaces.Box(-observation_high, observation_high)
+        self.action_space = spaces.Discrete(2)
+        self.observation_space = spaces.Box(low=0, high=255., shape=(3, 128, 128))
+        
+        self.history_observations = []
+        self.len_hist = 4
 
-
-    def reset(self, graph, task_goal):
+    def reset(self):# graph, task_goal):
         # reset system agent
-        self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
-        obs = torch.zeros([1, 4, 84, 84])
+        #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+        self.unity_simulator.comm.reset(0)
+        self.unity_simulator.comm.add_character()
+        obs = self.get_observations()[0]
         return obs
 
     def step(self, my_agent_action):
-        obs = torch.zeros([1, 4, 84, 84])
-        reward = torch.zeros([1, 1])
+        actions = ['<char0> [walkforward]', '<char0> [turnleft]']
+
+        self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
+        
+        obs, image = self.get_observations()
+        s, gr = self.unity_simulator.comm.environment_graph()
+        reward = np.logical_and(np.logical_and(image[:,:,0] == 93, image[:,:,1]== 248), image[:,:,2]== 0).sum()
+        # print(reward)
+        reward = reward*1.0/(image.shape[0]*image.shape[1])
+        reward = torch.Tensor([reward])
         done = np.array([False])
         infos = [{}]
         return obs, reward, done, infos
@@ -259,7 +280,16 @@ class UnityEnv:
             edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
         graph['edges'] = edges_inside + other_edges
         return graph
-
+    
+    def get_observations(self):
+        images = self.unity_simulator.get_observations()
+        current_obs = images[0]
+        current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
+        #self.history_observations.append(current_obs)
+        #self.history_observations = self.history_observations[1:]
+        #ipdb.set_trace()
+        #obs = torch.cat(self.history_observations, dim=1)
+        return current_obs, images[0]
 
     def print_action(self, system_agent_action, my_agent_action):
         self.actions['system_agent'].append(system_agent_action)

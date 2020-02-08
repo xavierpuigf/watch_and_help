@@ -78,8 +78,8 @@ def get_args():
 
 
     parser.add_argument(
-        '--env-name',
-        default='PongNoFrameskip-v4',
+            '--env-name',
+            default='virtualhome',
         help='environment to train on (default: PongNoFrameskip-v4)')
     
     parser.add_argument(
@@ -171,3 +171,7 @@ def get_args():
             'Recurrent policy is not implemented for ACKTR'
     
     return args
+
+if __name__ == '__main__':
+    args = get_args()
+    pdb.set_trace()

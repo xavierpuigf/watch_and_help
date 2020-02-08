@@ -1,4 +1,5 @@
 import os
+import ipdb
 import pdb
 import gym
 import numpy as np
@@ -47,8 +48,8 @@ from profilehooks import profile
 import pickle
 sys.argv = ['-f']
 
-from agents import MCTS_agent, PG_agent
-from envs.envs import UnityEnv
+from agents import MCTS_agent
+from interface.envs.envs import UnityEnv
 ## ----------------------------------------------------------------------------
 
 
@@ -107,9 +108,8 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   num_frame_stack=None):
 
-
     if env_name=='virtualhome':
-        envs = UnityEnv(num_agents=2)
+        envs = UnityEnv(num_agents=1)
         # envs = [UnityEnv(num_agents=2) for i in range(num_processes)]
 
     else:
