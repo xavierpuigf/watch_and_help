@@ -32,7 +32,7 @@ def setup_other_objs(graph):
 def set_tv_off(tv_id):
     pass
 
-class SetInitial:
+class SetInitialGoal:
     def __init__(self, goal, obj_position, init_pool):
         self.goal = goal
         self.obj_position
