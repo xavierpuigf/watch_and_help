@@ -23,12 +23,14 @@ from interface.envs.envs import UnityEnv
 def remove_obj(graph, obj_ids):
     pass
 
-def add_obj(graph, obj_name, num_obj, obj_position_pool, except_position=None):
+def add_obj(graph, obj_name, num_obj, obj_position_pool, only_position=None, except_position=None):
     pass
 
 def setup_other_objs(graph):
     pass
 
+def set_tv_off(tv_id):
+    pass
 
 class SetInitial:
     def __init__(self, goal, obj_position, init_pool):
@@ -61,11 +63,150 @@ class SetInitial:
         setup_other_objs(graph)
 
 
-
         ## get goal
         env_goal = []
         for k,v in self.goal.items():
             env_goal.append( {'on_{}_{}'.format(k, table_id): v} )
+        return graph, env_goal
+
+
+
+
+
+
+    def clean_table(self, graph):
+        ## clean table
+        max_num_table = 4
+        num_table = random.randint(1, max_num_table)
+
+        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        remove_obj(graph, table_ids)
+        table_position_pool = self.obj_position['table']
+        add_obj(graph, 'table', num_table, table_position_pool)
+        
+
+        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        table_id = random.choice(table_ids)
+
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            obj_position_pool = self.obj_position[k]
+            add_obj(graph, k, v, obj_position_pool, only_position=table_id) ## add the first v objects on this table
+            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=table_id) ## add the rest objects on other placess
+        
+        setup_other_objs(graph)
+
+
+        ## get goal
+        env_goal = []
+        for k,v in self.goal.items():
+            env_goal.append( {'off_{}_{}'.format(k, table_id): v} )
+        return graph, env_goal
+
+
+    def put_diswasher(self, graph):
+        ## setup diswasher
+        max_num_diswasher = 4
+        num_diswasher = random.randint(1, max_num_diswasher)
+
+        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        remove_obj(graph, diswasher_ids)
+        diswasher_position_pool = self.obj_position['diswasher']
+        add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
+        
+
+        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        diswasher_id = random.choice(diswasher_ids)
+
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            obj_position_pool = self.obj_position[k]
+            add_obj(graph, k, num_obj, obj_position_pool, except_position=diswasher_id)
+        
+        setup_other_objs(graph)
+
+
+        ## get goal
+        env_goal = []
+        for k,v in self.goal.items():
+            env_goal.append( {'on_{}_{}'.format(k, diswasher_id): v} )
+        return graph, env_goal
+
+
+
+
+
+
+    def unload_diswasher(self, graph):
+        ## setup diswasher
+        max_num_diswasher = 4
+        num_diswasher = random.randint(1, max_num_diswasher)
+
+        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        remove_obj(graph, diswasher_ids)
+        diswasher_position_pool = self.obj_position['diswasher']
+        add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
+        
+
+        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        diswasher_id = random.choice(diswasher_ids)
+
+
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            obj_position_pool = self.obj_position[k]
+            add_obj(graph, k, v, obj_position_pool, only_position=diswasher_id) ## add the first v objects on this table
+            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=diswasher_id) ## add the rest objects on other placess
+        
+        setup_other_objs(graph)
+
+
+        ## get goal
+        env_goal = []
+        for k,v in self.goal.items():
+            env_goal.append( {'off_{}_{}'.format(k, diswasher_id): v} )
+        return graph, env_goal
+
+
+
+    def put_fridge(self, graph):
+       ## setup fridge
+        max_num_fridge = 4
+        num_fridge = random.randint(1, max_num_fridge)
+
+        fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
+        remove_obj(graph, fridge_ids)
+        fridge_position_pool = self.obj_position['fridge']
+        add_obj(graph, 'fridge', num_fridge, fridge_position_pool)
+        
+
+        fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
+        fridge_id = random.choice(fridge_ids)
+
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            obj_position_pool = self.obj_position[k]
+            add_obj(graph, k, num_obj, obj_position_pool, except_position=fridge_id)
+        
+        setup_other_objs(graph)
+
+
+        ## get goal
+        env_goal = []
+        for k,v in self.goal.items():
+            env_goal.append( {'on_{}_{}'.format(k, fridge): v} )
         return graph, env_goal
 
 
@@ -90,50 +231,57 @@ class SetInitial:
         return graph, env_goal
 
 
+    def prepare_food(self, graph):
+        max_num_table = 4
+        num_table = random.randint(1, max_num_table)
+
+        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        remove_obj(graph, table_ids)
+        table_position_pool = self.obj_position['table']
+        add_obj(graph, 'table', num_table, table_position_pool)
+        
+
+        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        table_id = random.choice(table_ids)
 
 
-    def clean_table(self, graph):
         for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            remove_obj(graph, obj_ids)
+
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
+            obj_position_pool = self.obj_position[k]
+            add_obj(graph, k, num_obj, obj_position_pool, except_position=table_id)
+        
+        setup_other_objs(graph)
+
+
+        ## get goal
+        env_goal = []
+        for k,v in self.goal.items():
+            env_goal.append( {'on_{}_{}'.format(k, table_id): v} )
+        return graph, env_goal
+
+
+    def watch_tv(self, graph):
+        max_num_tv = 4
+        num_tv = random.randint(1, max_num_tv)
+
+        tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
+        remove_obj(graph, tv_ids)
+        tv_position_pool = self.obj_position['tv']
+        add_obj(graph, 'tv', num_tv, tv_position_pool)
+        
+
+        tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
+        tv_id = random.choice(tv_ids)
+
+        set_tv_off(tv_id)
         setup_other_objs()
 
-    def put_diswasher(self. graph):
-        for k,v in self.goal.items():
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
-        setup_other_objs()
-
-    def unload_diswasher(self. graph):
-        for k,v in self.goal.items():
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
-        setup_other_objs()
-
-    def put_fridge(self. graph):
-        for k,v in self.goal.items():
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
-        setup_other_objs()
-
-    def prepare_food(self. graph):
-        for k,v in self.goal.items():
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
-        setup_other_objs()
-
-    def watch_tv(self. graph):
-        for k,v in self.goal.items():
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_id = [node['id'] for node in graph['nodes'] if k in node['class_name']]
-            add_obj(num_obj, obj_id)
-        setup_other_objs()
-
+        ## get goal
+        env_goal = [{'{}_on'.format(tv_id)}]
+        return graph, env_goal
 
 
 
