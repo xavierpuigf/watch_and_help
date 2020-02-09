@@ -6,7 +6,7 @@ import random
 import json
 
 
-random.seed( 10 )
+random.seed(10)
 
 home_path = '/Users/shuangli/Desktop/0mit/0research/0icml2020/1virtualhome'
 sys.path.append(home_path+'/vh_mdp')
@@ -95,7 +95,7 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             obj_position_pool = self.obj_position[k]
             add_obj(graph, k, v, obj_position_pool, only_position=table_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=table_id) ## add the rest objects on other placess
+            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=table_id) ## add the rest objects on other places
         
         setup_other_objs(graph)
 
@@ -165,7 +165,7 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             obj_position_pool = self.obj_position[k]
             add_obj(graph, k, v, obj_position_pool, only_position=diswasher_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=diswasher_id) ## add the rest objects on other placess
+            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=diswasher_id) ## add the rest objects on other places
         
         setup_other_objs(graph)
 
