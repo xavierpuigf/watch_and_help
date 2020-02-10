@@ -138,7 +138,7 @@ class SetInitialGoal:
         ## get goal
         env_goal = []
         for k,v in self.goal.items():
-            env_goal.append( {'on_{}_{}'.format(k, diswasher_id): v} )
+            env_goal.append( {'inside_{}_{}'.format(k, diswasher_id): v} )
         return graph, env_goal
 
 
@@ -227,7 +227,7 @@ class SetInitialGoal:
         setup_other_objs(graph)
 
         ## get goal
-        env_goal = [{'grab_{}'.format(book_id)}]
+        env_goal = [{'read_{}'.format(book_id)}]
         return graph, env_goal
 
 

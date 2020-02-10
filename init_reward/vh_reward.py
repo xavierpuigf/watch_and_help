@@ -20,90 +20,160 @@ from profilehooks import profile
 from interface.envs.envs import UnityEnv
 from vh_init import SetInitialGoal
 
-
+obj_position = {
+    "INSIDE": ["toilet", "bathroom_cabinet", "kitchencabinets", "bathroom_counter", "kitchencounterdrawer", "cabinet", "fridge", "oven", "dishwasher", "microwave"],
+    "ON": ["bathroomcabinet", "bathroomcounter", "bed", "bench", "bookshelf", "cabinet", "chair", "coffeetable", "desk", "floor", "fryingpan", "kitchencabinets", "kitchencounter", "kitchentable", "mousemat", "nightstand", "oventray", "plate", "radio", "rug", "sofa", "stove", "towelrack"]
+    }
+# 'BETWEEN', 'CLOSE', 'FACING', 'INSIDE', 'ON'
 
 class GetReward:
     def __init__(self, goal):
         self.goal = goal
 
-    def setup_table(graph):
-        pdb.set_trace()
-        for k,v in self.goal.items():
-            table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+    def setup_table(self, graph):
+        subgoal_reward = 0
+        for subgoal in self.goal:
+            assert len(subgoal)==1
+            subgoal_name = list(subgoal.keys())[0].split('_')
+            subgoal_num = list(subgoal.values())[0]
+            rel_pos = subgoal_name[0]
+            obj1 = subgoal_name[1]
+            obj2 = int(subgoal_name[2])
+            
+            obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
+            obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
 
-        if (state_num_people >= goal['num_people']) & \
-            (state_num_plates >= goal['num_plates']) & \
-            (state_num_glasses >= goal['num_glasses']) & \
-            (state_num_wine >= goal['num_wine']) & \
-            (state_num_forks >= goal['num_forks']):
+            obj1_on_table_ids = list(set(obj1_ids) & set(obj_on_table_ids))
+            if obj1_on_table_ids>=subgoal_num:
+                subgoal_reward+=1
+
+        if subgoal_reward==len(self.goal):
             return 1
         else:
             return 0
+
+
+    def clean_table(self,  graph):
+        subgoal = self.goal[0]
+        assert len(subgoal)==1
+        subgoal_name = list(subgoal.keys())[0].split('_')
+        subgoal_num = list(subgoal.values())[0]
+        rel_pos = subgoal_name[0]
+        obj1 = subgoal_name[1]
+        obj2 = int(subgoal_name[2])
         
-
-    def read_book(graph):
-        if (state_num_book >= goal['num_book']):
+        obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
+        if len(obj_on_table_ids)==0:
             return 1
         else:
             return 0
 
-    def clean_table(graph):
-        if (state_num_food >= goal['num_food']) & \
-            (state_num_plate >= goal['num_plate']) & \
-            (state_num_glasses >= goal['num_glasses']) & \
-            (state_num_wine >= goal['num_wine']) & \
-            (state_num_forks >= goal['num_forks']):
+
+    def put_diswasher(self, graph):
+        subgoal_reward = 0
+        for subgoal in self.goal:
+            assert len(subgoal)==1
+            subgoal_name = list(subgoal.keys())[0].split('_')
+            subgoal_num = list(subgoal.values())[0]
+            rel_pos = subgoal_name[0]
+            obj1 = subgoal_name[1]
+            obj2 = int(subgoal_name[2])
+            
+            obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
+            obj_inside_dishwasher_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
+
+            obj1_inside_dishwasher_ids = list(set(obj1_ids) & set(obj_inside_dishwasher_ids))
+            if obj1_inside_dishwasher_ids>=subgoal_num:
+                subgoal_reward+=1
+
+        if subgoal_reward==len(self.goal):
             return 1
         else:
             return 0
 
+
+    def unload_diswasher(self,  graph):
+        subgoal = self.goal[0]
+        assert len(subgoal)==1
+        subgoal_name = list(subgoal.keys())[0].split('_')
+        subgoal_num = list(subgoal.values())[0]
+        rel_pos = subgoal_name[0]
+        obj1 = subgoal_name[1]
+        obj2 = int(subgoal_name[2])
         
-    def put_diswasher(graph):
-        if (state_num_plate >= goal['num_plate']) & \
-            (state_num_glasses >= goal['num_glasses']) & \
-            (state_num_forks >= goal['num_forks']):
+        obj_inside_dishwasher_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
+        if len(obj_inside_dishwasher_ids)==0:
             return 1
         else:
             return 0
 
 
-    def unload_diswasher(graph):
-        if (state_num_plate >= goal['num_plate']) & \
-            (state_num_glasses >= goal['num_glasses']) & \
-            (state_num_forks >= goal['num_forks']):
+
+    def put_fridge(self, graph):
+        subgoal_reward = 0
+        for subgoal in self.goal:
+            assert len(subgoal)==1
+            subgoal_name = list(subgoal.keys())[0].split('_')
+            subgoal_num = list(subgoal.values())[0]
+            rel_pos = subgoal_name[0]
+            obj1 = subgoal_name[1]
+            obj2 = int(subgoal_name[2])
+            
+            obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
+            obj_inside_fridge_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
+
+            obj1_inside_fridge_ids = list(set(obj1_ids) & set(obj_inside_fridge_ids))
+            if obj1_inside_fridge_ids>=subgoal_num:
+                subgoal_reward+=1
+
+        if subgoal_reward==len(self.goal):
             return 1
         else:
             return 0
 
-    def put_fridge(graph):
-        if (state_num_food >= goal['num_food']):
+
+
+    def read_book(self, graph):
+        agent_id = [node['id'] for node in graph['nodes'] if 'person' in node['class_name']]
+        env_goal = [{'grab_{}'.format(book_id)}]
+
+
+    def prepare_food(self, graph):
+        subgoal_reward = 0
+        for subgoal in self.goal:
+            assert len(subgoal)==1
+            subgoal_name = list(subgoal.keys())[0].split('_')
+            subgoal_num = list(subgoal.values())[0]
+            rel_pos = subgoal_name[0]
+            obj1 = subgoal_name[1]
+            obj2 = int(subgoal_name[2])
+            
+            obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
+            obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
+
+            obj1_on_table_ids = list(set(obj1_ids) & set(obj_on_table_ids))
+            if obj1_on_table_ids>=subgoal_num:
+                subgoal_reward+=1
+
+        if subgoal_reward==len(self.goal):
             return 1
         else:
             return 0
 
-    def prepare_food(graph):
-        state_num_food >= goal['num_food']
-        FOOD_APPLE
-        FOOD_CEREAL
-        FOOD_BANANA
-        FOOD_BREAD
-        FOOD_CARROT
-        FOOD_CHICKEN
-        FOOD_DESSERT
-        FOOD_FISH
-        FOOD_HAMBURGER
-        FOOD_LEMON
-        FOOD_LIME
-        FOOD_OATMEAL
-        FOOD_POTATO
-        FOOD_SALT
-        FOOD_SNACK
-        FOOD_SUGAR
-        FOOD_TURKEY
 
     def watch_tv(graph):
-        goal['tv'] = 'off'
-
+        subgoal = self.goal[0]
+        assert len(subgoal)==1
+        subgoal_name = list(subgoal.keys())[0].split('_')
+        tv_id = subgoal_name[0]
+        tv_state = subgoal_name[1]
+        
+        tv_states = [node['states'] for node in graph['nodes'] if tv_id==node['id']]
+        assert len(tv_states)==1
+        if tv_states==tv_state:
+            return 1
+        else:
+            return 0
 
 
 
@@ -126,14 +196,10 @@ class GetReward:
     #     (setup_table, put_diswasher),
     # ]
 
+
 if __name__ == "__main__":
     envs = UnityEnv(num_agents=1)
     graph = envs.get_graph()
-
-    
-    with open('obj_position.json') as file:
-        obj_position = json.load(file)
-
 
     ## -------------------------------------------------------------
     ## load task from json, the json file contain max number of objects for each task
