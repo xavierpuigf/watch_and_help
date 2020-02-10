@@ -1,4 +1,12 @@
 import numpy as np
+import time
+import logging
+import atexit
+from sys import platform
+import subprocess
+import os
+import glob
+
 import pdb
 import random
 import torch
@@ -8,25 +16,40 @@ from vh_graph.envs import belief, vh_env
 from simulation.unity_simulator import comm_unity as comm_unity
 
 from agents import MCTS_agent, PG_agent
-from gym import spaces
+from gym import spaces, envs
 import ipdb
 from profilehooks import profile
 
+logger = logging.getLogger("mlagents_envs")
 
 class UnityEnvWrapper:
-    def __init__(self, comm, num_agents):
-        self.comm = comm
+    def __init__(self, env_id, env_copy_id, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
+        atexit.register(self.close)
+        self.port_number = base_port + env_copy_id 
+        self.proc = None
+        self.timeout_wait = 60
+        self.file_name = file_name
+        pdb.set_trace()
+        self.launch_env(file_name)
+
+
+        # TODO: get rid of this, should be notfiied somehow else
+        pdb.set_trace()
+        self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
+
+
+
+        
         self.num_agents = num_agents
         self.graph = None
         self.recording = False
         self.follow = False
         self.num_camera_per_agent = 6
         self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
-
         
-        comm.reset(0)
+        self.comm.reset(env_id)
 
-        self.offset_cameras = comm.camera_count()[1]
+        self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
@@ -40,6 +63,110 @@ class UnityEnvWrapper:
 
         self.get_graph()
         self.test_prep()
+   
+    def returncode_to_signal_name(returncode: int):
+        """
+        Try to convert return codes into their corresponding signal name.
+        E.g. returncode_to_signal_name(-2) -> "SIGINT"
+        """
+        try:
+            # A negative value -N indicates that the child was terminated by signal N (POSIX only).
+            s = signal.Signals(-returncode)  # pylint: disable=no-member
+            return s.name
+        except Exception:
+            # Should generally be a ValueError, but catch everything just in case.
+            return None
+
+    def close(self):
+
+        self.proc.kill()
+        self.proc = None
+        return
+        if self.proc is not None:
+            # Wait a bit for the process to shutdown, but kill it if it takes too long
+            try:
+                self.proc.wait(timeout=self.timeout_wait)
+                signal_name = self.returncode_to_signal_name(self.proc.returncode)
+                signal_name = f" ({signal_name})" if signal_name else ""
+                return_info = f"Environment shut down with return code {self.proc.returncode}{signal_name}."
+                logger.info(return_info)
+            except subprocess.TimeoutExpired:
+                logger.info("Environment timed out shutting down. Killing...")
+            # Set to None so we don't try to close multiple times.
+            self.proc = None
+
+    def launch_env(self, file_name, args=''):
+        # based on https://github.com/Unity-Technologies/ml-agents/blob/bf12f063043e5faf4b1df567b978bb18dcb3e716/ml-agents/mlagents/trainers/learn.py
+        cwd = os.getcwd()
+        file_name = (
+            file_name.strip()
+            .replace(".app", "")
+            .replace(".exe", "")
+            .replace(".x86_64", "")
+            .replace(".x86", "")
+        )
+        true_filename = os.path.basename(os.path.normpath(file_name))
+        print(file_name)
+        logger.debug("The true file name is {}".format(true_filename))
+        launch_string = None
+        if platform == "linux" or platform == "linux2":
+            candidates = glob.glob(os.path.join(cwd, file_name) + ".x86_64")
+            if len(candidates) == 0:
+                candidates = glob.glob(os.path.join(cwd, file_name) + ".x86")
+            if len(candidates) == 0:
+                candidates = glob.glob(file_name + ".x86_64")
+            if len(candidates) == 0:
+                candidates = glob.glob(file_name + ".x86")
+            if len(candidates) > 0:
+                launch_string = candidates[0]
+
+        elif platform == "darwin":
+            candidates = glob.glob(
+                os.path.join(
+                    cwd, file_name + ".app", "Contents", "MacOS", true_filename
+                )
+            )
+            if len(candidates) == 0:
+                candidates = glob.glob(
+                    os.path.join(file_name + ".app", "Contents", "MacOS", true_filename)
+                )
+            if len(candidates) == 0:
+                candidates = glob.glob(
+                    os.path.join(cwd, file_name + ".app", "Contents", "MacOS", "*")
+                )
+            if len(candidates) == 0:
+                candidates = glob.glob(
+                    os.path.join(file_name + ".app", "Contents", "MacOS", "*")
+                )
+            if len(candidates) > 0:
+                launch_string = candidates[0]
+
+        if launch_string is None:
+            self.close()
+            raise Exception(
+                "Couldn't launch the {0} environment. "
+                "Provided filename does not match any environments.".format(
+                    true_filename
+                )
+            )
+        else:
+            docker_training = False
+            if not docker_training:
+                subprocess_args = [launch_string]
+                subprocess_args += ["-batchmode"]
+                subprocess_args += ["--port", str(self.port_number)]
+                subprocess_args += args
+                try:
+                    self.proc = subprocess.Popen(
+                            subprocess_args, 
+                            start_new_session=True)
+                    ret_val = self.proc.poll()
+                except:
+                    raise Exception('Error, environment was found but could not be launched')
+            else:
+                raise Exception("Docker training is still not implemented")
+
+        pass
 
     def get_graph(self):
 
@@ -122,13 +249,13 @@ class UnityEnvWrapper:
 
 
 class UnityEnv:
-    def __init__(self, num_agents=2):
+    def __init__(self, num_agents=2, seed=0, env_id=0, env_copy_id=0):
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
+        self.env_id = env_id
 
-        comm = comm_unity.UnityCommunication()
-        self.unity_simulator = UnityEnvWrapper(comm, self.num_agents)    
+        self.unity_simulator = UnityEnvWrapper(env_id, env_copy_id, num_agents=self.num_agents)    
         self.agent_ids =  self.unity_simulator.agent_ids()
         self.agents = {}
 
@@ -151,32 +278,50 @@ class UnityEnv:
         ## ------------------------------------------------------------------------------------        
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(low=0, high=255., shape=(3, 128, 128))
+        self.reward_range = (0, 150.)
+        self.metadata = {'render.modes': ['human']}
+        self.spec = envs.registration.EnvSpec('virtualhome-v0')
+
         
         self.history_observations = []
         self.len_hist = 4
+        self.num_steps = 0
+
+    def seed(self, seed):
+        pass
 
     def reset(self):# graph, task_goal):
         # reset system agent
         #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
-        self.unity_simulator.comm.reset(0)
-        self.unity_simulator.comm.add_character()
+        self.unity_simulator.comm.fast_reset(self.env_id)
+        #self.unity_simulator.comm.add_character()
         obs = self.get_observations()[0]
+        self.num_steps = 0
         return obs
 
     def step(self, my_agent_action):
-        actions = ['<char0> [walkforward]', '<char0> [turnleft]']
+        actions = ['<char0> [walkforward]', '<char0> [turnleft]', '<char0> [turnright]']
 
-        self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
+        self.unity_simulator.comm.render_script([actions[my_agent_action[0]]], recording=False, gen_vid=False)
         
         obs, image = self.get_observations()
         s, gr = self.unity_simulator.comm.environment_graph()
-        reward = np.logical_and(np.logical_and(image[:,:,0] == 93, image[:,:,1]== 248), image[:,:,2]== 0).sum()
+        pix = np.logical_and(np.logical_and(image[:,:,0] == 93, image[:,:,1]== 248), image[:,:,2]== 0).sum()
         # print(reward)
-        reward = reward*1.0/(image.shape[0]*image.shape[1])
+        proportion = pix*1./(image.shape[0]*image.shape[1])
+        reward = proportion
+        done = False
+        self.num_steps += 1
+        if proportion > 0.35 or self.num_steps > 30:
+            if proportion > 0.35:
+                reward += 100.
+            done = True
         reward = torch.Tensor([reward])
-        done = np.array([False])
-        infos = [{}]
+        done = np.array([done])
+        infos = {}
+        #if done:
+        #    obs = self.reset()
         return obs, reward, done, infos
 
 
