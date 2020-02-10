@@ -20,6 +20,10 @@ from profilehooks import profile
 
 from interface.envs.envs import UnityEnv
 
+obj_position = {
+    "inside": ["toilet", "bathroom_cabinet", "kitchencabinets", "bathroom_counter", "kitchencounterdrawer", "cabinet", "fridge", "oven", "dishwasher", "microwave"],
+    "on": ["bathroomcabinet", "bathroomcounter", "bed", "bench", "bookshelf", "cabinet", "chair", "coffeetable", "desk", "floor", "fryingpan", "kitchencabinets", "kitchencounter", "kitchentable", "mousemat", "nightstand", "oventray", "plate", "radio", "rug", "sofa", "stove", "towelrack"]
+    }
 
 def remove_obj(graph, obj_ids):
     graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in obj_ids]
@@ -38,21 +42,20 @@ def set_tv_off(graph, tv_id):
 class SetInitialGoal:
     def __init__(self, goal, obj_position, init_pool):
         self.goal = goal
-        self.obj_position
+        self.obj_position = obj_position
         self.init_pool = init_pool
 
     def setup_table(self, graph):
         ## setup table
-        max_num_table = 4
-        num_table = random.randint(1, max_num_table)
+        # max_num_table = 4
+        # num_table = random.randint(1, max_num_table)
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
-        remove_obj(graph, table_ids)
-        table_position_pool = self.obj_position['table']
-        add_obj(graph, 'table', num_table, table_position_pool)
-        
+        # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        # remove_obj(graph, table_ids)
+        # table_position_pool = self.obj_position['table']
+        # add_obj(graph, 'table', num_table, table_position_pool)
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         table_id = random.choice(table_ids)
 
         for k,v in self.goal.items():
@@ -60,8 +63,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, num_obj, obj_position_pool, except_position=table_id)
+            add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
         
         setup_other_objs(graph)
 
@@ -79,16 +81,16 @@ class SetInitialGoal:
 
     def clean_table(self, graph):
         ## clean table
-        max_num_table = 4
-        num_table = random.randint(1, max_num_table)
+        # max_num_table = 4
+        # num_table = random.randint(1, max_num_table)
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
-        remove_obj(graph, table_ids)
-        table_position_pool = self.obj_position['table']
-        add_obj(graph, 'table', num_table, table_position_pool)
+        # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        # remove_obj(graph, table_ids)
+        # table_position_pool = self.obj_position['table']
+        # add_obj(graph, 'table', num_table, table_position_pool)
         
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         table_id = random.choice(table_ids)
 
         for k,v in self.goal.items():
@@ -96,9 +98,8 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, v, obj_position_pool, only_position=table_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=table_id) ## add the rest objects on other places
+            add_obj(graph, k, v, self.obj_position, only_position=table_id) ## add the first v objects on this table
+            add_obj(graph, k, num_obj-v, self.obj_position, except_position=table_id) ## add the rest objects on other places
         
         setup_other_objs(graph)
 
@@ -112,13 +113,13 @@ class SetInitialGoal:
 
     def put_diswasher(self, graph):
         ## setup diswasher
-        max_num_diswasher = 4
-        num_diswasher = random.randint(1, max_num_diswasher)
+        # max_num_diswasher = 4
+        # num_diswasher = random.randint(1, max_num_diswasher)
 
-        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
-        remove_obj(graph, diswasher_ids)
-        diswasher_position_pool = self.obj_position['diswasher']
-        add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
+        # diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        # remove_obj(graph, diswasher_ids)
+        # diswasher_position_pool = self.obj_position['diswasher']
+        # add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
         
 
         diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
@@ -129,8 +130,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, num_obj, obj_position_pool, except_position=diswasher_id)
+            add_obj(graph, k, num_obj, self.obj_position, except_position=diswasher_id)
         
         setup_other_objs(graph)
 
@@ -148,13 +148,13 @@ class SetInitialGoal:
 
     def unload_diswasher(self, graph):
         ## setup diswasher
-        max_num_diswasher = 4
-        num_diswasher = random.randint(1, max_num_diswasher)
+        # max_num_diswasher = 4
+        # num_diswasher = random.randint(1, max_num_diswasher)
 
-        diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
-        remove_obj(graph, diswasher_ids)
-        diswasher_position_pool = self.obj_position['diswasher']
-        add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
+        # diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
+        # remove_obj(graph, diswasher_ids)
+        # diswasher_position_pool = self.obj_position['diswasher']
+        # add_obj(graph, 'diswasher', num_diswasher, diswasher_position_pool)
         
 
         diswasher_ids = [node['id'] for node in graph['nodes'] if 'diswasher' in node['class_name']]
@@ -166,9 +166,8 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, v, obj_position_pool, only_position=diswasher_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, obj_position_pool, except_position=diswasher_id) ## add the rest objects on other places
+            add_obj(graph, k, v, self.obj_position, only_position=diswasher_id) ## add the first v objects on this table
+            add_obj(graph, k, num_obj-v, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
         
         setup_other_objs(graph)
 
@@ -182,14 +181,14 @@ class SetInitialGoal:
 
 
     def put_fridge(self, graph):
-       ## setup fridge
-        max_num_fridge = 4
-        num_fridge = random.randint(1, max_num_fridge)
+        ## setup fridge
+        # max_num_fridge = 4
+        # num_fridge = random.randint(1, max_num_fridge)
 
-        fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
-        remove_obj(graph, fridge_ids)
-        fridge_position_pool = self.obj_position['fridge']
-        add_obj(graph, 'fridge', num_fridge, fridge_position_pool)
+        # fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
+        # remove_obj(graph, fridge_ids)
+        # fridge_position_pool = self.obj_position['fridge']
+        # add_obj(graph, 'fridge', num_fridge, fridge_position_pool)
         
 
         fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
@@ -200,8 +199,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, num_obj, obj_position_pool, except_position=fridge_id)
+            add_obj(graph, k, num_obj, self.obj_position, except_position=fridge_id)
         
         setup_other_objs(graph)
 
@@ -220,8 +218,7 @@ class SetInitialGoal:
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         remove_obj(graph, book_ids)
-        book_position_pool = self.obj_position['book']
-        add_obj(graph, 'book', num_table, book_position_pool)
+        add_obj(graph, 'book', num_table, self.obj_position)
         
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
@@ -235,16 +232,16 @@ class SetInitialGoal:
 
 
     def prepare_food(self, graph):
-        max_num_table = 4
-        num_table = random.randint(1, max_num_table)
+        # max_num_table = 4
+        # num_table = random.randint(1, max_num_table)
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
-        remove_obj(graph, table_ids)
-        table_position_pool = self.obj_position['table']
-        add_obj(graph, 'table', num_table, table_position_pool)
+        # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        # remove_obj(graph, table_ids)
+        # table_position_pool = self.obj_position['table']
+        # add_obj(graph, 'table', num_table, table_position_pool)
         
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'tables' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         table_id = random.choice(table_ids)
 
 
@@ -253,8 +250,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            obj_position_pool = self.obj_position[k]
-            add_obj(graph, k, num_obj, obj_position_pool, except_position=table_id)
+            add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
         
         setup_other_objs(graph)
 
@@ -267,13 +263,13 @@ class SetInitialGoal:
 
 
     def watch_tv(self, graph):
-        max_num_tv = 4
-        num_tv = random.randint(1, max_num_tv)
+        # max_num_tv = 4
+        # num_tv = random.randint(1, max_num_tv)
 
-        tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
-        remove_obj(graph, tv_ids)
-        tv_position_pool = self.obj_position['tv']
-        add_obj(graph, 'tv', num_tv, tv_position_pool)
+        # tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
+        # remove_obj(graph, tv_ids)
+        # tv_position_pool = self.obj_position['tv']
+        # add_obj(graph, 'tv', num_tv, tv_position_pool)
         
 
         tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
@@ -293,11 +289,6 @@ class SetInitialGoal:
 if __name__ == "__main__":
     envs = UnityEnv(num_agents=1)
     graph = envs.get_graph()
-
-    
-    with open('obj_position.json') as file:
-        obj_position = json.load(file)
-
 
     ## -------------------------------------------------------------
     ## load task from json, the json file contain max number of objects for each task
@@ -323,7 +314,7 @@ if __name__ == "__main__":
     set_init_goal = SetInitialGoal(goal, obj_position, init_pool[task_name])
     init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
     
-    
+    print(env_goal)
 
 
 
