@@ -20,20 +20,38 @@ from profilehooks import profile
 
 from interface.envs.envs import UnityEnv
 
-obj_position = {
-    "inside": ["toilet", "bathroom_cabinet", "kitchencabinets", "bathroom_counter", "kitchencounterdrawer", "cabinet", "fridge", "oven", "dishwasher", "microwave"],
-    "on": ["bathroomcabinet", "bathroomcounter", "bed", "bench", "bookshelf", "cabinet", "chair", "coffeetable", "desk", "floor", "fryingpan", "kitchencabinets", "kitchencounter", "kitchentable", "mousemat", "nightstand", "oventray", "plate", "radio", "rug", "sofa", "stove", "towelrack"]
-    }
+with open('object_info.json', 'r') as f:
+    obj_position = json.load(f)
 
 def remove_obj(graph, obj_ids):
     graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in obj_ids]
     graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in obj_ids and edge['to_id'] not in obj_ids]
     
-def add_obj(graph, obj_name, num_obj, obj_position_pool, only_position=None, except_position=None):
-    pass
+def add_obj(graph, obj_name, num_obj, object_id, obj_position_pool, only_position=None, except_position=None):
+    edges = []
+    nodes = []
 
-def setup_other_objs(graph):
-    pass
+    # TODO: we will want candidates per object later
+    candidates = [('ON', obj_name) for obj_name in obj_position_pool['surfaces'] and (except_position is None or obj_name not in except_position) and (only_position is None or obj_name in only_position)]
+    candidates += [('INSIDE', obj_name) for obj_name in obj_position_pool['container'] and (except_position is None or obj_name not in except_position) and (only_position is None or obj_name in only_position)]
+    for i in range(num_obj):
+        # TODO: we need to check the properties and states, probably the easiest is to get them from the original set of graphs
+        new_node = {'id': object_id, 'class_name': obj_name, 'properties': ['GRABBABLE'], 'states': [], 'category': 'added_object'}
+        nodes.append(new_node)
+        relation, target = random.choice(candidates)
+        edges.append('from_id': object_id, 'relation_type': relation, 'to_id': target)
+        object_id += 1
+
+    graph['nodes'] += nodes
+    graph['edges'] += edges
+    return object_id
+
+
+def setup_other_objs(graph, object_id, num_obj, object_pool):
+    for i in range(num_obj):
+        obj_name = random.choice(object_pool['objects_grab'])
+        object_id = add_obj(graph, obj_name, 1, object_id, object_pool, only_position=None, except_position=None)
+    return object_id
 
 def set_tv_off(graph, tv_id):
     node = utils_unity_graph.find_nodes(graph, id=tv_id)
@@ -45,6 +63,7 @@ class SetInitialGoal:
         self.goal = goal
         self.obj_position = obj_position
         self.init_pool = init_pool
+        self.object_id_count = 1000
 
     def setup_table(self, graph, start=True):
         ## setup table
@@ -64,10 +83,11 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
+            self.object_id_count = add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
+
         
         if start:
-            setup_other_objs(graph)
+            self.object_id_count = setup_other_objs(graph)
 
 
         ## get goal
@@ -100,8 +120,8 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, v, self.obj_position, only_position=table_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, self.obj_position, except_position=table_id) ## add the rest objects on other places
+            self.object_id_count = add_obj(graph, k, v, self.obj_position, only_position=table_id) ## add the first v objects on this table
+            self.object_id_count = add_obj(graph, k, num_obj-v, self.obj_position, except_position=table_id) ## add the rest objects on other places
         
         if start:
             setup_other_objs(graph)
@@ -133,7 +153,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, num_obj, self.obj_position, except_position=diswasher_id)
+            self.object_id_count = add_obj(graph, k, num_obj, self.obj_position, except_position=diswasher_id)
         
         if start:
             setup_other_objs(graph)
@@ -170,8 +190,8 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, v, self.obj_position, only_position=diswasher_id) ## add the first v objects on this table
-            add_obj(graph, k, num_obj-v, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
+            self.object_id_count = add_obj(graph, k, v, self.obj_position, only_position=diswasher_id) ## add the first v objects on this table
+            self.object_id_count = add_obj(graph, k, num_obj-v, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
         
         if start:
             setup_other_objs(graph)
@@ -204,7 +224,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, num_obj, self.obj_position, except_position=fridge_id)
+            self.object_id_count = add_obj(graph, k, num_obj, self.obj_position, except_position=fridge_id)
         
         if start:
             setup_other_objs(graph)
@@ -224,7 +244,7 @@ class SetInitialGoal:
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         remove_obj(graph, book_ids)
-        add_obj(graph, 'book', num_table, self.obj_position)
+        self.object_id_count = add_obj(graph, 'book', num_table, self.obj_position)
         
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
@@ -257,7 +277,7 @@ class SetInitialGoal:
             remove_obj(graph, obj_ids)
 
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
-            add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
+            self.object_id_count = add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
         
         if start:
             setup_other_objs(graph)
