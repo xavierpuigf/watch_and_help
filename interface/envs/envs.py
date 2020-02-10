@@ -29,14 +29,14 @@ class UnityEnvWrapper:
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
-        pdb.set_trace()
         self.launch_env(file_name)
 
 
         # TODO: get rid of this, should be notfiied somehow else
-        pdb.set_trace()
+        
         self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
-
+        print('Checking connection')
+        self.comm.check_connection()
 
 
         
@@ -173,9 +173,9 @@ class UnityEnvWrapper:
         _, self.graph = self.comm.environment_graph()
         return self.graph
 
-    def get_observations(self):
+    def get_observations(self, mode='normal'):
         camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
-        s, images = self.comm.camera_image(camera_ids, image_width=128, image_height=128, mode='seg_class')
+        s, images = self.comm.camera_image(camera_ids, image_width=128, image_height=128, mode=mode)
         return images
 
     def test_prep(self):
@@ -272,10 +272,9 @@ class UnityEnv:
         self.actions['my_agent'] = []
 
 
-        # envs.observation_space: Box(4, 84, 84)
-        # envs.action_space: Discrete(6)
 
         ## ------------------------------------------------------------------------------------        
+        self.viewer = None
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(low=0, high=255., shape=(3, 128, 128))
         self.reward_range = (0, 150.)
@@ -289,6 +288,18 @@ class UnityEnv:
 
     def seed(self, seed):
         pass
+    
+    def render(self, mode='human'):
+        obs, img = self.get_observations()
+        if mode == 'rgb_array':
+            return image
+        elif mode == 'human':
+            from gym.envs.classic_control import rendering
+            if self.viewer is None:
+                self.viewer = rendering.SimpleImageViewer(maxwidth=500)
+            self.viewer.imshow(img)
+            return self.viewer.isopen
+         
 
     def reset(self):# graph, task_goal):
         # reset system agent
@@ -302,8 +313,11 @@ class UnityEnv:
 
     def step(self, my_agent_action):
         actions = ['<char0> [walkforward]', '<char0> [turnleft]', '<char0> [turnright]']
-
-        self.unity_simulator.comm.render_script([actions[my_agent_action[0]]], recording=False, gen_vid=False)
+        try:
+            self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
+        except:
+            import pdb
+            pdb.set_trace()
         
         obs, image = self.get_observations()
         s, gr = self.unity_simulator.comm.environment_graph()
