@@ -39,13 +39,15 @@ def set_tv_off(graph, tv_id):
     node = utils_unity_graph.find_nodes(graph, id=tv_id)
     node['states'] = 'OFF' + [state for state in node['states'] if node['states'] not in ['ON', 'OFF']]
 
+
+
 class SetInitialGoal:
     def __init__(self, goal, obj_position, init_pool):
         self.goal = goal
         self.obj_position = obj_position
         self.init_pool = init_pool
 
-    def setup_table(self, graph):
+    def setup_table(self, graph, start=True):
         ## setup table
         # max_num_table = 4
         # num_table = random.randint(1, max_num_table)
@@ -65,7 +67,8 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -79,7 +82,7 @@ class SetInitialGoal:
 
 
 
-    def clean_table(self, graph):
+    def clean_table(self, graph, start=True):
         ## clean table
         # max_num_table = 4
         # num_table = random.randint(1, max_num_table)
@@ -101,7 +104,8 @@ class SetInitialGoal:
             add_obj(graph, k, v, self.obj_position, only_position=table_id) ## add the first v objects on this table
             add_obj(graph, k, num_obj-v, self.obj_position, except_position=table_id) ## add the rest objects on other places
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -111,7 +115,7 @@ class SetInitialGoal:
         return graph, env_goal
 
 
-    def put_diswasher(self, graph):
+    def put_diswasher(self, graph, start=True):
         ## setup diswasher
         # max_num_diswasher = 4
         # num_diswasher = random.randint(1, max_num_diswasher)
@@ -132,7 +136,8 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             add_obj(graph, k, num_obj, self.obj_position, except_position=diswasher_id)
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -146,7 +151,7 @@ class SetInitialGoal:
 
 
 
-    def unload_diswasher(self, graph):
+    def unload_diswasher(self, graph, start=True):
         ## setup diswasher
         # max_num_diswasher = 4
         # num_diswasher = random.randint(1, max_num_diswasher)
@@ -169,7 +174,8 @@ class SetInitialGoal:
             add_obj(graph, k, v, self.obj_position, only_position=diswasher_id) ## add the first v objects on this table
             add_obj(graph, k, num_obj-v, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -180,7 +186,7 @@ class SetInitialGoal:
 
 
 
-    def put_fridge(self, graph):
+    def put_fridge(self, graph, start=True):
         ## setup fridge
         # max_num_fridge = 4
         # num_fridge = random.randint(1, max_num_fridge)
@@ -201,7 +207,8 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             add_obj(graph, k, num_obj, self.obj_position, except_position=fridge_id)
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -212,7 +219,7 @@ class SetInitialGoal:
 
 
 
-    def read_book(self, graph):
+    def read_book(self, graph, start=True):
         max_num_book = self.init_pool['book']
         num_book = random.randint(1, max_num_book)
 
@@ -224,14 +231,15 @@ class SetInitialGoal:
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         book_id = random.choice(book_ids)
 
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
         ## get goal
         env_goal = [{'read_{}'.format(book_id)}]
         return graph, env_goal
 
 
-    def prepare_food(self, graph):
+    def prepare_food(self, graph, start=True):
         # max_num_table = 4
         # num_table = random.randint(1, max_num_table)
 
@@ -252,7 +260,8 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             add_obj(graph, k, num_obj, self.obj_position, except_position=table_id)
         
-        setup_other_objs(graph)
+        if start:
+            setup_other_objs(graph)
 
 
         ## get goal
@@ -262,7 +271,7 @@ class SetInitialGoal:
         return graph, env_goal
 
 
-    def watch_tv(self, graph):
+    def watch_tv(self, graph, start=True):
         # max_num_tv = 4
         # num_tv = random.randint(1, max_num_tv)
 
@@ -276,13 +285,39 @@ class SetInitialGoal:
         tv_id = random.choice(tv_ids)
 
         set_tv_off(tv_id)
-        setup_other_objs()
+
+        if start:
+            setup_other_objs()
 
         ## get goal
         env_goal = [{'{}_on'.format(tv_id)}]
         return graph, env_goal
 
 
+    def setup_table_prepare_food(self, graph):
+        graph, env_goal1 = self.setup_table(graph)
+        graph, env_goal2 = self.prepare_food(graph, start=False)
+        return env_goal1+env_goal2
+
+    def setup_table_read_book(self, graph):
+        graph, env_goal1 = self.setup_table(graph)
+        graph, env_goal2 = self.read_book(graph, start=False)
+        return env_goal1+env_goal2
+    
+    def setup_table_watch_tv(self, graph):
+        graph, env_goal1 = self.setup_table(graph)
+        graph, env_goal2 = self.watch_tv(graph, start=False)
+        return env_goal1+env_goal2
+
+    def setup_table_put_fridge(self, graph):
+        graph, env_goal1 = self.setup_table(graph)
+        graph, env_goal2 = self.put_fridge(graph, start=False)
+        return env_goal1+env_goal2
+
+    def setup_table_put_diswasher(self, graph):
+        graph, env_goal1 = self.setup_table(graph)
+        graph, env_goal2 = self.put_diswasher(graph, start=False)
+        return env_goal1+env_goal2
 
 
 

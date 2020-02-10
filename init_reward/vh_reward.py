@@ -160,8 +160,7 @@ class GetReward:
         else:
             return 0
 
-
-    def watch_tv(graph):
+    def watch_tv(self, graph):
         subgoal = self.goal[0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
@@ -176,25 +175,32 @@ class GetReward:
             return 0
 
 
+    def setup_table_prepare_food(self, graph):
+        reward1 = self.setup_table(graph)
+        reward2 = self.prepare_food(graph)
+        return reward1 and reward2
+
+    def setup_table_read_book(self, graph):
+        reward1 = self.setup_table(graph)
+        reward2 = self.read_book(graph, start=False)
+        return reward1 and reward2
+    
+    def setup_table_watch_tv(self, graph):
+        reward1 = self.setup_table(graph)
+        reward2 = self.watch_tv(graph, start=False)
+        return reward1 and reward2
+
+    def setup_table_put_fridge(self, graph):
+        reward1 = self.setup_table(graph)
+        reward2 = self.put_fridge(graph, start=False)
+        return reward1 and reward2
+
+    def setup_table_put_diswasher(self, graph):
+        reward1 = self.setup_table(graph)
+        reward2 = self.put_diswasher(graph, start=False)
+        return reward1 and reward2
 
 
-    # goals = [
-    #     (setup_table, ),
-    #     (read_book, ),
-    #     (clean_table, ),
-    #     (put_diswasher, ),
-    #     (unload_diswasher, ),
-    #     (put_fridge, ),
-    #     (prepare_food, ),
-    #     (watch_tv, ),
-
-    #     (setup_table, prepare_food),
-    #     (setup_table, read_book),
-    #     (setup_table, watch_tv),
-    #     (setup_table, put_fridge),
-    #     (setup_table, put_fridge),
-    #     (setup_table, put_diswasher),
-    # ]
 
 
 if __name__ == "__main__":
