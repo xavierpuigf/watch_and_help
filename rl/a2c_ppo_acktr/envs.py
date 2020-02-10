@@ -59,6 +59,8 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
+        elif env_id == 'virtualhome':
+            env = UnityEnv(num_agents=1)
         else:
             env = gym.make(env_id)
 
@@ -68,7 +70,6 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             env = make_atari(env_id)
 
         env.seed(seed + rank)
-
         obs_shape = env.observation_space.shape
 
         if str(env.__class__.__name__).find('TimeLimit') >= 0:
@@ -83,7 +84,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
         if is_atari:
             if len(env.observation_space.shape) == 3:
                 env = wrap_deepmind(env)
-        elif len(env.observation_space.shape) == 3:
+        elif env_id != 'virtualhome' and len(env.observation_space.shape) == 3:
             raise NotImplementedError(
                 "CNN models work only for atari,\n"
                 "please use a custom wrapper for a custom pixel input env.\n"
@@ -108,11 +109,16 @@ def make_vec_envs(env_name,
                   allow_early_resets,
                   num_frame_stack=None):
 
-    if env_name=='virtualhome':
-        envs = UnityEnv(num_agents=1)
-        # envs = [UnityEnv(num_agents=2) for i in range(num_processes)]
-
+    if False: #env_name=='virtualhome':
+        #    envs = [make_env(env_name, )UnityEnv(num_agents=1) for i in range(1)]
+        if log_dir is not None:
+            envs = bench.Monitor(
+                    envs,
+                    os.path.join(log_dir, str('1')),
+                allow_early_resets=allow_early_resets)
+    
     else:
+        print(num_processes)
         envs = [
             make_env(env_name, seed, i, log_dir, allow_early_resets)
             for i in range(num_processes)

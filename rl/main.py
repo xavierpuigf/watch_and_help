@@ -56,13 +56,14 @@ def main():
     ## Preparing the goal
     ## ------------------------------------------------------------------------------
     if 'virtualhome' in args.env_name:
-        graph = envs.get_graph()
-        glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
-        table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-        goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
-        task_goal = {}
-        for i in range(2):
-            task_goal[i] = goals
+        pass
+        #graph = envs.get_graph()
+        #glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
+        #table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
+        #goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
+        #task_goal = {}
+        #for i in range(2):
+        #    task_goal[i] = goals
 
 
 
@@ -162,7 +163,6 @@ def main():
             # done: array, array([False])   |       array([False, False])
             # infos: [{'ale.lives': 0}]     |       ({'ale.lives': 0}, {'ale.lives': 0})
 
-            
             for info in infos:
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
