@@ -14,6 +14,7 @@ sys.path.append(home_path+'/virtualhome')
 sys.path.append(home_path+'/vh_multiagent_models')
 
 import utils
+import utils_unity_graph
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 
@@ -21,16 +22,18 @@ from interface.envs.envs import UnityEnv
 
 
 def remove_obj(graph, obj_ids):
-    pass
-
+    graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in obj_ids]
+    graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in obj_ids and edge['to_id'] not in obj_ids]
+    
 def add_obj(graph, obj_name, num_obj, obj_position_pool, only_position=None, except_position=None):
     pass
 
 def setup_other_objs(graph):
     pass
 
-def set_tv_off(tv_id):
-    pass
+def set_tv_off(graph, tv_id):
+    node = utils_unity_graph.find_nodes(graph, id=tv_id)
+    node['states'] = 'OFF' + [state for state in node['states'] if node['states'] not in ['ON', 'OFF']]
 
 class SetInitialGoal:
     def __init__(self, goal, obj_position, init_pool):
