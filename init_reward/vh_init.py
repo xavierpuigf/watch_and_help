@@ -40,7 +40,6 @@ def set_tv_off(graph, tv_id):
     node['states'] = 'OFF' + [state for state in node['states'] if node['states'] not in ['ON', 'OFF']]
 
 
-
 class SetInitialGoal:
     def __init__(self, goal, obj_position, init_pool):
         self.goal = goal
@@ -72,9 +71,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'setup_table': []}
         for k,v in self.goal.items():
-            env_goal.append( {'on_{}_{}'.format(k, table_id): v} )
+            env_goal['setup_table'].append( {'on_{}_{}'.format(k, table_id): v} )
         return graph, env_goal
 
 
@@ -109,9 +108,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'clean_table': []}
         for k,v in self.goal.items():
-            env_goal.append( {'off_{}_{}'.format(k, table_id): v} )
+            env_goal['clean_table'].append( {'off_{}_{}'.format(k, table_id): v} )
         return graph, env_goal
 
 
@@ -141,9 +140,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'put_diswasher': []}
         for k,v in self.goal.items():
-            env_goal.append( {'inside_{}_{}'.format(k, diswasher_id): v} )
+            env_goal['put_diswasher'].append( {'inside_{}_{}'.format(k, diswasher_id): v} )
         return graph, env_goal
 
 
@@ -179,9 +178,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'unload_diswasher': []}
         for k,v in self.goal.items():
-            env_goal.append( {'off_{}_{}'.format(k, diswasher_id): v} )
+            env_goal['unload_diswasher'].append( {'off_{}_{}'.format(k, diswasher_id): v} )
         return graph, env_goal
 
 
@@ -212,9 +211,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'put_fridge': []}
         for k,v in self.goal.items():
-            env_goal.append( {'on_{}_{}'.format(k, fridge): v} )
+            env_goal['put_fridge'].append( {'on_{}_{}'.format(k, fridge): v} )
         return graph, env_goal
 
 
@@ -235,7 +234,7 @@ class SetInitialGoal:
             setup_other_objs(graph)
 
         ## get goal
-        env_goal = [{'read_{}'.format(book_id)}]
+        env_goal = {'read_book': [{'read_{}'.format(book_id)}]}
         return graph, env_goal
 
 
@@ -265,9 +264,9 @@ class SetInitialGoal:
 
 
         ## get goal
-        env_goal = []
+        env_goal = {'prepare_food': []}
         for k,v in self.goal.items():
-            env_goal.append( {'on_{}_{}'.format(k, table_id): v} )
+            env_goal['prepare_food'].append( {'on_{}_{}'.format(k, table_id): v} )
         return graph, env_goal
 
 
@@ -290,34 +289,34 @@ class SetInitialGoal:
             setup_other_objs()
 
         ## get goal
-        env_goal = [{'{}_on'.format(tv_id)}]
+        env_goal = {'watch_tv': [{'{}_on'.format(tv_id)}]}
         return graph, env_goal
 
 
     def setup_table_prepare_food(self, graph):
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.prepare_food(graph, start=False)
-        return env_goal1+env_goal2
+        return graph, env_goal1.update(env_goal2)
 
     def setup_table_read_book(self, graph):
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.read_book(graph, start=False)
-        return env_goal1+env_goal2
+        return graph, env_goal1.update(env_goal2)
     
     def setup_table_watch_tv(self, graph):
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.watch_tv(graph, start=False)
-        return env_goal1+env_goal2
+        return graph, env_goal1.update(env_goal2)
 
     def setup_table_put_fridge(self, graph):
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.put_fridge(graph, start=False)
-        return env_goal1+env_goal2
+        return graph, env_goal1.update(env_goal2)
 
     def setup_table_put_diswasher(self, graph):
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.put_diswasher(graph, start=False)
-        return env_goal1+env_goal2
+        return graph, env_goal1.update(env_goal2)
 
 
 

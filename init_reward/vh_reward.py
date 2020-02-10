@@ -32,7 +32,7 @@ class GetReward:
 
     def setup_table(self, graph):
         subgoal_reward = 0
-        for subgoal in self.goal:
+        for subgoal in self.goal['setup_table']:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
@@ -54,7 +54,7 @@ class GetReward:
 
 
     def clean_table(self,  graph):
-        subgoal = self.goal[0]
+        subgoal = self.goal['clean_table'][0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
         subgoal_num = list(subgoal.values())[0]
@@ -71,7 +71,7 @@ class GetReward:
 
     def put_diswasher(self, graph):
         subgoal_reward = 0
-        for subgoal in self.goal:
+        for subgoal in self.goal['put_diswasher']:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
@@ -93,7 +93,7 @@ class GetReward:
 
 
     def unload_diswasher(self,  graph):
-        subgoal = self.goal[0]
+        subgoal = self.goal['unload_diswasher'][0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
         subgoal_num = list(subgoal.values())[0]
@@ -111,7 +111,7 @@ class GetReward:
 
     def put_fridge(self, graph):
         subgoal_reward = 0
-        for subgoal in self.goal:
+        for subgoal in self.goal['put_fridge']:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
@@ -134,13 +134,13 @@ class GetReward:
 
 
     def read_book(self, graph):
-        agent_id = [node['id'] for node in graph['nodes'] if 'person' in node['class_name']]
-        env_goal = [{'grab_{}'.format(book_id)}]
+        subgoal = self.goal['read_book']
+        return 1
 
 
     def prepare_food(self, graph):
         subgoal_reward = 0
-        for subgoal in self.goal:
+        for subgoal in self.goal['prepare_food']:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
@@ -161,7 +161,7 @@ class GetReward:
             return 0
 
     def watch_tv(self, graph):
-        subgoal = self.goal[0]
+        subgoal = self.goal['watch_tv'][0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
         tv_id = subgoal_name[0]
