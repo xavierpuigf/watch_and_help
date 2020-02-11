@@ -46,6 +46,7 @@ env = make_vec_envs(
     allow_early_resets=False)
 
 # Get a render function
+print(env)
 print(args.load_dir)
 render_func = get_render_func(env)
 

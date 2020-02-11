@@ -135,7 +135,7 @@ def get_args():
         help='number of environment steps to train (default: 10e6)')
     parser.add_argument(
         '--log-dir',
-        default='logs/',
+        default='logs/virtualhome',
         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument(
         '--save-dir',

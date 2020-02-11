@@ -43,7 +43,6 @@ def main():
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
-
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False)
 
@@ -156,7 +155,6 @@ def main():
                     rollouts.masks[step])
 
             # Obser reward and next obs
-
             obs, reward, done, infos = envs.step(action)
             # obs: tensor, [1, 4, 84, 84],  |       [2, 4, 84, 84]
             # reward: tensor, [1, 1]        |       [2, 1]

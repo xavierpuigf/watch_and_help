@@ -60,7 +60,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
-            env = UnityEnv(num_agents=1)
+            env = UnityEnv(num_agents=1, env_copy_id=rank, seed=rank)
         else:
             env = gym.make(env_id)
 
@@ -118,7 +118,6 @@ def make_vec_envs(env_name,
                 allow_early_resets=allow_early_resets)
     
     else:
-        print(num_processes)
         envs = [
             make_env(env_name, seed, i, log_dir, allow_early_resets)
             for i in range(num_processes)
@@ -208,10 +207,11 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
+        actions = actions.cpu()
         if isinstance(actions, torch.LongTensor):
             # Squeeze the dimension for discrete actions
             actions = actions.squeeze(1)
-        actions = actions.cpu().numpy()
+        actions = actions.numpy()
         self.venv.step_async(actions)
 
     def step_wait(self):

@@ -1,4 +1,7 @@
 import numpy as np
+import cv2
+from PIL import ImageFont, ImageDraw, Image
+
 import time
 import logging
 import atexit
@@ -29,7 +32,7 @@ class UnityEnvWrapper:
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
-        self.launch_env(file_name)
+        #self.launch_env(file_name)
 
 
         # TODO: get rid of this, should be notfiied somehow else
@@ -62,7 +65,7 @@ class UnityEnvWrapper:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
 
         self.get_graph()
-        self.test_prep()
+        #self.test_prep()
    
     def returncode_to_signal_name(returncode: int):
         """
@@ -173,9 +176,10 @@ class UnityEnvWrapper:
         _, self.graph = self.comm.environment_graph()
         return self.graph
 
-    def get_observations(self, mode='normal'):
+    def get_observations(self, mode='normal', image_width=128, image_height=128):
         camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
-        s, images = self.comm.camera_image(camera_ids, image_width=128, image_height=128, mode=mode)
+        s, images = self.comm.camera_image(camera_ids, mode=mode, image_width=image_width, image_height=image_height)
+        #images = [image[:,:,::-1] for image in images]
         return images
 
     def test_prep(self):
@@ -255,7 +259,7 @@ class UnityEnv:
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
         self.env_id = env_id
 
-        self.unity_simulator = UnityEnvWrapper(env_id, env_copy_id, num_agents=self.num_agents)    
+        self.unity_simulator = UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)    
         self.agent_ids =  self.unity_simulator.agent_ids()
         self.agents = {}
 
@@ -285,12 +289,44 @@ class UnityEnv:
         self.history_observations = []
         self.len_hist = 4
         self.num_steps = 0
+        self.prev_dist = None
 
     def seed(self, seed):
         pass
-    
+
+    def close(self):
+        self.unity_simulator.close()
+
+    def compute_toy_reward(self):
+        s, gr = self.unity_simulator.comm.environment_graph()
+        char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character'][0]
+        micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+        dist = np.linalg.norm(np.array(char_node) - np.array(micro_node))
+        if self.prev_dist is None:
+            self.prev_dist = dist
+
+        reward = self.prev_dist - dist + 0.01
+        self.prev_dist = dist
+        is_done = dist < 1.0
+        if is_done:
+            reward += 10
+        info = {'dist': dist, 'done': is_done, 'reward': reward}
+        return reward, info
+
     def render(self, mode='human'):
-        obs, img = self.get_observations()
+        obs, img = self.get_observations(image_width=256, image_height=256)
+        im_pil = Image.fromarray(img)
+        draw = ImageDraw.Draw(im_pil)
+        # Choose a font
+        font = ImageFont.truetype("Roboto-Regular.ttf", 30)
+        reward, info = self.compute_toy_reward()
+
+        # Draw the text
+        draw.text((0, 0), "dist: {}".format(info['dist']), font=font)
+        img = cv2.cvtColor(np.array(im_pil), cv2.COLOR_RGB2BGR)
+
+
+        distance = info['dist']
         if mode == 'rgb_array':
             return image
         elif mode == 'human':
@@ -313,25 +349,14 @@ class UnityEnv:
 
     def step(self, my_agent_action):
         actions = ['<char0> [walkforward]', '<char0> [turnleft]', '<char0> [turnright]']
-        try:
-            self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
-        except:
-            import pdb
-            pdb.set_trace()
-        
-        obs, image = self.get_observations()
-        s, gr = self.unity_simulator.comm.environment_graph()
-        pix = np.logical_and(np.logical_and(image[:,:,0] == 93, image[:,:,1]== 248), image[:,:,2]== 0).sum()
-        # print(reward)
-        proportion = pix*1./(image.shape[0]*image.shape[1])
-        reward = proportion
-        done = False
+        self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
         self.num_steps += 1
-        if proportion > 0.35 or self.num_steps > 30:
-            if proportion > 0.35:
-                reward += 100.
-            done = True
+        obs, _ = self.get_observations()
+        reward, info = self.compute_toy_reward() 
         reward = torch.Tensor([reward])
+        done = info['done']
+        if self.num_steps > 30:
+            done = True
         done = np.array([done])
         infos = {}
         #if done:
@@ -440,8 +465,8 @@ class UnityEnv:
         graph['edges'] = edges_inside + other_edges
         return graph
     
-    def get_observations(self):
-        images = self.unity_simulator.get_observations()
+    def get_observations(self, image_width=128, image_height=128):
+        images = self.unity_simulator.get_observations(image_width=image_width, image_height=image_height)
         current_obs = images[0]
         current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
         #self.history_observations.append(current_obs)
