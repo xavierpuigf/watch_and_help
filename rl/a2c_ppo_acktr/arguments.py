@@ -73,10 +73,6 @@ def get_args():
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
 
-
-
-
-
     parser.add_argument(
             '--env-name',
             default='virtualhome',
@@ -87,11 +83,6 @@ def get_args():
         type=int,
         default=1,
         help='how many training CPU processes to use (default: 16)')
-
-
-
-
-
 
     parser.add_argument(
         '--num-steps',
@@ -161,6 +152,12 @@ def get_args():
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+
+    parser.add_argument('--add-timestep', action='store_true', default=False,
+                        help='add timestep to observations')
+
+    parser.add_argument('--tensorboard-logdir', default='log_tb',
+                        help='logs to tensorboard in the specified directory')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

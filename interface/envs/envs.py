@@ -81,9 +81,9 @@ class UnityEnvWrapper:
             return None
 
     def close(self):
-
-        self.proc.kill()
-        self.proc = None
+        if self.proc is not None:
+            self.proc.kill()
+            self.proc = None
         return
         if self.proc is not None:
             # Wait a bit for the process to shutdown, but kill it if it takes too long

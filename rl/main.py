@@ -37,9 +37,21 @@ def main():
         torch.backends.cudnn.deterministic = True
 
     log_dir = os.path.expanduser(args.log_dir)
+    experiment_name = 'env.{}_algo{}-gamma{}'.format(
+            args.env_name, args.algo, args.gamma)
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
     utils.cleanup_log_dir(eval_log_dir)
+    tensorboard_writer = None
+
+
+    if args.tensorboard_logdir is not None:
+        from torch.utils.tensorboard import SummaryWriter
+        import datetime
+        ts_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
+        
+        tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, experiment_name, ts_str))
+
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
@@ -232,6 +244,15 @@ def main():
                         np.median(episode_rewards), np.min(episode_rewards),
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
+
+            if tensorboard_writer is not None:
+                tensorboard_writer.add_scalar("mean_reward", np.mean(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
+                tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
+                tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
