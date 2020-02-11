@@ -39,7 +39,7 @@ class SetInitialGoal:
 
     def convert_size(self, envsize):
         pass
-        
+
 
     def check_placeable(self, graph, surface_id, obj_name):
         obj_size = self.convert_size(self.class_name_size[obj_name])
@@ -48,10 +48,14 @@ class SetInitialGoal:
             surface_node = [node for node in graph['nodes'] if node['id']==surface_id]
             assert len(surface_node)
             self.surface_size[surface_id] = self.convert_size(self.class_name_size[surface_node[0]['class_name']])
-    
+        
 
         if surface_id not in self.surface_used_size:
-            self.surface_used_size[surface_id] = 0
+            objs_on_surface = [edge['from_id'] for edge in graph['edges'] if edge['to_id']==surface_id]
+            objs_on_surface_node = [node for node in graph['nodes'] if node['id'] in objs_on_surface]
+            objs_on_surface_size = [self.convert_size(self.class_name_size[node['class_name']]) for node in objs_on_surface_node]
+            self.surface_used_size[surface_id] = np.sum(objs_on_surface_size) # get size from the initial graph
+            
 
         if self.surface_size[surface_id] < self.surface_used_size[surface_id]+obj_size:
             self.surface_used_size[surface_id] += obj_size
@@ -87,7 +91,7 @@ class SetInitialGoal:
 
 
             num_place = 0
-            while:
+            while 1:
                 relation, target_classname = random.choice(candidates)
                 target_id = random.choice(ids_class[target_classname])
 
@@ -154,8 +158,8 @@ class SetInitialGoal:
             num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=table_id)
 
-        # if start:
-        #     self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+        if start:
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
 
 
         ## get goal
