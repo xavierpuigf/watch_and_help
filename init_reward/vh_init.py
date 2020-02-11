@@ -35,15 +35,17 @@ class SetInitialGoal:
         self.object_id_count = 1000
         self.surface_size = {}
         self.surface_used_size = {}
-        
+        self.max_num_place = 10
 
     def convert_size(self, envsize):
-        pass
+        size = envsize[0]*envsize[2]
+        return size
 
 
     def check_placeable(self, graph, surface_id, obj_name):
         obj_size = self.convert_size(self.class_name_size[obj_name])
 
+        surface_node = [node for node in graph['nodes'] if node['id']==surface_id]
         if surface_id not in self.surface_size:
             surface_node = [node for node in graph['nodes'] if node['id']==surface_id]
             assert len(surface_node)
@@ -57,10 +59,17 @@ class SetInitialGoal:
             self.surface_used_size[surface_id] = np.sum(objs_on_surface_size) # get size from the initial graph
             
 
-        if self.surface_size[surface_id] < self.surface_used_size[surface_id]+obj_size:
+        print(self.surface_size[surface_id])
+        print(self.surface_used_size[surface_id], obj_size, self.surface_used_size[surface_id]+obj_size)
+        print(obj_name, surface_node[0]['class_name'])
+
+
+        if self.surface_size[surface_id]/10 > self.surface_used_size[surface_id]+obj_size:
             self.surface_used_size[surface_id] += obj_size
+            print('1')
             return 1
         else:
+            print('0')
             return 0
 
 
@@ -89,7 +98,6 @@ class SetInitialGoal:
             # TODO: we need to check the properties and states, probably the easiest is to get them from the original set of graphs
             
 
-
             num_place = 0
             while 1:
                 relation, target_classname = random.choice(candidates)
@@ -106,7 +114,7 @@ class SetInitialGoal:
                 else:
                     num_place += 1
 
-                if num_place > 10:
+                if num_place > self.max_num_place:
                     break
 
         
