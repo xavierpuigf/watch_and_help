@@ -6,7 +6,7 @@ import random
 import json
 
 
-random.seed(10)
+# random.seed(10)
 
 home_path = '../../'
 sys.path.append(home_path+'/vh_mdp')
@@ -352,35 +352,59 @@ class SetInitialGoal:
 if __name__ == "__main__":
     # Better to not sue UnityEnv here, it is faster and it allows to create an env without agents
     comm = comm_unity.UnityCommunication()
-    comm.reset()
-    s, graph = comm.environment_graph()
 
-    ## -------------------------------------------------------------
-    ## load task from json, the json file contain max number of objects for each task
-    ## -------------------------------------------------------------
-    with open('init_pool.json') as file:
-        init_pool = json.load(file)
+    num_test = 100
+    count_success = 0
+    for i in range(num_test):
+        print('testing %d' % i)
 
-    task_name = random.choice(list(init_pool.keys()))
-    goal = {}
-    for k,v in init_pool[task_name].items():
-        goal[k] = random.randint(0, v)
+        comm.reset()
+        s, graph = comm.environment_graph()
 
-    ## example setup table
-    task_name = 'setup_table'
-    goal = {'plates': 2,
-            'glasses': 2,
-            'wineglass': 1,
-            'forks': 0}
+        # success, message = comm.expand_scene(graph)
+        # print(success, message)
+        # pdb.set_trace()
+        ## -------------------------------------------------------------
+        ## load task from json, the json file contain max number of objects for each task
+        ## -------------------------------------------------------------
+        with open('init_pool.json') as file:
+            init_pool = json.load(file)
+
+        task_name = random.choice(list(init_pool.keys()))
+        task_name = 'setup_table'
+
+        goal = {}
+        for k,v in init_pool[task_name].items():
+            goal[k] = random.randint(0, v)
+
+        ## example setup table
+        # task_name = 'setup_table'
+        # goal = {'plate': 2,
+        #         'glasses': 2,
+        #         'wineglass': 1,
+        #         'cutleryfork': 0}
+        
+        ## -------------------------------------------------------------
+        ## setup goal based on currect environment
+        ## -------------------------------------------------------------
+        set_init_goal = SetInitialGoal(goal, obj_position, init_pool[task_name])
+        init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
+        
+        success, message = comm.expand_scene(init_graph)
+        print(task_name, success, message)
+        print(env_goal)
+
+        count_success += success
+
+        if not success:
+            pdb.set_trace()
+
+    print('success %d over %d tests' % (count_success, num_test) )
     
-    ## -------------------------------------------------------------
-    ## setup goal based on currect environment
-    ## -------------------------------------------------------------
-    set_init_goal = SetInitialGoal(goal, obj_position, init_pool[task_name])
-    init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
-    
-    print(env_goal)
 
 
 
-    
+
+
+
+        
