@@ -1,10 +1,10 @@
 {
     "setup_table": 
     {   
-        "plates": 2,
+        "plate": 2,
         "glasses": 2,
-        "wineglass": 1,
-        "forks": 0
+        "wineglass": 2,
+        "cutleryfork": 2
     },
 
     "read_book": 

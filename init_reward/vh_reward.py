@@ -20,10 +20,9 @@ from profilehooks import profile
 from interface.envs.envs import UnityEnv
 from vh_init import SetInitialGoal
 
-obj_position = {
-    "INSIDE": ["toilet", "bathroom_cabinet", "kitchencabinets", "bathroom_counter", "kitchencounterdrawer", "cabinet", "fridge", "oven", "dishwasher", "microwave"],
-    "ON": ["bathroomcabinet", "bathroomcounter", "bed", "bench", "bookshelf", "cabinet", "chair", "coffeetable", "desk", "floor", "fryingpan", "kitchencabinets", "kitchencounter", "kitchentable", "mousemat", "nightstand", "oventray", "plate", "radio", "rug", "sofa", "stove", "towelrack"]
-    }
+with open('object_info.json', 'r') as f:
+    obj_position = json.load(f)
+
 # 'BETWEEN', 'CLOSE', 'FACING', 'INSIDE', 'ON'
 
 class GetReward:
@@ -233,5 +232,6 @@ if __name__ == "__main__":
     
     get_reward = GetReward(env_goal)
     reward = getattr(get_reward, task_name)(graph)
+    print(reward)
 
     
