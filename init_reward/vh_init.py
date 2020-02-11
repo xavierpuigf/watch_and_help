@@ -478,6 +478,38 @@ if __name__ == "__main__":
         comm.reset()
         s, graph = comm.environment_graph()
 
+
+
+
+        ## -------------------------------------------------------------
+        ## debug
+        ## -------------------------------------------------------------
+        # obj_name = 'bucket'
+        # # obj_node = [node for node in graph['nodes'] if node['class_name']==obj_name]
+        # # obj_id = obj_node[0]['id']
+        # object_id = 1000
+        # new_node = {'id': object_id, 'class_name': obj_name, 'properties': ['GRABBABLE'], 'states': [], 'category': 'added_object'}
+
+        # target_name = 'sofa'
+        # target_node = [node for node in graph['nodes'] if node['class_name']==target_name]
+        # target_id = target_node[0]['id']
+
+        
+        # nodes = []
+        # edges = []
+        # nodes.append(new_node)
+        # edges.append({'from_id': object_id, 'relation_type': 'ON', 'to_id': target_id})
+        
+        # graph['nodes'] += nodes
+        # graph['edges'] += edges
+        # success, message = comm.expand_scene(graph)
+        # print(success, message)
+        # pdb.set_trace()
+        ## -------------------------------------------------------------
+
+
+
+
         ## choose tasks
         task_name = random.choice(list(init_pool.keys()))
         task_name = 'setup_table'
