@@ -85,7 +85,7 @@ def main():
     ## ------------------------------------------------------------------------------
 
     actor_critic = Policy(
-        envs.observation_space.shape,
+        envs.observation_space,
         envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
@@ -133,15 +133,17 @@ def main():
             drop_last=drop_last)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                              envs.observation_space.shape, envs.action_space,
+                              tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
                               actor_critic.recurrent_hidden_state_size)
 
     if 'virtualhome' in args.env_name:
         obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
     else:
         obs = envs.reset()
-
-    rollouts.obs[0].copy_(obs)
+    
+    for it in range(len(obs)):
+        # TODO: movidy
+        rollouts.obs[it][0].copy_(obs[it])
     rollouts.to(device)
 
     
@@ -158,12 +160,11 @@ def main():
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
-
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
-                    rollouts.obs[step], rollouts.recurrent_hidden_states[step],
+                    [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
             # Obser reward and next obs
@@ -188,10 +189,9 @@ def main():
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-
         with torch.no_grad():
             next_value = actor_critic.get_value(
-                rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
+                [ob[-1] for ob in rollouts.obs], rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
 
         if args.gail:
@@ -207,7 +207,7 @@ def main():
 
             for step in range(args.num_steps):
                 rollouts.rewards[step] = discr.predict_reward(
-                    rollouts.obs[step], rollouts.actions[step], args.gamma,
+                    [ob for ob[step] in rollouts.obs], rollouts.actions[step], args.gamma,
                     rollouts.masks[step])
 
 
