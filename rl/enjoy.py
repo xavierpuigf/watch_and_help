@@ -25,7 +25,7 @@ parser.add_argument(
     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument(
     '--load-dir',
-    default='./trained_models/a2c',
+    default='./trained_models/env.virtualhome/algoa2c-gamma0.99/',
     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument(
     '--non-det',

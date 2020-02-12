@@ -36,9 +36,9 @@ def main():
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-    log_dir = os.path.expanduser(args.log_dir)
-    experiment_name = 'env.{}_algo{}-gamma{}'.format(
+    experiment_name = 'env.{}/algo{}-gamma{}'.format(
             args.env_name, args.algo, args.gamma)
+    log_dir = os.path.expanduser('{}/{}'.format(args.log_dir, experiment_name))
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
     utils.cleanup_log_dir(eval_log_dir)
@@ -56,7 +56,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device, False)
+            args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
 
 
 
@@ -221,7 +221,7 @@ def main():
         # save for every interval-th episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
+            save_path = os.path.join(args.save_dir, experiment_name)
             try:
                 os.makedirs(save_path)
             except OSError:

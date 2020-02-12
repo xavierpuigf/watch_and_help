@@ -6,7 +6,7 @@ import pdb
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument(
-        '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
+            '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
         '--gail',
         action='store_true',
@@ -126,7 +126,7 @@ def get_args():
         help='number of environment steps to train (default: 10e6)')
     parser.add_argument(
         '--log-dir',
-        default='logs/virtualhome',
+        default='logs/',
         help='directory to save agent logs (default: /tmp/gym)')
     parser.add_argument(
         '--save-dir',
@@ -147,6 +147,13 @@ def get_args():
         action='store_true',
         default=False,
         help='use a recurrent policy')
+
+    parser.add_argument(
+        '--num-frame-stack',
+        type=int,
+        default=1,
+        help='number of frames to stack in the observations')
+
     parser.add_argument(
         '--use-linear-lr-decay',
         action='store_true',
@@ -171,4 +178,3 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    pdb.set_trace()
