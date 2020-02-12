@@ -43,7 +43,8 @@ env = make_vec_envs(
     None,
     None,
     device='cpu',
-    allow_early_resets=False)
+    allow_early_resets=False,
+    num_frame_stack=args.num_frame_stack)
 
 # Get a render function
 print(env)
