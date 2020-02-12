@@ -348,6 +348,7 @@ class UnityEnv:
         self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
         obs = self.get_observations()[0]
         self.num_steps = 0
+        self.prev_dist = None
         return obs
 
     def step(self, my_agent_action):
