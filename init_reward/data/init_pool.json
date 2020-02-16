@@ -1,42 +1,42 @@
 {
     "setup_table": 
     {   
-        "plate": 2,
+        "plate": 3,
         "glasses": 3,
-        "wineglass": 2,
-        "cutleryfork": 2,
-        "cutleryknife": 2,
-        "coffeepot": 2
+        "wineglass": 3,
+        "cutleryfork": 3,
+        "cutleryknife": 3,
+        "coffeepot": 3
     },
 
     "clean_table":
     {
-        "plate": 2,
+        "plate": 3,
         "glasses": 3,
-        "wineglass": 2,
-        "cutleryfork": 2,
-        "cutleryknife": 2,
-        "coffeepot": 2
+        "wineglass": 3,
+        "cutleryfork": 3,
+        "cutleryknife": 3,
+        "coffeepot": 3
     },
 
     "put_diswasher":
     {
-        "plate": 2,
+        "plate": 3,
         "glasses": 3,
-        "wineglass": 2,
-        "cutleryfork": 2,
-        "cutleryknife": 2,
-        "coffeepot": 2
+        "wineglass": 3,
+        "cutleryfork": 3,
+        "cutleryknife": 3,
+        "coffeepot": 3
     },
 
     "unload_diswasher":
     {
-        "plate": 2,
+        "plate": 3,
         "glasses": 3,
-        "wineglass": 2,
-        "cutleryfork": 2,
-        "cutleryknife": 2,
-        "coffeepot": 2
+        "wineglass": 3,
+        "cutleryfork": 3,
+        "cutleryknife": 3,
+        "coffeepot": 3
     },
 
 
@@ -47,31 +47,31 @@
         "bananas": 2,
         "breadslice": 2,
         "carrot": 2,
-        "chicken": 2,
+        "chicken": 1,
         "lime": 2,
-        "salad": 2,
-        "chinesefood": 2,
-        "chips": 2,
-        "chocolatesyrup": 2,
-        "crackers": 2,
-        "cupcake": 2,
-        "cutlets": 2,
-        "juice": 2,
-        "milk": 2,
-        "milkshake": 2,
-        "mincedmeat": 2,
-        "pancake": 2,
-        "poundcake": 2,
-        "pudding": 2,
-        "salmon": 2,
+        "salad": 1,
+        "chinesefood": 1,
+        "chips": 1,
+        "chocolatesyrup": 1,
+        "crackers": 1,
+        "cupcake": 1,
+        "cutlets": 1,
+        "juice": 1,
+        "milk": 1,
+        "milkshake": 1,
+        "mincedmeat": 1,
+        "pancake": 1,
+        "poundcake": 1,
+        "pudding": 1,
+        "salmon": 1,
         "sundae": 2,
         "whippedcream": 2,
-        "wine": 2
+        "wine": 1
     },
 
     "read_book": 
     {
-        "book": 2
+        "book": 1
     },
 
     "prepare_food":
@@ -81,26 +81,26 @@
         "bananas": 2,
         "breadslice": 2,
         "carrot": 2,
-        "chicken": 2,
+        "chicken": 1,
         "lime": 2,
-        "salad": 2,
-        "chinesefood": 2,
-        "chips": 2,
-        "chocolatesyrup": 2,
-        "crackers": 2,
-        "cupcake": 2,
-        "cutlets": 2,
-        "juice": 2,
-        "milk": 2,
-        "milkshake": 2,
-        "mincedmeat": 2,
-        "pancake": 2,
-        "poundcake": 2,
-        "pudding": 2,
-        "salmon": 2,
+        "salad": 1,
+        "chinesefood": 1,
+        "chips": 1,
+        "chocolatesyrup": 1,
+        "crackers": 1,
+        "cupcake": 1,
+        "cutlets": 1,
+        "juice": 1,
+        "milk": 1,
+        "milkshake": 1,
+        "mincedmeat": 1,
+        "pancake": 1,
+        "poundcake": 1,
+        "pudding": 1,
+        "salmon": 1,
         "sundae": 2,
         "whippedcream": 2,
-        "wine": 2
+        "wine": 1
     },
 
     "watch_tv":

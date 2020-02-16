@@ -41,7 +41,7 @@ class SetInitialGoal:
         self.set_goal()
 
     def set_goal(self):
-        self.goal = {}
+        
         if self.task_name in ['setup_table', 'clean_table', 'put_diswasher', 'unload_diswasher', 'put_fridge', 'read_book', 'prepare_food', 'watch_tv']:
             self.init_pool = self.init_pool_tasks[self.task_name]
         
@@ -65,9 +65,18 @@ class SetInitialGoal:
             self.init_pool = self.init_pool_tasks["setup_table"]
             self.init_pool.update(self.init_pool_tasks["put_diswasher"])
 
-        for k,v in self.init_pool.items():
-            self.goal[k] = random.randint(0, v)
-
+        
+        ## make sure the goal is not empty
+        while 1:
+            self.goal = {}
+            for k,v in self.init_pool.items():
+                self.goal[k] = random.randint(0, v)
+            
+            count = 0
+            for k,v in self.goal.items(): count+=v
+            if count!=0:
+                break
+            
         ## example setup table
         # task_name = 'setup_table'
         # goal = {'plate': 2,
@@ -201,8 +210,8 @@ class SetInitialGoal:
     def setup_other_objs(self, graph, object_id, except_position=None):
         new_object_pool = [tem for tem in self.obj_position.keys() if tem not in list(self.goal.keys())] # remove objects in goal
 
-        num_obj = random.choice(list(range(self.min_num_other_object, self.max_num_other_object+1)))
-        for i in range(num_obj):    
+        self.num_other_obj = random.choice(list(range(self.min_num_other_object, self.max_num_other_object+1)))
+        for i in range(self.num_other_obj):    
             obj_name = random.choice(new_object_pool)
             obj_in_graph = [node for node in graph['nodes'] if node['class_name']==obj_name] # if the object already in env, skip
             object_id = self.add_obj(graph, obj_name, 1, object_id, self.obj_position, only_position=None, except_position=except_position)
@@ -633,7 +642,7 @@ if __name__ == "__main__":
     task_names = {1: ["setup_table", "clean_table", "put_fridge", "read_book", "prepare_food", "setup_table_read_book"]}
 
 
-    num_test = 100
+    num_test = 100000
     count_success = 0
     success_init_graph = []
     for i in range(num_test):
@@ -666,7 +675,7 @@ if __name__ == "__main__":
         init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
         
         success, message = comm.expand_scene(init_graph)
-        print(task_name, success, message)
+        print(task_name, success, message, set_init_goal.num_other_obj)
         # print(env_goal)
 
         count_success += success
@@ -677,6 +686,9 @@ if __name__ == "__main__":
         #     pdb.set_trace()
 
         print('success %d over %d (total: %d)' % (count_success, i+1, num_test) )
+
+        if count_success>=100:
+            break
     
     pdb.set_trace()
 
