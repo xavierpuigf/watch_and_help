@@ -18,24 +18,63 @@ from simulation.unity_simulator import comm_unity as comm_unity
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 
+apartment = 1
 
-with open('data/object_info.json', 'r') as f:
-    obj_position = json.load(f)
-
-
-
+with open('data/object_info%s.json'%apartment, 'r') as file:
+    obj_position = json.load(file)
 
 
 class SetInitialGoal:
-    def __init__(self, goal, obj_position, class_name_size, init_pool):
-        self.goal = goal
+    def __init__(self, obj_position, class_name_size, init_pool_tasks, task_name):
+        self.task_name = task_name
+        self.init_pool_tasks = init_pool_tasks
         self.obj_position = obj_position
-        self.init_pool = init_pool
         self.class_name_size = class_name_size
         self.object_id_count = 1000
         self.surface_size = {}
         self.surface_used_size = {}
         self.max_num_place = 10
+
+        self.min_num_other_object = 15
+        self.max_num_other_object = 45
+
+        self.set_goal()
+
+    def set_goal(self):
+        self.goal = {}
+        if self.task_name in ['setup_table', 'clean_table', 'put_diswasher', 'unload_diswasher', 'put_fridge', 'read_book', 'prepare_food', 'watch_tv']:
+            self.init_pool = self.init_pool_tasks[self.task_name]
+        
+        elif self.task_name=='setup_table_prepare_food':
+            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool.update(self.init_pool_tasks["prepare_food"])
+
+        elif self.task_name=='setup_table_read_book':
+            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool.update(self.init_pool_tasks["read_book"])
+        
+        elif self.task_name=='setup_table_watch_tv':
+            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool.update(self.init_pool_tasks["watch_tv"])
+
+        elif self.task_name=='setup_table_put_fridge':
+            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool.update(self.init_pool_tasks["put_fridge"])
+
+        elif self.task_name=='setup_table_put_diswasher':
+            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool.update(self.init_pool_tasks["put_diswasher"])
+
+        for k,v in self.init_pool.items():
+            self.goal[k] = random.randint(0, v)
+
+        ## example setup table
+        # task_name = 'setup_table'
+        # goal = {'plate': 2,
+        #         'glasses': 2,
+        #         'wineglass': 1,
+        #         'cutleryfork': 0}
+
 
     def convert_size(self, envsize):
         size = envsize[0]*envsize[2]
@@ -59,17 +98,17 @@ class SetInitialGoal:
             self.surface_used_size[surface_id] = np.sum(objs_on_surface_size) # get size from the initial graph
             
 
-        print(self.surface_size[surface_id])
-        print(self.surface_used_size[surface_id], obj_size, self.surface_used_size[surface_id]+obj_size)
-        print(obj_name, surface_node[0]['class_name'])
+        # print(self.surface_size[surface_id])
+        # print(self.surface_used_size[surface_id], obj_size, self.surface_used_size[surface_id]+obj_size)
+        # print(obj_name, surface_node[0]['class_name'])
 
 
-        if self.surface_size[surface_id]/10 > self.surface_used_size[surface_id]+obj_size:
+        if self.surface_size[surface_id]/5 > self.surface_used_size[surface_id]+obj_size:
             self.surface_used_size[surface_id] += obj_size
-            print('1')
+            # print('1')
             return 1
         else:
-            print('0')
+            # print('0')
             return 0
 
 
@@ -77,10 +116,13 @@ class SetInitialGoal:
         graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in obj_ids]
         graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in obj_ids and edge['to_id'] not in obj_ids]
         
+
+
     def add_obj(self, graph, obj_name, num_obj, object_id, obj_position_pool, only_position=None, except_position=None):
+        
         if isinstance(except_position, int):
             except_position = [except_position]
-        if isinstance(only_position, list):
+        if isinstance(only_position, int):
             only_position = [only_position]
 
         edges = []
@@ -88,23 +130,52 @@ class SetInitialGoal:
         ids_class = {}
         for node in graph['nodes']:
             class_name = node['class_name']
-            if class_name not in ids_class: ids_class[class_name] = []
+            if class_name not in ids_class: 
+                ids_class[class_name] = []
             ids_class[class_name].append(node['id'])
+                                
+    
+        # candidates = [(obj_rel_name[0], obj_rel_name[1]) for obj_rel_name in obj_position_pool[obj_name] if obj_rel_name[1] in ids_class.keys() and (except_position is None or obj_rel_name[1] not in except_position) and (only_position is None or obj_rel_name[1] in only_position)]
 
-        # TODO: we will want candidates per object later
-        candidates = [('ON', obj_name) for obj_name in obj_position_pool['objects_surface'] if obj_name in ids_class.keys() and (except_position is None or obj_name not in except_position) and (only_position is None or obj_name in only_position)]
-        candidates += [('INSIDE', obj_name) for obj_name in obj_position_pool['objects_inside'] if obj_name in ids_class and (except_position is None or obj_name not in except_position) and (only_position is None or obj_name in only_position)]
+        candidates = [(obj_rel_name[0], obj_rel_name[1]) for obj_rel_name in obj_position_pool[obj_name] if obj_rel_name[1] in ids_class.keys()]
+
         for i in range(num_obj):
             # TODO: we need to check the properties and states, probably the easiest is to get them from the original set of graphs
-            
 
             num_place = 0
             while 1:
-                relation, target_classname = random.choice(candidates)
-                target_id = random.choice(ids_class[target_classname])
+                if only_position!=None:
+                    target_id = random.choice(only_position)
+                    
+                    target_pool = [k for k,v in ids_class.items() if target_id in v]
+                    target_position_pool = [tem[0] for tem in obj_position_pool[obj_name] if tem[1] in target_pool]
+                    
+                    relation = random.choice(target_position_pool)
+
+                    # if len(target_pool)==0 or len(target_position_pool)==0:
+                    #     num_place += 1
+                    #     continue
+                    # else:
+                    #     relation = random.choice(target_position_pool)
+                else:
+                    relation, target_classname = random.choice(candidates)
+                    target_id = random.choice(ids_class[target_classname])
+
+                    ## target in except_position
+                    if (except_position!=None) and (target_id in except_position):
+                        num_place += 1
+                        continue
+                
+
 
                 ## check if it is possible to put object in this surface
                 placeable = self.check_placeable(graph, target_id, obj_name)
+
+                
+                # print('placing %s: %dth (total %d), success: %d' % (obj_name, i+1, num_obj, placeable))
+                
+
+
                 if placeable:
                     new_node = {'id': object_id, 'class_name': obj_name, 'properties': ['GRABBABLE'], 'states': [], 'category': 'added_object'}
                     nodes.append(new_node)
@@ -117,7 +188,7 @@ class SetInitialGoal:
                 if num_place > self.max_num_place:
                     break
 
-        
+    
 
 
         graph['nodes'] += nodes
@@ -125,16 +196,20 @@ class SetInitialGoal:
         return object_id
 
 
-    def setup_other_objs(self, graph, object_id, goal, num_obj=30, object_pool=obj_position):
-        for i in range(num_obj):
-            new_object_pool = [tem for tem in object_pool['objects_grab'] if tem not in list(goal.keys())] # remove objects in goal
+
+
+    def setup_other_objs(self, graph, object_id, except_position=None):
+        new_object_pool = [tem for tem in self.obj_position.keys() if tem not in list(self.goal.keys())] # remove objects in goal
+
+        num_obj = random.choice(list(range(self.min_num_other_object, self.max_num_other_object+1)))
+        for i in range(num_obj):    
             obj_name = random.choice(new_object_pool)
-            
             obj_in_graph = [node for node in graph['nodes'] if node['class_name']==obj_name] # if the object already in env, skip
-            if len(obj_in_graph)==0:
-                object_id = self.add_obj(graph, obj_name, 1, object_id, object_pool, only_position=None, except_position=None)
+            object_id = self.add_obj(graph, obj_name, 1, object_id, self.obj_position, only_position=None, except_position=except_position)
 
         return object_id
+
+
 
     def set_tv_off(self, graph, tv_id):
         node = [n for n in graph['nodes'] if n['id'] == tv_id]
@@ -156,7 +231,7 @@ class SetInitialGoal:
         # table_position_pool = self.obj_position['table']
         # self.add_obj(graph, 'table', num_table, table_position_pool)
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_id = random.choice(table_ids)
 
         for k,v in self.goal.items():
@@ -167,7 +242,7 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=table_id)
 
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=table_id)
 
 
         ## get goal
@@ -192,7 +267,7 @@ class SetInitialGoal:
         # self.add_obj(graph, 'table', num_table, table_position_pool)
         
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_id = random.choice(table_ids)
 
         for k,v in self.goal.items():
@@ -204,7 +279,7 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj-v, self.object_id_count, self.obj_position, except_position=table_id) ## add the rest objects on other places
         
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=table_id)
 
 
         ## get goal
@@ -236,7 +311,7 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=diswasher_id)
         
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=diswasher_id)
 
 
         ## get goal
@@ -274,7 +349,7 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj-v, self.object_id_count, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
         
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=diswasher_id)
 
 
         ## get goal
@@ -307,13 +382,13 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=fridge_id)
         
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=fridge_id)
 
 
         ## get goal
         env_goal = {'put_fridge': []}
         for k,v in self.goal.items():
-            env_goal['put_fridge'].append( {'on_{}_{}'.format(k, fridge): v} )
+            env_goal['put_fridge'].append( {'on_{}_{}'.format(k, fridge_id): v} )
         return graph, env_goal
 
 
@@ -324,14 +399,14 @@ class SetInitialGoal:
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         self.remove_obj(graph, book_ids)
-        self.object_id_count = self.add_obj(graph, 'book', num_table, self.object_id_count, self.obj_position)
+        self.object_id_count = self.add_obj(graph, 'book', num_book, self.object_id_count, self.obj_position)
         
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         book_id = random.choice(book_ids)
 
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count)
 
         ## get goal
         env_goal = {'read_book': [{'read_{}'.format(book_id)}]}
@@ -348,7 +423,7 @@ class SetInitialGoal:
         # self.add_obj(graph, 'table', num_table, table_position_pool)
         
 
-        table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
+        table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_id = random.choice(table_ids)
 
 
@@ -360,7 +435,7 @@ class SetInitialGoal:
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=table_id)
         
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, except_position=table_id)
 
 
         ## get goal
@@ -380,13 +455,13 @@ class SetInitialGoal:
         # self.add_obj(graph, 'tv', num_tv, tv_position_pool)
         
 
-        tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
+        tv_ids = [node['id'] for node in graph['nodes'] if 'TV' in node['class_name']]
         tv_id = random.choice(tv_ids)
 
         self.set_tv_off(tv_id)
 
         if start:
-            self.object_id_count = self.setup_other_objs(graph, self.object_id_count, self.goal)
+            self.object_id_count = self.setup_other_objs(graph, self.object_id_count)
 
         ## get goal
         env_goal = {'watch_tv': [{'{}_on'.format(tv_id)}]}
@@ -417,6 +492,96 @@ class SetInitialGoal:
         graph, env_goal1 = self.setup_table(graph)
         graph, env_goal2 = self.put_diswasher(graph, start=False)
         return graph, env_goal1.update(env_goal2)
+
+
+def debug_function(comm):
+    with open('data/object_info.json', 'r') as file:
+        obj_position = json.load(file)
+
+
+    success_edges = []
+    fail_target_nodes = []
+
+    for obj_name in obj_position['objects_grab']:
+        object_id = 2000
+        new_node = {'id': object_id, 'class_name': obj_name, 'properties': ['GRABBABLE'], 'states': [], 'category': 'added_object'}
+        nodes = [new_node]
+
+        for target_name in obj_position['objects_inside']:
+            comm.reset()
+            s, graph = comm.environment_graph()
+
+
+            target_node = [node for node in graph['nodes'] if node['class_name']==target_name]
+            if len(target_node)==0:
+                print(target_name)
+                fail_target_nodes.append(target_name)
+                continue
+
+            target_id = target_node[0]['id']
+
+            edges = [{'from_id': object_id, 'relation_type': 'INSIDE', 'to_id': target_id}]
+
+            
+            graph['nodes'] += nodes
+            graph['edges'] += edges
+            success, message = comm.expand_scene(graph)
+            # print(success, message)
+
+            if success:
+                success_edges.append({'from_id': obj_name, 'relation_type': 'INSIDE', 'to_id': target_name})
+            else:
+                print({'from_id': obj_name, 'relation_type': 'INSIDE', 'to_id': target_name})
+
+        for target_name in obj_position['objects_surface']:
+            comm.reset()
+            s, graph = comm.environment_graph()
+
+
+            target_node = [node for node in graph['nodes'] if node['class_name']==target_name]
+            if len(target_node)==0:
+                print(target_name)
+                fail_target_nodes.append(target_name)
+                continue
+
+            target_id = target_node[0]['id']
+
+            edges = [{'from_id': object_id, 'relation_type': 'ON', 'to_id': target_id}]
+
+            
+            graph['nodes'] += nodes
+            graph['edges'] += edges
+            success, message = comm.expand_scene(graph)
+            # print(success, message)
+
+            if success:
+                success_edges.append({'from_id': obj_name, 'relation_type': 'ON', 'to_id': target_name})
+            else:
+                print({'from_id': obj_name, 'relation_type': 'ON', 'to_id': target_name})
+
+    
+    # with open('data/object_info_7.json', 'w') as file:
+    #     json.dump(success_edges, file)
+
+
+    # ## load file and save
+    # with open('data/object_info_%s.json'%apartment, 'r') as file:
+    #     obj_position = json.load(file)
+
+    # objs = {}
+    # for rel in obj_position:
+    #     from_obj = rel['from_id']
+    #     relation_type = rel['relation_type']
+    #     to_obj = rel['to_id']
+
+    #     if from_obj not in objs:
+    #         objs[from_obj] = []
+    #     objs[from_obj].append([relation_type, to_obj])
+
+    # with open('data/object_info%s.json'%apartment, 'w') as file:
+    #     json.dump(objs, file)
+
+    
 
 
 
@@ -462,87 +627,58 @@ if __name__ == "__main__":
     with open('data/class_name_size.json', 'r') as file:
         class_name_size = json.load(file)
 
-    for obj_name in obj_position['objects_grab']:
-        if obj_name not in class_name_size:
-            print('cannot find %s from class_name_size' % obj_name)
-            pdb.set_trace()
-
     ## -------------------------------------------------------------
     ## gen graph
     ## -------------------------------------------------------------
+    task_names = {1: ["setup_table", "clean_table", "put_fridge", "read_book", "prepare_food", "setup_table_read_book"]}
+
+
     num_test = 100
     count_success = 0
+    success_init_graph = []
     for i in range(num_test):
-        print('testing %d' % i)
-
         comm.reset()
         s, graph = comm.environment_graph()
-
-
 
 
         ## -------------------------------------------------------------
         ## debug
         ## -------------------------------------------------------------
-        # obj_name = 'bucket'
-        # # obj_node = [node for node in graph['nodes'] if node['class_name']==obj_name]
-        # # obj_id = obj_node[0]['id']
-        # object_id = 1000
-        # new_node = {'id': object_id, 'class_name': obj_name, 'properties': ['GRABBABLE'], 'states': [], 'category': 'added_object'}
-
-        # target_name = 'sofa'
-        # target_node = [node for node in graph['nodes'] if node['class_name']==target_name]
-        # target_id = target_node[0]['id']
-
+        # debug_function(comm)
         
-        # nodes = []
-        # edges = []
-        # nodes.append(new_node)
-        # edges.append({'from_id': object_id, 'relation_type': 'ON', 'to_id': target_id})
-        
-        # graph['nodes'] += nodes
-        # graph['edges'] += edges
-        # success, message = comm.expand_scene(graph)
-        # print(success, message)
-        # pdb.set_trace()
+
+
         ## -------------------------------------------------------------
-
-
-
-
         ## choose tasks
-        task_name = random.choice(list(init_pool.keys()))
-        task_name = 'setup_table'
-
-        goal = {}
-        for k,v in init_pool[task_name].items():
-            goal[k] = random.randint(0, v)
-
-        ## example setup table
+        ## -------------------------------------------------------------
+        task_name = random.choice(task_names[apartment])
         # task_name = 'setup_table'
-        # goal = {'plate': 2,
-        #         'glasses': 2,
-        #         'wineglass': 1,
-        #         'cutleryfork': 0}
+
+
+        print('------------------------------------------------------------------------------')
+        print('testing %d: %s' % (i, task_name))
+        print('------------------------------------------------------------------------------')
         
         ## -------------------------------------------------------------
         ## setup goal based on currect environment
         ## -------------------------------------------------------------
-        set_init_goal = SetInitialGoal(goal, obj_position, class_name_size, init_pool[task_name])
+        set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name)
         init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
         
         success, message = comm.expand_scene(init_graph)
         print(task_name, success, message)
-        print(env_goal)
+        # print(env_goal)
 
         count_success += success
 
-        if not success:
-            pdb.set_trace()
+        if success:
+            success_init_graph.append(init_graph)
+        # if not success:
+        #     pdb.set_trace()
 
-    print('success %d over %d tests' % (count_success, num_test) )
+        print('success %d over %d (total: %d)' % (count_success, i+1, num_test) )
     
-
+    pdb.set_trace()
 
 
 
