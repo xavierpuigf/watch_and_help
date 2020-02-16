@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
 from a2c_ppo_acktr.utils import init
@@ -13,17 +14,27 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
 
 
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:
-            if len(obs_shape) == 3:
-                base = CNNBase
-            elif len(obs_shape) == 1:
-                base = MLPBase
+            obs_shape = obs_space[0].shape
+            if len(obs_space) == 1:
+                if len(obs_shape) == 3:
+                    base = CNNBaseResnet
+                elif len(obs_shape) == 1:
+                    base = MLPBase
+                else:
+                    raise NotImplementedError
+            elif len(obs_space) == 2:
+                if len(obs_shape) == 3:
+                    base = CNNBaseResnetDist
+
+                else:
+                    raise NotImplementedError
             else:
                 raise NotImplementedError
 
@@ -167,6 +178,62 @@ class NNBase(nn.Module):
 
         return x, hxs
 
+
+class CNNBaseResnetDist(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, dist_size=10):
+        super(CNNBaseResnetDist, self).__init__(recurrent, hidden_size, hidden_size)
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+
+        self.main = torch.nn.Sequential(
+                *(list(models.resnet50(pretrained=True).children())[:-1]),
+                nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
+                nn.ReLU(),
+                Flatten())
+                
+        self.base_dist = torch.nn.Sequential(nn.Linear(3, dist_size), nn.ReLU()) 
+        self.combine = nn.Sequential(
+                init_(nn.Linear(hidden_size+dist_size, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        if len(inputs) != 2:
+            pdb.set_trace()
+        x = self.main(inputs[0])
+        y = self.base_dist(inputs[1])
+        x = self.combine(torch.cat([x, y], dim=1))
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
+
+class CNNBaseResnet(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+        super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+
+        self.main = torch.nn.Sequential(
+                *(list(models.resnet50(pretrained=True).children())[:-1]),
+                nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
+                Flatten())
+                
+
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = self.main(inputs)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(x), x, rnn_hxs
 
 class CNNBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512):

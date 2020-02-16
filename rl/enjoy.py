@@ -25,7 +25,7 @@ parser.add_argument(
     help='environment to train on (default: PongNoFrameskip-v4)')
 parser.add_argument(
     '--load-dir',
-    default='./trained_models/a2c',
+    default='./trained_models/env.virtualhome/algoa2c-gamma0.99/',
     help='directory to save agent logs (default: ./trained_models/)')
 parser.add_argument(
     '--non-det',
@@ -43,7 +43,8 @@ env = make_vec_envs(
     None,
     None,
     device='cpu',
-    allow_early_resets=False)
+    allow_early_resets=False,
+    num_frame_stack=1)
 
 # Get a render function
 print(env)

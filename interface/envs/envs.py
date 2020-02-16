@@ -29,10 +29,11 @@ class UnityEnvWrapper:
     def __init__(self, env_id, env_copy_id, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
         atexit.register(self.close)
         self.port_number = base_port + env_copy_id 
+        print(self.port_number)
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
-        #self.launch_env(file_name)
+        self.launch_env(file_name)
 
 
         # TODO: get rid of this, should be notfiied somehow else
@@ -81,9 +82,9 @@ class UnityEnvWrapper:
             return None
 
     def close(self):
-
-        self.proc.kill()
-        self.proc = None
+        if self.proc is not None:
+            self.proc.kill()
+            self.proc = None
         return
         if self.proc is not None:
             # Wait a bit for the process to shutdown, but kill it if it takes too long
@@ -157,7 +158,7 @@ class UnityEnvWrapper:
             if not docker_training:
                 subprocess_args = [launch_string]
                 subprocess_args += ["-batchmode"]
-                subprocess_args += ["--port", str(self.port_number)]
+                #subprocess_args += ["-http-port="+str(self.port_number)]
                 subprocess_args += args
                 try:
                     self.proc = subprocess.Popen(
@@ -274,14 +275,15 @@ class UnityEnv:
         self.actions = {}
         self.actions['system_agent'] = []
         self.actions['my_agent'] = []
-
+        self.image_width = 224
+        self.image_height = 224
 
 
         ## ------------------------------------------------------------------------------------        
         self.viewer = None
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(low=0, high=255., shape=(3, 128, 128))
-        self.reward_range = (0, 150.)
+        self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_width, self.image_height))
+        self.reward_range = (-10, 50.)
         self.metadata = {'render.modes': ['human']}
         self.spec = envs.registration.EnvSpec('virtualhome-v0')
 
@@ -305,24 +307,24 @@ class UnityEnv:
         if self.prev_dist is None:
             self.prev_dist = dist
 
-        reward = self.prev_dist - dist + 0.01
+        reward = self.prev_dist - dist - 0.01
         self.prev_dist = dist
-        is_done = dist < 1.0
+        is_done = dist < 1.5
         if is_done:
             reward += 10
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, info
 
     def render(self, mode='human'):
-        obs, img = self.get_observations(image_width=256, image_height=256)
+        obs, img = self.get_observations(mode='normal', image_width=256, image_height=256)
         im_pil = Image.fromarray(img)
         draw = ImageDraw.Draw(im_pil)
         # Choose a font
-        font = ImageFont.truetype("Roboto-Regular.ttf", 30)
+        font = ImageFont.truetype("Roboto-Regular.ttf", 20)
         reward, info = self.compute_toy_reward()
 
         # Draw the text
-        draw.text((0, 0), "dist: {}".format(info['dist']), font=font)
+        draw.text((0, 0), "dist: {:.3f}".format(info['reward']), font=font)
         img = cv2.cvtColor(np.array(im_pil), cv2.COLOR_RGB2BGR)
 
 
@@ -343,8 +345,10 @@ class UnityEnv:
         #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
         self.unity_simulator.comm.fast_reset(self.env_id)
         #self.unity_simulator.comm.add_character()
+        self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
         obs = self.get_observations()[0]
         self.num_steps = 0
+        self.prev_dist = None
         return obs
 
     def step(self, my_agent_action):
@@ -355,7 +359,7 @@ class UnityEnv:
         reward, info = self.compute_toy_reward() 
         reward = torch.Tensor([reward])
         done = info['done']
-        if self.num_steps > 30:
+        if self.num_steps > 40:
             done = True
         done = np.array([done])
         infos = {}
@@ -465,8 +469,12 @@ class UnityEnv:
         graph['edges'] = edges_inside + other_edges
         return graph
     
-    def get_observations(self, image_width=128, image_height=128):
-        images = self.unity_simulator.get_observations(image_width=image_width, image_height=image_height)
+    def get_observations(self, mode='seg_class', image_width=None, image_height=None):
+        if image_height is None:
+            image_height = self.image_height
+        if image_width is None:
+            image_width = self.image_width
+        images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
         current_obs = images[0]
         current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
         #self.history_observations.append(current_obs)

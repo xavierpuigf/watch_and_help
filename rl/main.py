@@ -36,15 +36,27 @@ def main():
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-    log_dir = os.path.expanduser(args.log_dir)
+    experiment_name = 'env.{}/algo{}-gamma{}'.format(
+            args.env_name, args.algo, args.gamma)
+    log_dir = os.path.expanduser('{}/{}'.format(args.log_dir, experiment_name))
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
     utils.cleanup_log_dir(eval_log_dir)
+    tensorboard_writer = None
+
+
+    if args.tensorboard_logdir is not None:
+        from torch.utils.tensorboard import SummaryWriter
+        import datetime
+        ts_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
+        
+        tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, experiment_name, ts_str))
+
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device, False)
+            args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
 
 
 
@@ -73,7 +85,7 @@ def main():
     ## ------------------------------------------------------------------------------
 
     actor_critic = Policy(
-        envs.observation_space.shape,
+        envs.observation_space,
         envs.action_space,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
@@ -121,15 +133,17 @@ def main():
             drop_last=drop_last)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                              envs.observation_space.shape, envs.action_space,
+                              tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
                               actor_critic.recurrent_hidden_state_size)
 
     if 'virtualhome' in args.env_name:
         obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
     else:
         obs = envs.reset()
-
-    rollouts.obs[0].copy_(obs)
+    
+    for it in range(len(obs)):
+        # TODO: movidy
+        rollouts.obs[it][0].copy_(obs[it])
     rollouts.to(device)
 
     
@@ -146,12 +160,11 @@ def main():
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
-
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
-                    rollouts.obs[step], rollouts.recurrent_hidden_states[step],
+                    [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
             # Obser reward and next obs
@@ -176,10 +189,9 @@ def main():
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-
         with torch.no_grad():
             next_value = actor_critic.get_value(
-                rollouts.obs[-1], rollouts.recurrent_hidden_states[-1],
+                [ob[-1] for ob in rollouts.obs], rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1]).detach()
 
         if args.gail:
@@ -195,7 +207,7 @@ def main():
 
             for step in range(args.num_steps):
                 rollouts.rewards[step] = discr.predict_reward(
-                    rollouts.obs[step], rollouts.actions[step], args.gamma,
+                    [ob for ob[step] in rollouts.obs], rollouts.actions[step], args.gamma,
                     rollouts.masks[step])
 
 
@@ -209,7 +221,7 @@ def main():
         # save for every interval-th episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, args.algo)
+            save_path = os.path.join(args.save_dir, experiment_name)
             try:
                 os.makedirs(save_path)
             except OSError:
@@ -232,6 +244,15 @@ def main():
                         np.median(episode_rewards), np.min(episode_rewards),
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
+
+            if tensorboard_writer is not None:
+                tensorboard_writer.add_scalar("mean_reward", np.mean(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
+                tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
+                tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
+                tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):

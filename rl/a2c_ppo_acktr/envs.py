@@ -70,7 +70,10 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             env = make_atari(env_id)
 
         env.seed(seed + rank)
-        obs_shape = env.observation_space.shape
+        if type(env.observation_space) == gym.spaces.tuple.Tuple:
+            obs_shape = env.observation_space[0].shape
+        else:
+            obs_shape = env.observation_space.shape
 
         if str(env.__class__.__name__).find('TimeLimit') >= 0:
             env = TimeLimitMask(env)
@@ -91,7 +94,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
                 "See wrap_deepmind for an example.")
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
-        obs_shape = env.observation_space.shape
+        
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
             env = TransposeImage(env, op=[2, 0, 1])
 
@@ -128,7 +131,7 @@ def make_vec_envs(env_name,
         else:
             envs = DummyVecEnv(envs)
 
-        if len(envs.observation_space.shape) == 1:
+        if env_name != 'virtualhome' and len(envs.observation_space.shape) == 1:
             if gamma is None:
                 envs = VecNormalize(envs, ret=False)
             else:
@@ -203,7 +206,7 @@ class VecPyTorch(VecEnvWrapper):
 
     def reset(self):
         obs = self.venv.reset()
-        obs = torch.from_numpy(obs).float().to(self.device)
+        obs = [torch.from_numpy(obs[k]).float().to(self.device) for k in obs.keys()]
         return obs
 
     def step_async(self, actions):
@@ -216,7 +219,7 @@ class VecPyTorch(VecEnvWrapper):
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        obs = torch.from_numpy(obs).float().to(self.device)
+        obs = [torch.from_numpy(obs[ob_id]).float().to(self.device) for ob_id in obs.keys()]
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
@@ -252,39 +255,47 @@ class VecPyTorchFrameStack(VecEnvWrapper):
         self.nstack = nstack
 
         wos = venv.observation_space  # wrapped ob space
-        self.shape_dim0 = wos.shape[0]
+        if type(wos) != gym.spaces.tuple.Tuple:
+            wos = [wos]
+        self.shape_dim0 = [wo.shape[0] for wo in wos]
+        type_obs = [wo.dtype for wo in wos]
 
-        low = np.repeat(wos.low, self.nstack, axis=0)
-        high = np.repeat(wos.high, self.nstack, axis=0)
+        lows = [np.repeat(wo.low, self.nstack, axis=0) for wo in wos]
+        highs = [np.repeat(wo.high, self.nstack, axis=0) for wo in wos]
 
         if device is None:
             device = torch.device('cpu')
-        self.stacked_obs = torch.zeros((venv.num_envs, ) +
-                                       low.shape).to(device)
 
-        observation_space = gym.spaces.Box(
-            low=low, high=high, dtype=venv.observation_space.dtype)
+        self.stacked_obs = [torch.zeros((venv.num_envs, ) +
+            low.shape).to(device) for low in lows]
+
+        observation_space = gym.spaces.tuple.Tuple(tuple([gym.spaces.Box(
+            low=low, high=high, dtype=type_obs) for low, high, type_obs in zip(lows, highs, type_obs)]))
         VecEnvWrapper.__init__(self, venv, observation_space=observation_space)
 
     def step_wait(self):
         obs, rews, news, infos = self.venv.step_wait()
 
-        
-        tem = self.stacked_obs[:, self.shape_dim0:].clone()
-        self.stacked_obs[:, :-self.shape_dim0] = tem
-        for (i, new) in enumerate(news):
-            if new:
-                self.stacked_obs[i] = 0
-        self.stacked_obs[:, -self.shape_dim0:] = obs
+        for ob_type_id in range(len(self.stacked_obs)): 
+            tem = self.stacked_obs[ob_type_id][:, self.shape_dim0[ob_type_id]:].clone()
+            self.stacked_obs[ob_type_id][:, :-self.shape_dim0[ob_type_id]] = tem
+
+        for ob_type_id in range(len(self.stacked_obs)): 
+            for (i, new) in enumerate(news):
+                if new:
+                    self.stacked_obs[ob_type_id][i] = 0
+            self.stacked_obs[ob_type_id][:, -self.shape_dim0[ob_type_id]:] = obs[ob_type_id]
         return self.stacked_obs, rews, news, infos
 
     def reset(self):
         obs = self.venv.reset()
         if torch.backends.cudnn.deterministic:
-            self.stacked_obs = torch.zeros(self.stacked_obs.shape)
+            self.stacked_obs = [torch.zeros(ob.shape) for ob in self.stacked_obs]
         else:
-            self.stacked_obs.zero_()
-        self.stacked_obs[:, -self.shape_dim0:] = obs
+            for ob in self.stacked_obs:
+                ob.zero_()
+        for it in range(len(self.stacked_obs)):
+            self.stacked_obs[it][:, -self.shape_dim0[it]:] = obs[it]
         return self.stacked_obs
 
     def close(self):
