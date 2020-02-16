@@ -1,111 +1,111 @@
 {
     "setup_table": 
     {   
-        "plate": 3,
-        "glasses": 3,
-        "wineglass": 3,
-        "cutleryfork": 3,
-        "cutleryknife": 3,
-        "coffeepot": 3
+        "plate": {"min_num":0, "max_num":3},
+        "glasses": {"min_num":0, "max_num":3},
+        "wineglass": {"min_num":0, "max_num":3},
+        "cutleryfork": {"min_num":0, "max_num":3},
+        "cutleryknife": {"min_num":0, "max_num":3},
+        "coffeepot": {"min_num":0, "max_num":3}
     },
 
     "clean_table":
     {
-        "plate": 3,
-        "glasses": 3,
-        "wineglass": 3,
-        "cutleryfork": 3,
-        "cutleryknife": 3,
-        "coffeepot": 3
+        "plate": {"min_num":0, "max_num":3},
+        "glasses": {"min_num":0, "max_num":3},
+        "wineglass": {"min_num":0, "max_num":3},
+        "cutleryfork": {"min_num":0, "max_num":3},
+        "cutleryknife": {"min_num":0, "max_num":3},
+        "coffeepot": {"min_num":0, "max_num":3}
     },
 
     "put_diswasher":
     {
-        "plate": 3,
-        "glasses": 3,
-        "wineglass": 3,
-        "cutleryfork": 3,
-        "cutleryknife": 3,
-        "coffeepot": 3
+        "plate": {"min_num":0, "max_num":3},
+        "glasses": {"min_num":0, "max_num":3},
+        "wineglass": {"min_num":0, "max_num":3},
+        "cutleryfork": {"min_num":0, "max_num":3},
+        "cutleryknife": {"min_num":0, "max_num":3},
+        "coffeepot": {"min_num":0, "max_num":3}
     },
 
     "unload_diswasher":
     {
-        "plate": 3,
-        "glasses": 3,
-        "wineglass": 3,
-        "cutleryfork": 3,
-        "cutleryknife": 3,
-        "coffeepot": 3
+        "plate": {"min_num":0, "max_num":3},
+        "glasses": {"min_num":0, "max_num":3},
+        "wineglass": {"min_num":0, "max_num":3},
+        "cutleryfork": {"min_num":0, "max_num":3},
+        "cutleryknife": {"min_num":0, "max_num":3},
+        "coffeepot": {"min_num":0, "max_num":3}
     },
 
 
     "put_fridge":
     {
-        "apple": 2,
-        "cereal": 2,
-        "bananas": 2,
-        "breadslice": 2,
-        "carrot": 2,
-        "chicken": 1,
-        "lime": 2,
-        "salad": 1,
-        "chinesefood": 1,
-        "chips": 1,
-        "chocolatesyrup": 1,
-        "crackers": 1,
-        "cupcake": 1,
-        "cutlets": 1,
-        "juice": 1,
-        "milk": 1,
-        "milkshake": 1,
-        "mincedmeat": 1,
-        "pancake": 1,
-        "poundcake": 1,
-        "pudding": 1,
-        "salmon": 1,
-        "sundae": 2,
-        "whippedcream": 2,
-        "wine": 1
+        "apple": {"min_num":0, "max_num":3},
+        "cereal": {"min_num":0, "max_num":3},
+        "bananas": {"min_num":0, "max_num":3},
+        "breadslice": {"min_num":0, "max_num":3},
+        "carrot": {"min_num":0, "max_num":3},
+        "chicken": {"min_num":0, "max_num":1},
+        "lime": {"min_num":0, "max_num":3},
+        "salad": {"min_num":0, "max_num":1},
+        "chinesefood": {"min_num":0, "max_num":1},
+        "chips": {"min_num":0, "max_num":1},
+        "chocolatesyrup": {"min_num":0, "max_num":2},
+        "crackers": {"min_num":0, "max_num":1},
+        "cupcake": {"min_num":0, "max_num":1},
+        "cutlets": {"min_num":0, "max_num":1},
+        "juice": {"min_num":0, "max_num":1},
+        "milk": {"min_num":0, "max_num":1},
+        "milkshake": {"min_num":0, "max_num":1},
+        "mincedmeat": {"min_num":0, "max_num":1},
+        "pancake": {"min_num":0, "max_num":1},
+        "poundcake": {"min_num":0, "max_num":1},
+        "pudding": {"min_num":0, "max_num":3},
+        "salmon": {"min_num":0, "max_num":1},
+        "sundae": {"min_num":0, "max_num":3},
+        "whippedcream": {"min_num":0, "max_num":3},
+        "wine": {"min_num":0, "max_num":1}
     },
 
     "read_book": 
     {
-        "book": 1
+        "book": {"min_num":1, "max_num":1}
     },
 
     "prepare_food":
     {
-        "apple": 2,
-        "cereal": 2,
-        "bananas": 2,
-        "breadslice": 2,
-        "carrot": 2,
-        "chicken": 1,
-        "lime": 2,
-        "salad": 1,
-        "chinesefood": 1,
-        "chips": 1,
-        "chocolatesyrup": 1,
-        "crackers": 1,
-        "cupcake": 1,
-        "cutlets": 1,
-        "juice": 1,
-        "milk": 1,
-        "milkshake": 1,
-        "mincedmeat": 1,
-        "pancake": 1,
-        "poundcake": 1,
-        "pudding": 1,
-        "salmon": 1,
-        "sundae": 2,
-        "whippedcream": 2,
-        "wine": 1
+        "apple": {"min_num":0, "max_num":3},
+        "cereal": {"min_num":0, "max_num":3},
+        "bananas": {"min_num":0, "max_num":3},
+        "breadslice": {"min_num":0, "max_num":3},
+        "carrot": {"min_num":0, "max_num":3},
+        "chicken": {"min_num":0, "max_num":1},
+        "lime": {"min_num":0, "max_num":3},
+        "salad": {"min_num":0, "max_num":1},
+        "chinesefood": {"min_num":0, "max_num":1},
+        "chips": {"min_num":0, "max_num":1},
+        "chocolatesyrup": {"min_num":0, "max_num":2},
+        "crackers": {"min_num":0, "max_num":1},
+        "cupcake": {"min_num":0, "max_num":1},
+        "cutlets": {"min_num":0, "max_num":1},
+        "juice": {"min_num":0, "max_num":1},
+        "milk": {"min_num":0, "max_num":1},
+        "milkshake": {"min_num":0, "max_num":1},
+        "mincedmeat": {"min_num":0, "max_num":1},
+        "pancake": {"min_num":0, "max_num":1},
+        "poundcake": {"min_num":0, "max_num":1},
+        "pudding": {"min_num":0, "max_num":3},
+        "salmon": {"min_num":0, "max_num":1},
+        "sundae": {"min_num":0, "max_num":3},
+        "whippedcream": {"min_num":0, "max_num":3},
+        "wine": {"min_num":0, "max_num":1}
     },
 
     "watch_tv":
     {
-        "television": 1
+        "television": {"min_num":1, "max_num":1}
     }
 }
 

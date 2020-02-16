@@ -70,7 +70,7 @@ class SetInitialGoal:
         while 1:
             self.goal = {}
             for k,v in self.init_pool.items():
-                self.goal[k] = random.randint(0, v)
+                self.goal[k] = random.randint(v['min_num'], v['max_num'])
             
             count = 0
             for k,v in self.goal.items(): count+=v
