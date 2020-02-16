@@ -71,7 +71,7 @@
 
     "read_book": 
     {
-        "book": {"min_num":1, "max_num":1}
+        "book": {"min_num":1, "max_num":10}
     },
 
     "prepare_food":

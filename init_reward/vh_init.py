@@ -247,7 +247,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=table_id)
 
         if start:
@@ -283,7 +283,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, v, self.object_id_count, self.obj_position, only_position=table_id) ## add the first v objects on this table
             self.object_id_count = self.add_obj(graph, k, num_obj-v, self.object_id_count, self.obj_position, except_position=table_id) ## add the rest objects on other places
         
@@ -316,7 +316,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=diswasher_id)
         
         if start:
@@ -353,7 +353,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, v, self.object_id_count, self.obj_position, only_position=diswasher_id) ## add the first v objects on this table
             self.object_id_count = self.add_obj(graph, k, num_obj-v, self.object_id_count, self.obj_position, except_position=diswasher_id) ## add the rest objects on other places
         
@@ -387,7 +387,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=fridge_id)
         
         if start:
@@ -403,8 +403,8 @@ class SetInitialGoal:
 
 
     def read_book(self, graph, start=True):
-        max_num_book = self.init_pool['book']
-        num_book = random.randint(1, max_num_book)
+        max_num_book = self.init_pool['book']['max_num']
+        num_book = random.randint(self.goal['book'], max_num_book+1)
 
         book_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         self.remove_obj(graph, book_ids)
@@ -440,7 +440,7 @@ class SetInitialGoal:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             self.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, self.init_pool[k]) # random select objects >= goal
+            num_obj = random.randint(v, self.init_pool[k]['max_num']) # random select objects >= goal
             self.object_id_count = self.add_obj(graph, k, num_obj, self.object_id_count, self.obj_position, except_position=table_id)
         
         if start:
@@ -681,7 +681,9 @@ if __name__ == "__main__":
         count_success += success
 
         if success:
-            success_init_graph.append(init_graph)
+            success_init_graph.append({'task_name': task_name,
+                                        'init_graph': init_graph,
+                                        'goal': set_init_goal.goal})
         # if not success:
         #     pdb.set_trace()
 
@@ -691,7 +693,8 @@ if __name__ == "__main__":
             break
     
     pdb.set_trace()
-
+    # pickle.dump( success_init_graph, open( "data/init100.p", "wb" ) )
+    # tem = pickle.load( open( "data/init100.p", "rb" ) )
 
 
 
