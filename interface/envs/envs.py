@@ -33,12 +33,13 @@ class UnityEnvWrapper:
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
-        self.launch_env(file_name)
+        #self.launch_env(file_name)
 
 
         # TODO: get rid of this, should be notfiied somehow else
         
         self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
+
         print('Checking connection')
         self.comm.check_connection()
 
@@ -53,6 +54,11 @@ class UnityEnvWrapper:
         
         self.comm.reset(env_id)
 
+        # Assumption, over initializing the env wrapper, we only use one enviroment id
+        # TODO: make sure this is true
+        _, graph = self.comm.environment_graph()
+        self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
+        self.id2node = {node['id']: node for node in graph['nodes']}
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
@@ -157,7 +163,7 @@ class UnityEnvWrapper:
             docker_training = False
             if not docker_training:
                 subprocess_args = [launch_string]
-                subprocess_args += ["-batchmode"]
+                #subprocess_args += ["-batchmode"]
                 #subprocess_args += ["-http-port="+str(self.port_number)]
                 subprocess_args += args
                 try:
@@ -176,6 +182,28 @@ class UnityEnvWrapper:
 
         _, self.graph = self.comm.environment_graph()
         return self.graph
+
+    # TODO: put in some utils
+    def world2im(self, camera_data, wcoords):
+        wcoords = wcoords.transpose()
+        proj = np.array(camera_data['projection_matrix']).reshape((4,4)).transpose()
+        w2cam = np.array(camera_data['world_to_camera_matrix']).reshape((4,4)).transpose()
+        cw = np.concatenate([wcoords, np.ones((1, wcoords.shape[1]))], 0) # 4 x N
+        pixelcoords = np.matmul(proj, np.matmul(w2cam, cw)) # 4 x N
+        pixelcoords = pixelcoords/pixelcoords[-1, :]
+        pixelcoords = (pixelcoords + 1)/2.
+        pixelcoords[1,:] = 1. - pixelcoords[1, :]
+        return pixelcoords[:2, :]
+
+    def get_visible_objects(self):
+        camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
+        object_ids = [int(idi) for idi in self.comm.get_visible_objects(camera_ids)[1].keys()]
+        _, cam_data = self.comm.camera_data(camera_ids)
+        _, graph = self.comm.environment_graph()
+        object_position = np.array(
+                [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] in object_ids])
+        obj_pos = self.world2im(cam_data[0], object_position) 
+        return object_ids, obj_pos
 
     def get_observations(self, mode='normal', image_width=128, image_height=128):
         camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
@@ -236,7 +264,6 @@ class UnityEnvWrapper:
 
         #if self.follow:
         script_list = [x.replace('walk', 'walktowards') for x in script_list]
-        print(script_list)
         # script_all = script_list
         if self.recording:
             success, message = self.comm.render_script(script_list, recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
@@ -254,7 +281,7 @@ class UnityEnvWrapper:
 
 
 class UnityEnv:
-    def __init__(self, num_agents=2, seed=0, env_id=0, env_copy_id=0):
+    def __init__(self, num_agents=2, seed=0, env_id=0, env_copy_id=0, observation_type='coords'):
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
@@ -280,9 +307,21 @@ class UnityEnv:
 
 
         ## ------------------------------------------------------------------------------------        
+        self.observation_type = observation_type # Image, Coords
         self.viewer = None
-        self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_width, self.image_height))
+        self.num_objects = 100
+        self.num_actions = 9
+        self.action_space = spaces.Tuple((spaces.Discrete(self.num_actions), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
+        if self.observation_type == 'coords':
+            self.observation_space = spaces.Tuple((
+                spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)), 
+                spaces.Box(low=-100, high=100, shape=(2,)),
+                spaces.Box(low=0, high=max(self.image_height, self.image_width), 
+                           shape=(self.num_objects, 2)), # 2D coords of the objects
+                spaces.Box(low=0, high=1, 
+                    shape=(self.num_objects, ))))
+        else:
+            self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
         self.reward_range = (-10, 50.)
         self.metadata = {'render.modes': ['human']}
         self.spec = envs.registration.EnvSpec('virtualhome-v0')
@@ -293,6 +332,8 @@ class UnityEnv:
         self.num_steps = 0
         self.prev_dist = None
 
+        self.micro_id = -1
+
     def seed(self, seed):
         pass
 
@@ -300,20 +341,29 @@ class UnityEnv:
         self.unity_simulator.close()
 
     def compute_toy_reward(self):
-        s, gr = self.unity_simulator.comm.environment_graph()
-        char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character'][0]
-        micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-        dist = np.linalg.norm(np.array(char_node) - np.array(micro_node))
+        dist = self.get_distance()
         if self.prev_dist is None:
             self.prev_dist = dist
 
-        reward = self.prev_dist - dist - 0.01
+        reward = self.prev_dist - dist - 0.5
         self.prev_dist = dist
         is_done = dist < 1.5
         if is_done:
             reward += 10
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, info
+    
+
+    def get_distance(self, norm=None):
+        s, gr = self.unity_simulator.comm.environment_graph()
+        char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character'][0]
+        micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+        micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+        self.micro_id = micro_node_id
+        if norm == 'no':
+            return np.array(char_node) - np.array(micro_node)
+        dist = np.linalg.norm(np.array(char_node) - np.array(micro_node), norm)
+        return dist
 
     def render(self, mode='human'):
         obs, img = self.get_observations(mode='normal', image_width=256, image_height=256)
@@ -345,15 +395,33 @@ class UnityEnv:
         #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
         self.unity_simulator.comm.fast_reset(self.env_id)
         #self.unity_simulator.comm.add_character()
-        self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
+        #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
+        self.prev_dist = self.get_distance()
         obs = self.get_observations()[0]
         self.num_steps = 0
-        self.prev_dist = None
         return obs
 
+    def obtain_actions(self, graph):
+        actions = ['turnleft', 'walkforward', 'turnright', 'walktowards', 'open', 'close', 'putback', 'putin', 'grab'] 
+        objects = [(None, None)] + self.unity_simulator.rooms + [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
+        objects2 = objects
+        return actions, objects, objects2
+
+
     def step(self, my_agent_action):
-        actions = ['<char0> [walkforward]', '<char0> [turnleft]', '<char0> [turnright]']
-        self.unity_simulator.comm.render_script([actions[my_agent_action]], recording=False, gen_vid=False)
+        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+        _, current_graph = self.unity_simulator.comm.environment_graph()
+        actions, objects1, objects2 = self.obtain_actions(current_graph)
+        pdb.set_trace()
+        action = actions[my_agent_action[0][0]]
+        (o1, o1_id) = objects1[my_agent_action[1][0]]
+        (o2, o2_id) = objects2[my_agent_action[2][0]]
+        
+        #action_str = actions[my_agent_action]
+        obj1_str = '' if o1 is None else '<o1> (o1_id)' 
+        obj2_str = '' if o1 is None else '<o2> (o2_id)' 
+        action_str = f'<char0> [{action}] {obj1_str} {obj2_srt}'.strip()
+        self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
         reward, info = self.compute_toy_reward() 
@@ -468,7 +536,7 @@ class UnityEnv:
             edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
         graph['edges'] = edges_inside + other_edges
         return graph
-    
+   
     def get_observations(self, mode='seg_class', image_width=None, image_height=None):
         if image_height is None:
             image_height = self.image_height
@@ -477,10 +545,22 @@ class UnityEnv:
         images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
         current_obs = images[0]
         current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
-        #self.history_observations.append(current_obs)
-        #self.history_observations = self.history_observations[1:]
-        #ipdb.set_trace()
-        #obs = torch.cat(self.history_observations, dim=1)
+
+        if self.observation_type == 'coords':
+            distance = self.get_distance(norm='no')
+            rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
+            visible_objects, position_objects = self.unity_simulator.get_visible_objects()
+            position_objects = position_objects.transpose()
+            position_objects_tensor = np.zeros((self.num_objects, 2))
+            mask = np.zeros((self.num_objects))
+            position_objects_tensor[:position_objects.shape[0], :] = position_objects
+            mask[:position_objects.shape[0]] = 1
+            position_objects = torch.Tensor(position_objects_tensor)[None, :]
+            mask = torch.Tensor(mask)[None, :]
+
+
+            #rel_coords = torch.Tensor(position_objects)[None, :]
+            current_obs = (current_obs, rel_coords, position_objects, mask)
         return current_obs, images[0]
 
     def print_action(self, system_agent_action, my_agent_action):
