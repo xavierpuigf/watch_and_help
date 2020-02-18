@@ -168,7 +168,7 @@ class GetReward:
         tv_state = subgoal_name[1]
         
         tv_states = [node for node in graph['nodes'] if tv_id==node['id']]
-
+        # print(tv_states, len(tv_states))
         assert len(tv_states)==1
         
         if len(tv_states[0]['states'])==0:
@@ -224,6 +224,11 @@ if __name__ == "__main__":
         task_name = data['task_name']
         init_graph = data['init_graph']
         goal = data['goal']
+
+        comm.reset(apartment-1)
+        s, graph = comm.environment_graph()
+        success, message = comm.expand_scene(init_graph)
+        print(success, message)
 
         get_reward = GetReward(goal, task_name)
         reward = getattr(get_reward, task_name)(graph)
