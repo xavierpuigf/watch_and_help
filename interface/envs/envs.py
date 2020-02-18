@@ -54,8 +54,7 @@ class UnityEnvWrapper:
         self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
         
         self.comm.reset(env_id)
-
-        # Assumption, over initializing the env wrapper, we only use one enviroment id
+# Assumption, over initializing the env wrapper, we only use one enviroment id
         # TODO: make sure this is true
         _, graph = self.comm.environment_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -322,11 +321,12 @@ class UnityEnv:
                 # Image
                 spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)), 
                 # Graph
+                #utils_rl_agent.GraphSpace(),
+
                 spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )), 
                 spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)), 
                 spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)), 
-                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )), 
-
+                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
                 spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )), 
                 spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )), 
 
@@ -436,7 +436,7 @@ class UnityEnv:
 
         if len(objects2) < self.num_objects:
             objects2 = objects2 + [None] * (self.num_objects - len(objects2))
-
+        pdb.set_trace()
         action = actions[my_agent_action[0][0]]
         (o1, o1_id) = objects1[my_agent_action[1][0]]
         (o2, o2_id) = objects2[my_agent_action[2][0]]
@@ -444,7 +444,7 @@ class UnityEnv:
         #action_str = actions[my_agent_action]
         obj1_str = '' if o1 is None else '<o1> (o1_id)' 
         obj2_str = '' if o1 is None else '<o2> (o2_id)' 
-        action_str = f'<char0> [{action}] {obj1_str} {obj2_srt}'.strip()
+        action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
         self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
@@ -582,11 +582,9 @@ class UnityEnv:
         position_objects = torch.Tensor(position_objects_tensor)[None, :]
         mask = torch.Tensor(mask)[None, :]
     
-        node_names, node_states, edges, edge_types, mask_nodes, mask_edges = self.graph_helper.build_graph(
-                graph, visible_objects)
+        graph_inputs = list(self.graph_helper.build_graph(graph, visible_objects))
         #rel_coords = torch.Tensor(position_objects)[None, :]
-        current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges, 
-                       rel_coords, position_objects, mask]
+        current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]
         return current_obs, images[0]
 
     def print_action(self, system_agent_action, my_agent_action):

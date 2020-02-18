@@ -1,11 +1,13 @@
 import numpy as np
 import torch
 import torch.nn as nn
+
 import torch.nn.functional as F
 import torchvision.models as models
 
-from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian
+from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, DotProdCategorical
 from a2c_ppo_acktr.utils import init
+from a2c_ppo_acktr.graph_nn import GraphModel
 import pdb
 
 class Flatten(nn.Module):
@@ -16,10 +18,10 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-        pdb.set_trace()
-
+        action_inst = False
         if base_kwargs is None:
             base_kwargs = {}
+        pdb.set_trace()
         if base is None:
             obs_shape = obs_space[0].shape
             if len(obs_space) == 1:
@@ -30,21 +32,26 @@ class Policy(nn.Module):
                 else:
                     raise NotImplementedError
             else:
+                pdb.set_trace()
                 if len(obs_space) < 5:
                     if len(obs_shape) == 3:
                         base = CNNBaseResnetDist
                 else:
                     base = GraphBase
+                    action_inst = True
 
         self.base = base(obs_shape[0], **base_kwargs)
         if action_space.__class__.__name__ != "Tuple":
             action_space = [action_space]
         
         dist = []
-        for action_space_type in action_space:
+        for it, action_space_type in enumerate(action_space):
             if action_space_type.__class__.__name__ == "Discrete":
                 num_outputs = action_space_type.n
-                dist.append(Categorical(self.base.output_size, num_outputs))
+                if action_inst and it > 0:
+                    dist.append(DotProdCategorical())
+                else:
+                    dist.append(Categorical(self.base.output_size, num_outputs))
             elif action_space_type.__class__.__name__ == "Box":
                 num_outputs = action_space_type.shape[0]
                 dist.append(DiagGaussian(self.base.output_size, num_outputs))
@@ -73,10 +80,10 @@ class Policy(nn.Module):
         actions = []
         actions_log_probs = []
         for i, distr in enumerate(self.dist):
-            try: 
+            if i == 0:
+                dist = distr(actor_features[:, 0, :])
+            else:
                 dist = distr(actor_features)
-            except:
-                pdb.set_trace()
             if deterministic:
                 action = dist.mode()
             else:
@@ -84,7 +91,6 @@ class Policy(nn.Module):
             actions.append(action)
             actions_log_probs.append(dist.log_probs(action))
             dist_entropy = dist.entropy().mean()
-
         return value, actions, actions_log_probs, rnn_hxs
 
     def get_value(self, inputs, rnn_hxs, masks):
@@ -188,13 +194,18 @@ class NNBase(nn.Module):
         return x, hxs
 
 class GraphEncoder(nn.Module):
-    def __init__(self, hidden_size=512):
+    def __init__(self, hidden_size=512, num_nodes=100, num_rels=5):
 
-        super(self).__init__()
+        super(GraphEncoder, self).__init__()
         self.hidden_size=hidden_size
+        self.graph_encoder = GraphModel(
+                num_classes=150,
+                num_nodes=num_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels)
 
-    def forward(inputs):
-        pdb.set_trace()
+    def forward(self, inputs):
+        # Build the graph
+        hidden_feats = self.graph_encoder(inputs)
+        return hidden_feats
 
 class GraphBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512, dist_size=10):
@@ -202,16 +213,16 @@ class GraphBase(NNBase):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
 
-        self.main = GraphEnoder(hidden_size)
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.main = GraphEncoder(hidden_size)
+        self.critic_linear = init_(nn.Linear(hidden_size, 2))
 
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs)
-        pdb.set_trace()
+        x = self.main(inputs[1:7])
+        char_node = x[:, 0]
         if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+            _, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
         return self.critic_linear(x), x, rnn_hxs
 
 

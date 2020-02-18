@@ -1,4 +1,5 @@
 import math
+import pdb
 
 import torch
 import torch.nn as nn
@@ -55,6 +56,18 @@ class FixedBernoulli(torch.distributions.Bernoulli):
     def mode(self):
         return torch.gt(self.probs, 0.5).float()
 
+
+class DotProdCategorical(nn.Module):
+    def __init__(self):
+        super(DotProdCategorical, self).__init__()
+
+
+    def forward(self, x):
+        # n x dim
+        x0 = x[:, :1, :]
+        logs = torch.bmm(x0, x[:, 1:, :].transpose(1,2))[:, 0, :]
+        
+        return FixedCategorical(logs)
 
 class Categorical(nn.Module):
     def __init__(self, num_inputs, num_outputs):
