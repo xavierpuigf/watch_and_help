@@ -12,22 +12,21 @@ sys.path.append(home_path+'/vh_mdp')
 sys.path.append(home_path+'/virtualhome')
 sys.path.append(home_path+'/vh_multiagent_models')
 
+
 import utils
 import utils_unity_graph
+from simulation.unity_simulator import comm_unity as comm_unity
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 
 from interface.envs.envs import UnityEnv
 from vh_init import SetInitialGoal
 
-with open('object_info.json', 'r') as f:
-    obj_position = json.load(f)
-
-# 'BETWEEN', 'CLOSE', 'FACING', 'INSIDE', 'ON'
 
 class GetReward:
-    def __init__(self, goal):
+    def __init__(self, goal, task_name):
         self.goal = goal
+        self.task_name = task_name
 
     def setup_table(self, graph):
         subgoal_reward = 0
@@ -35,31 +34,33 @@ class GetReward:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
-            rel_pos = subgoal_name[0]
+            rel_pos = 'ON'
             obj1 = subgoal_name[1]
-            obj2 = int(subgoal_name[2])
+            obj2 = int(subgoal_name[3])
             
             obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
             obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
 
             obj1_on_table_ids = list(set(obj1_ids) & set(obj_on_table_ids))
-            if obj1_on_table_ids>=subgoal_num:
+            
+            if len(obj1_on_table_ids)>=subgoal_num:
                 subgoal_reward+=1
 
-        if subgoal_reward==len(self.goal):
+        if subgoal_reward==len(self.goal['setup_table']):
             return 1
         else:
             return 0
 
 
-    def clean_table(self,  graph):
+    def clean_table(self,  graph):     
+        ## just use table id   
         subgoal = self.goal['clean_table'][0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
         subgoal_num = list(subgoal.values())[0]
-        rel_pos = subgoal_name[0]
+        rel_pos = 'ON'
         obj1 = subgoal_name[1]
-        obj2 = int(subgoal_name[2])
+        obj2 = int(subgoal_name[3])
         
         obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
         if len(obj_on_table_ids)==0:
@@ -68,37 +69,37 @@ class GetReward:
             return 0
 
 
-    def put_diswasher(self, graph):
+    def put_dishwasher(self, graph):
         subgoal_reward = 0
-        for subgoal in self.goal['put_diswasher']:
+        for subgoal in self.goal['put_dishwasher']:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
-            rel_pos = subgoal_name[0]
+            rel_pos = 'INSIDE'
             obj1 = subgoal_name[1]
-            obj2 = int(subgoal_name[2])
+            obj2 = int(subgoal_name[3])
             
             obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
             obj_inside_dishwasher_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
 
             obj1_inside_dishwasher_ids = list(set(obj1_ids) & set(obj_inside_dishwasher_ids))
-            if obj1_inside_dishwasher_ids>=subgoal_num:
+            if len(obj1_inside_dishwasher_ids)>=subgoal_num:
                 subgoal_reward+=1
 
-        if subgoal_reward==len(self.goal):
+        if subgoal_reward==len(self.goal['put_dishwasher']):
             return 1
         else:
             return 0
 
 
-    def unload_diswasher(self,  graph):
-        subgoal = self.goal['unload_diswasher'][0]
+    def unload_dishwasher(self,  graph):
+        subgoal = self.goal['unload_dishwasher'][0]
         assert len(subgoal)==1
         subgoal_name = list(subgoal.keys())[0].split('_')
         subgoal_num = list(subgoal.values())[0]
-        rel_pos = subgoal_name[0]
+        rel_pos = 'INSIDE'
         obj1 = subgoal_name[1]
-        obj2 = int(subgoal_name[2])
+        obj2 = int(subgoal_name[3])
         
         obj_inside_dishwasher_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
         if len(obj_inside_dishwasher_ids)==0:
@@ -114,18 +115,18 @@ class GetReward:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
-            rel_pos = subgoal_name[0]
+            rel_pos = 'INSIDE'
             obj1 = subgoal_name[1]
-            obj2 = int(subgoal_name[2])
+            obj2 = int(subgoal_name[3])
             
             obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
             obj_inside_fridge_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
 
             obj1_inside_fridge_ids = list(set(obj1_ids) & set(obj_inside_fridge_ids))
-            if obj1_inside_fridge_ids>=subgoal_num:
+            if len(obj1_inside_fridge_ids)>=subgoal_num:
                 subgoal_reward+=1
 
-        if subgoal_reward==len(self.goal):
+        if subgoal_reward==len(self.goal['put_fridge']):
             return 1
         else:
             return 0
@@ -143,18 +144,18 @@ class GetReward:
             assert len(subgoal)==1
             subgoal_name = list(subgoal.keys())[0].split('_')
             subgoal_num = list(subgoal.values())[0]
-            rel_pos = subgoal_name[0]
+            rel_pos = 'ON'
             obj1 = subgoal_name[1]
-            obj2 = int(subgoal_name[2])
+            obj2 = int(subgoal_name[3])
             
             obj1_ids = [node['id'] for node in graph['nodes'] if obj1 in node['class_name']]
             obj_on_table_ids = [dege['from_id'] for dege in graph['edges'] if (dege['relation_type'].lower()==rel_pos.lower()) and (dege['to_id']==obj2)]
 
             obj1_on_table_ids = list(set(obj1_ids) & set(obj_on_table_ids))
-            if obj1_on_table_ids>=subgoal_num:
+            if len(obj1_on_table_ids)>=subgoal_num:
                 subgoal_reward+=1
 
-        if subgoal_reward==len(self.goal):
+        if subgoal_reward==len(self.goal['prepare_food']):
             return 1
         else:
             return 0
@@ -162,16 +163,21 @@ class GetReward:
     def watch_tv(self, graph):
         subgoal = self.goal['watch_tv'][0]
         assert len(subgoal)==1
-        subgoal_name = list(subgoal.keys())[0].split('_')
-        tv_id = subgoal_name[0]
+        subgoal_name = list(subgoal)[0].split('_')
+        tv_id = int(subgoal_name[0])
         tv_state = subgoal_name[1]
         
-        tv_states = [node['states'] for node in graph['nodes'] if tv_id==node['id']]
+        tv_states = [node for node in graph['nodes'] if tv_id==node['id']]
+        # print(tv_states, len(tv_states))
         assert len(tv_states)==1
-        if tv_states==tv_state:
-            return 1
-        else:
+        
+        if len(tv_states[0]['states'])==0:
             return 0
+        else:
+            if tv_states[0]['states'][0]==tv_state:
+                return 1
+            else:
+                return 0
 
 
     def setup_table_prepare_food(self, graph):
@@ -203,35 +209,42 @@ class GetReward:
 
 
 if __name__ == "__main__":
-    envs = UnityEnv(num_agents=1)
-    graph = envs.get_graph()
+    # envs = UnityEnv(num_agents=1)
+    # graph = envs.get_graph()
 
-    ## -------------------------------------------------------------
-    ## load task from json, the json file contain max number of objects for each task
-    ## -------------------------------------------------------------
-    with open('init_pool.json') as file:
-        init_pool = json.load(file)
+    comm = comm_unity.UnityCommunication()
+    comm.reset()
+    s, graph = comm.environment_graph()
 
-    task_name = random.choice(list(init_pool.keys()))
-    goal = {}
-    for k,v in init_pool[task_name].items():
-        goal[k] = random.randint(0, v)
 
-    ## example setup table
-    task_name = 'setup_table'
-    goal = {'plates': 2,
-            'glasses': 2,
-            'wineglass': 1,
-            'forks': 0}
+    success_init_graph = pickle.load( open( "result/init7_50.p", "rb" ) )
     
-    ## -------------------------------------------------------------
-    ## setup goal based on currect environment
-    ## -------------------------------------------------------------
-    set_init_goal = SetInitialGoal(goal, obj_position, init_pool[task_name])
-    init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
+    for data in success_init_graph:
+        apartment = data['apartment']
+        task_name = data['task_name']
+        init_graph = data['init_graph']
+        goal = data['goal']
+
+        comm.reset(apartment-1)
+        s, graph = comm.environment_graph()
+        success, message = comm.expand_scene(init_graph)
+        print(success, message)
+
+        get_reward = GetReward(goal, task_name)
+        reward = getattr(get_reward, task_name)(graph)
+        print(task_name, reward)
     
-    get_reward = GetReward(env_goal)
-    reward = getattr(get_reward, task_name)(graph)
-    print(reward)
 
     
+
+
+
+
+
+
+
+
+
+
+
+

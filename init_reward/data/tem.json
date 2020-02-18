@@ -31,6 +31,12 @@ toy
 wine
 
 
+
+check goal achievable
+empty table
+
+
+
 {
     "setup_table": 
     {   
@@ -158,7 +164,6 @@ bathroom_counter
 oven
 dishwasher
 boardgame
-kitchencabinets
 
 
 apartment 7 missing:
