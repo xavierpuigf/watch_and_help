@@ -168,6 +168,7 @@ class GetReward:
         tv_state = subgoal_name[1]
         
         tv_states = [node for node in graph['nodes'] if tv_id==node['id']]
+
         # print(tv_states, len(tv_states))
         assert len(tv_states)==1
         
@@ -217,7 +218,7 @@ if __name__ == "__main__":
     s, graph = comm.environment_graph()
 
 
-    success_init_graph = pickle.load( open( "result/init7_50.p", "rb" ) )
+    success_init_graph = pickle.load( open( "result/init7_20.p", "rb" ) )
     
     for data in success_init_graph:
         apartment = data['apartment']
@@ -225,10 +226,24 @@ if __name__ == "__main__":
         init_graph = data['init_graph']
         goal = data['goal']
 
+
+        # if task_name=='setup_table':
+        #     table_id = int(list(goal['setup_table'][0].keys())[0].split('_')[-1])
+            
+        #     obj_ids = [edge['from_id'] for edge in init_graph['edges'] if table_id == edge['to_id']]
+        #     nodes = [node['class_name'] for node in init_graph['nodes'] if node['id'] in obj_ids]
+            
+        #     print(obj_ids, nodes)
+        #     pdb.set_trace()
+        # else:
+        #     continue
+
+        
         comm.reset(apartment-1)
         s, graph = comm.environment_graph()
         success, message = comm.expand_scene(init_graph)
         print(success, message)
+
 
         get_reward = GetReward(goal, task_name)
         reward = getattr(get_reward, task_name)(graph)
