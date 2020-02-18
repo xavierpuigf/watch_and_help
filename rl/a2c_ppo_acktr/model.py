@@ -29,28 +29,31 @@ class Policy(nn.Module):
                     base = MLPBase
                 else:
                     raise NotImplementedError
-            elif len(obs_space) == 2:
+            else:
                 if len(obs_shape) == 3:
                     base = CNNBaseResnetDist
 
                 else:
                     raise NotImplementedError
-            else:
-                raise NotImplementedError
 
         self.base = base(obs_shape[0], **base_kwargs)
-
-        if action_space.__class__.__name__ == "Discrete":
-            num_outputs = action_space.n
-            self.dist = Categorical(self.base.output_size, num_outputs)
-        elif action_space.__class__.__name__ == "Box":
-            num_outputs = action_space.shape[0]
-            self.dist = DiagGaussian(self.base.output_size, num_outputs)
-        elif action_space.__class__.__name__ == "MultiBinary":
-            num_outputs = action_space.shape[0]
-            self.dist = Bernoulli(self.base.output_size, num_outputs)
-        else:
-            raise NotImplementedError
+        if action_space.__class__.__name__ != "Tuple":
+            action_space = [action_space]
+        
+        dist = []
+        for action_space_type in action_space:
+            if action_space_type.__class__.__name__ == "Discrete":
+                num_outputs = action_space_type.n
+                dist.append(Categorical(self.base.output_size, num_outputs))
+            elif action_space_type.__class__.__name__ == "Box":
+                num_outputs = action_space_type.shape[0]
+                dist.append(DiagGaussian(self.base.output_size, num_outputs))
+            elif action_space_type.__class__.__name__ == "MultiBinary":
+                num_outputs = action_space_type.shape[0]
+                dist.append(Bernoulli(self.base.output_size, num_outputs))
+            else:
+                raise NotImplementedError
+        self.dist = nn.ModuleList(dist)
 
     @property
     def is_recurrent(self):
@@ -66,17 +69,23 @@ class Policy(nn.Module):
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
-        dist = self.dist(actor_features)
+        mask_observations = inputs[-1]
+        actions = []
+        actions_log_probs = []
+        for i, distr in enumerate(self.dist):
+            try: 
+                dist = distr(actor_features)
+            except:
+                pdb.set_trace()
+            if deterministic:
+                action = dist.mode()
+            else:
+                action = dist.sample()
+            actions.append(action)
+            actions_log_probs.append(dist.log_probs(action))
+            dist_entropy = dist.entropy().mean()
 
-        if deterministic:
-            action = dist.mode()
-        else:
-            action = dist.sample()
-
-        action_log_probs = dist.log_probs(action)
-        dist_entropy = dist.entropy().mean()
-
-        return value, action, action_log_probs, rnn_hxs
+        return value, actions, actions_log_probs, rnn_hxs
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _ = self.base(inputs, rnn_hxs, masks)
@@ -191,7 +200,7 @@ class CNNBaseResnetDist(NNBase):
                 nn.ReLU(),
                 Flatten())
                 
-        self.base_dist = torch.nn.Sequential(nn.Linear(3, dist_size), nn.ReLU()) 
+        self.base_dist = torch.nn.Sequential(nn.Linear(2, dist_size), nn.ReLU()) 
         self.combine = nn.Sequential(
                 init_(nn.Linear(hidden_size+dist_size, hidden_size)), nn.ReLU(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
@@ -200,14 +209,11 @@ class CNNBaseResnetDist(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        if len(inputs) != 2:
-            pdb.set_trace()
         x = self.main(inputs[0])
         y = self.base_dist(inputs[1])
         x = self.combine(torch.cat([x, y], dim=1))
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
         return self.critic_linear(x), x, rnn_hxs
 
 class CNNBaseResnet(NNBase):
