@@ -21,7 +21,6 @@ class Policy(nn.Module):
         action_inst = False
         if base_kwargs is None:
             base_kwargs = {}
-        pdb.set_trace()
         if base is None:
             obs_shape = obs_space[0].shape
             if len(obs_space) == 1:
@@ -32,7 +31,6 @@ class Policy(nn.Module):
                 else:
                     raise NotImplementedError
             else:
-                pdb.set_trace()
                 if len(obs_space) < 5:
                     if len(obs_shape) == 3:
                         base = CNNBaseResnetDist
