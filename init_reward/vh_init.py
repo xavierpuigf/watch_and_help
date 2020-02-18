@@ -14,7 +14,6 @@ sys.path.append(home_path+'/vh_mdp')
 sys.path.append(home_path+'/virtualhome')
 
 from simulation.unity_simulator import comm_unity as comm_unity
-
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 
@@ -759,7 +758,7 @@ if __name__ == "__main__":
     
     pdb.set_trace()
     pickle.dump( success_init_graph, open( "result/init7_50.p", "wb" ) )
-    # tem = pickle.load( open( "data/init100.p", "rb" ) )
+    # tem = pickle.load( open( "result/init100.p", "rb" ) )
 
 
 
