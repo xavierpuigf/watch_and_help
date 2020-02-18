@@ -227,16 +227,6 @@ if __name__ == "__main__":
         goal = data['goal']
 
 
-        # if task_name=='setup_table':
-        #     table_id = int(list(goal['setup_table'][0].keys())[0].split('_')[-1])
-            
-        #     obj_ids = [edge['from_id'] for edge in init_graph['edges'] if table_id == edge['to_id']]
-        #     nodes = [node['class_name'] for node in init_graph['nodes'] if node['id'] in obj_ids]
-            
-        #     print(obj_ids, nodes)
-        #     pdb.set_trace()
-        # else:
-        #     continue
 
         
         comm.reset(apartment-1)
@@ -244,6 +234,20 @@ if __name__ == "__main__":
         success, message = comm.expand_scene(init_graph)
         print(success, message)
 
+
+        s, graph = comm.environment_graph()
+        ## debug check if there are objects on table
+        if task_name=='setup_table':
+            table_id = int(list(goal['setup_table'][0].keys())[0].split('_')[-1])
+            
+            nodes = [node['class_name'] for node in graph['nodes'] if node['id'] ==table_id ]
+            obj_ids = [edge['from_id'] for edge in graph['edges'] if table_id == edge['to_id']]
+            nodes = [node['class_name'] for node in graph['nodes'] if node['id'] in obj_ids]
+            
+            print(obj_ids, nodes)
+            pdb.set_trace()
+        else:
+            continue
 
         get_reward = GetReward(goal, task_name)
         reward = getattr(get_reward, task_name)(graph)
