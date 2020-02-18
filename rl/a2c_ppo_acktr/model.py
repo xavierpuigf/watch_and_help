@@ -16,7 +16,7 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-
+        pdb.set_trace()
 
         if base_kwargs is None:
             base_kwargs = {}
@@ -30,11 +30,11 @@ class Policy(nn.Module):
                 else:
                     raise NotImplementedError
             else:
-                if len(obs_shape) == 3:
-                    base = CNNBaseResnetDist
-
+                if len(obs_space) < 5:
+                    if len(obs_shape) == 3:
+                        base = CNNBaseResnetDist
                 else:
-                    raise NotImplementedError
+                    base = GraphBase
 
         self.base = base(obs_shape[0], **base_kwargs)
         if action_space.__class__.__name__ != "Tuple":
@@ -186,6 +186,33 @@ class NNBase(nn.Module):
             hxs = hxs.squeeze(0)
 
         return x, hxs
+
+class GraphEncoder(nn.Module):
+    def __init__(self, hidden_size=512):
+
+        super(self).__init__()
+        self.hidden_size=hidden_size
+
+    def forward(inputs):
+        pdb.set_trace()
+
+class GraphBase(NNBase):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, dist_size=10):
+        super(GraphBase, self).__init__(recurrent, hidden_size, hidden_size)
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+
+        self.main = GraphEnoder(hidden_size)
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+        x = self.main(inputs)
+        pdb.set_trace()
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+        return self.critic_linear(x), x, rnn_hxs
 
 
 class CNNBaseResnetDist(NNBase):
