@@ -23,6 +23,7 @@ from gym import spaces, envs
 import ipdb
 from profilehooks import profile
 
+import utils_rl_agent
 logger = logging.getLogger("mlagents_envs")
 
 class UnityEnvWrapper:
@@ -304,6 +305,7 @@ class UnityEnv:
         self.actions['my_agent'] = []
         self.image_width = 224
         self.image_height = 224
+        self.graph_helper = utils_rl_agent.GraphHelper()
 
 
         ## ------------------------------------------------------------------------------------        
@@ -313,8 +315,22 @@ class UnityEnv:
         self.num_actions = 9
         self.action_space = spaces.Tuple((spaces.Discrete(self.num_actions), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
         if self.observation_type == 'coords':
+
+            # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges, 
+            #           rel_coords, position_objects, mask]
             self.observation_space = spaces.Tuple((
+                # Image
                 spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)), 
+                # Graph
+                spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )), 
+                spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)), 
+                spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)), 
+                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )), 
+
+                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )), 
+                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )), 
+
+                # Target object
                 spaces.Box(low=-100, high=100, shape=(2,)),
                 spaces.Box(low=0, high=max(self.image_height, self.image_width), 
                            shape=(self.num_objects, 2)), # 2D coords of the objects
@@ -412,7 +428,15 @@ class UnityEnv:
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
         _, current_graph = self.unity_simulator.comm.environment_graph()
         actions, objects1, objects2 = self.obtain_actions(current_graph)
-        pdb.set_trace()
+        if len(actions) < self.num_actions:
+            actions = actions + [None] * (self.num_actions - len(actions))
+
+        if len(objects1) < self.num_objects:
+            objects1 = objects1 + [None] * (self.num_objects - len(objects1))
+
+        if len(objects2) < self.num_objects:
+            objects2 = objects2 + [None] * (self.num_objects - len(objects2))
+
         action = actions[my_agent_action[0][0]]
         (o1, o1_id) = objects1[my_agent_action[1][0]]
         (o2, o2_id) = objects2[my_agent_action[2][0]]
@@ -545,22 +569,24 @@ class UnityEnv:
         images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
         current_obs = images[0]
         current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
+        graph = self.unity_simulator.get_graph()
 
-        if self.observation_type == 'coords':
-            distance = self.get_distance(norm='no')
-            rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
-            visible_objects, position_objects = self.unity_simulator.get_visible_objects()
-            position_objects = position_objects.transpose()
-            position_objects_tensor = np.zeros((self.num_objects, 2))
-            mask = np.zeros((self.num_objects))
-            position_objects_tensor[:position_objects.shape[0], :] = position_objects
-            mask[:position_objects.shape[0]] = 1
-            position_objects = torch.Tensor(position_objects_tensor)[None, :]
-            mask = torch.Tensor(mask)[None, :]
-
-
-            #rel_coords = torch.Tensor(position_objects)[None, :]
-            current_obs = (current_obs, rel_coords, position_objects, mask)
+        distance = self.get_distance(norm='no')
+        rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
+        visible_objects, position_objects = self.unity_simulator.get_visible_objects()
+        position_objects = position_objects.transpose()
+        position_objects_tensor = np.zeros((self.num_objects, 2))
+        mask = np.zeros((self.num_objects))
+        position_objects_tensor[:position_objects.shape[0], :] = position_objects
+        mask[:position_objects.shape[0]] = 1
+        position_objects = torch.Tensor(position_objects_tensor)[None, :]
+        mask = torch.Tensor(mask)[None, :]
+    
+        node_names, node_states, edges, edge_types, mask_nodes, mask_edges = self.graph_helper.build_graph(
+                graph, visible_objects)
+        #rel_coords = torch.Tensor(position_objects)[None, :]
+        current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges, 
+                       rel_coords, position_objects, mask]
         return current_obs, images[0]
 
     def print_action(self, system_agent_action, my_agent_action):
