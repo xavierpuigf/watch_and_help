@@ -327,7 +327,10 @@ class UnityEnv:
                  env_id=0, 
                  env_copy_id=0, 
                  observation_type='coords', 
-                 max_episode_length=100):
+                 max_episode_length=100,
+                 enable_alice=True):
+
+        self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
@@ -564,11 +567,11 @@ class UnityEnv:
         else:
             return None
 
-    def step(self, my_agent_action, enable_alice=True):
+    def step(self, my_agent_action):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
         action_dict = {}
         # system agent action
-        if enable_alice:
+        if self.enable_alice:
             graph = self.get_graph()
             # pdb.set_trace()
             if self.num_steps == 0:
@@ -587,7 +590,7 @@ class UnityEnv:
         dict_results = self.unity_simulator.execute(action_dict)
         self.num_steps += 1
         obs, _ = self.get_observations()
-        reward,  = self.compute_toy_reward()  
+        reward, info = self.compute_toy_reward()  
         # reward, done = self.reward()
         reward = torch.Tensor([reward])
         done = info['done']
