@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 
-from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, DotProdCategorical
+from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, ElementWiseCategorical
 from a2c_ppo_acktr.utils import init
 from a2c_ppo_acktr.graph_nn import GraphModel
 import pdb
@@ -48,7 +48,7 @@ class Policy(nn.Module):
             if action_space_type.__class__.__name__ == "Discrete":
                 num_outputs = action_space_type.n
                 if action_inst and it > 0:
-                    dist.append(DotProdCategorical())
+                    dist.append(ElementWiseCategorical(self.base.output_size, method='fc'))
                 else:
                     dist.append(Categorical(self.base.output_size, num_outputs))
             elif action_space_type.__class__.__name__ == "Box":
@@ -75,6 +75,8 @@ class Policy(nn.Module):
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         outputs = self.base(inputs, rnn_hxs, masks)
+
+        object_classes = inputs[1]
         if len(outputs) == 3:
             value, actor_features, rnn_hxs = outputs
             summary_nodes = actor_features
@@ -83,18 +85,28 @@ class Policy(nn.Module):
         mask_observations = inputs[-1]
         actions = []
         actions_log_probs = []
-        for i, distr in enumerate(self.dist):
+        if len(self.dist) == 3:
+            indices = [1, 0, 2] # object1, action, object2
+        else:
+            indices = list(range(len(self.dist)))
+
+        actions = [None] * len(indices)
+        actions_log_probs = [None] * len(indices)
+        for i in indices:
+            distr = self.dist[i]
             if i == 0:
                 dist = distr(summary_nodes)
             else:
                 dist = distr(summary_nodes, actor_features)
-
+            new_log_probs = self.agent_helper.update_probs(dist.original_logits, i, actions, object_classes)
+            dist = distr.update_logs(new_log_probs)
+            # Correct probabilities according to previously selected acitons
             if deterministic:
                 action = dist.mode()
             else:
                 action = dist.sample()
-            actions.append(action)
-            actions_log_probs.append(dist.log_probs(action))
+            actions[i] = action
+            actions_log_probs[i] = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
         return value, actions, actions_log_probs, rnn_hxs
 

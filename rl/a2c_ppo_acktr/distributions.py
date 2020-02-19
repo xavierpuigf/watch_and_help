@@ -1,6 +1,6 @@
 import math
 import pdb
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,6 +17,10 @@ Modify standard PyTorch distributions so they are compatible with this code.
 
 # Categorical
 class FixedCategorical(torch.distributions.Categorical):
+    def __init__(self, probs=None, logits=None, validate_args=None):
+        super(FixedCategorical, self).__init__(probs=probs, logits=logits)
+        self.original_logits = logits
+
     def sample(self):
         return super().sample().unsqueeze(-1)
 
@@ -57,17 +61,33 @@ class FixedBernoulli(torch.distributions.Bernoulli):
         return torch.gt(self.probs, 0.5).float()
 
 
-class DotProdCategorical(nn.Module):
-    def __init__(self):
-        super(DotProdCategorical, self).__init__()
 
+class ElementWiseCategorical(nn.Module):
+    def __init__(self, num_inputs, method='dotprod'):
+        super(ElementWiseCategorical, self).__init__()
+        self.method = method
+        if self.method == 'fc':
+            self.layer = nn.Linear(2*num_inputs, 1)
+
+    def update_logs(self, logs):
+        return FixedCategorical(logits=logs)
 
     def forward(self, x, y):
         # n x dim
-        x0  = x.unsqueeze(1)
-        logs = torch.bmm(x0, y[:, 1:, :].transpose(1,2))[:, 0, :]
-        
-        return FixedCategorical(logs)
+
+        x0 = x.unsqueeze(1)
+        if self.method == 'dotprod':
+            logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]
+        elif self.method == 'fc':
+            num_nodes = y.shape[1]
+            comb_embed = torch.cat([x0.repeat(1, num_nodes, 1), y], dim=2)
+            logs = self.layer(comb_embed).squeeze(-1)
+
+        mask = np.ones(logs.shape)
+        mask[:, 0] = 0.
+        logs = logs * torch.Tensor(mask).to(logs.device)
+        self.original_logits = logs
+        return FixedCategorical(logits=logs)
 
 class Categorical(nn.Module):
     def __init__(self, num_inputs, num_outputs):
@@ -81,8 +101,12 @@ class Categorical(nn.Module):
 
         self.linear = init_(nn.Linear(num_inputs, num_outputs))
 
+    def update_logs(self, logs):
+        return FixedCategorical(logits=logs)
+
     def forward(self, x):
         x = self.linear(x)
+        self.original_logits = x
         return FixedCategorical(logits=x)
 
 
