@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
             rollout_from_json(info)
         else:
-            num_agents = 2
+            num_agents = 1
             # data = pickle.load(open(args.dataset_path, 'rb'))
             # for problem_setup in data:
             #     env_id = problem_setup['apartment']
@@ -152,7 +152,6 @@ if __name__ == '__main__':
             #     if task_name == 'setup_table':
             #         break
             unity_env = UnityEnv(env_id=4,
-                                 init_graph=None,
                                  num_agents=num_agents, 
                                  max_episode_length=100)
             
