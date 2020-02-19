@@ -409,6 +409,7 @@ class MCTS:
                     surface = elements[2] # assuming it is a graph node id
                     for node in state['nodes']:
                         if node['class_name'] == obj or str(node['id']) == obj:
+                            # print(node)
                             # if verbose:
                             #     print(node)
                             tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 

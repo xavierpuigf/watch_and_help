@@ -340,6 +340,8 @@ class UnityEnv:
 
 
         self.system_agent_id = self.agent_ids[0]
+        last_actions = [None] * self.num_agents
+        last_subgoals = [None] * self.num_agents
 
         if self.num_agents>1:
             self.my_agent_id = self.agent_ids[1]
@@ -532,9 +534,11 @@ class UnityEnv:
         objects2 = objects
         return actions, objects, objects2
 
-    def step(self, my_agent_action):
-        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
-        _, current_graph = self.unity_simulator.comm.environment_graph()
+
+    def get_action_command(self, my_agent_action):
+        if my_agent_action is None:
+            return None
+        current_graph = self.unity_simulator.get_graph()
         actions, objects1, objects2 = self.obtain_actions(current_graph)
         if len(actions) < self.num_actions:
             actions = actions + [None] * (self.num_actions - len(actions))
@@ -551,11 +555,55 @@ class UnityEnv:
         #action_str = actions[my_agent_action]
         obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
         obj2_str = '' if o2 is None else f'<{o2}> ({o2_id})' 
-        action_str = f'<char1> [{action}] {obj1_str} {obj2_str}'.strip()
+        action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
         
         if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
             self.last_action = action_str
             self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
+            return action_str
+        else:
+            return None
+
+    def step(self, my_agent_action):
+        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+        action_dict = {}
+        action_str = self.get_action_command(my_agent_action)
+        if action_str is not None:
+            print(action_str)
+            action_dict[1] = action_str
+        self.unity_simulator.execute(action_dict)
+        self.num_steps += 1
+        obs, _ = self.get_observations()
+        reward, info = self.compute_toy_reward()  
+        # reward, done = self.reward()
+        reward = torch.Tensor([reward])
+        done = info['done']
+        if self.num_steps >= self.max_episode_length:
+            done = True
+        done = np.array([done])
+        infos = {}
+        #if done:
+        #    obs = self.reset()
+        return obs, reward, done, infos
+
+
+    def step_with_system_agent(self, my_agent_action):
+        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+        action_dict = {}
+        # system agent action
+        system_agent_action, system_agent_info = self.get_system_agent_action(task_goal, self.last_actions[0], self.last_subgoals[0])
+        self.last_actions[0] = system_agent_action
+        self.last_subgoals[0] = system_agent_info['subgoals'][0]
+        if system_agent_action is not None:
+            action_dict[0] = system_agent_action
+        # user agent action
+        action_str = self.get_action_command(my_agent_action)
+        if action_str is not None:
+            print(action_str)
+            action_dict[1] = action_str
+
+        self.unity_simulator.execute(action_dict)
+>>>>>>> 31ac2c6b7ee92fbc831808d6956cefe10f5aa224
         self.num_steps += 1
         obs, _ = self.get_observations()
         reward, info = self.compute_toy_reward()  
@@ -607,7 +655,6 @@ class UnityEnv:
         #    obs = self.reset()
         return obs, reward, done, infos
 
-
     def add_system_agent(self):
         ## Alice model
         self.agents[self.system_agent_id] = MCTS_agent(unity_env=self,
@@ -641,10 +688,6 @@ class UnityEnv:
         if self.num_agents==1:
             error("you haven't set your agent")
         return self.my_agent_id
-
-
-
-
 
     def get_graph(self):
         graph = self.unity_simulator.get_graph()
