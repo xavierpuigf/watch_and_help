@@ -504,7 +504,7 @@ class UnityEnv:
         #action_str = actions[my_agent_action]
         obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
         obj2_str = '' if o2 is None else f'<{o2}> ({o2_id})' 
-        action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
+        action_str = f'<char1> [{action}] {obj1_str} {obj2_str}'.strip()
         
         if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
             print(action_str)
