@@ -402,6 +402,9 @@ class UnityEnv:
         self.micro_id = -1
         self.last_action = ''
 
+        # The observed nodes
+        self.nodes_visible = None
+
     def seed(self, seed):
         pass
 
@@ -531,40 +534,39 @@ class UnityEnv:
         return obs
 
     def obtain_objects(self, graph):
-        actions = ['turnleft', 'walkforward', 'turnright', 'walktowards', 'open', 'close', 'putback', 'putin', 'grab'] 
         objects = [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
         objects = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms'] + objects
         char_id = self.my_agent_id
         objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
+        objects.append(('no_obj', -1))
         objects2 = objects
         return objects, objects2
 
     def get_action_command(self, my_agent_action):
         if my_agent_action is None:
             return None
+
         current_graph = self.unity_simulator.get_graph()
-        objects1, objects2 = self.obtain_objects(current_graph)
-
-        if len(objects1) < self.num_objects:
-            objects1 = objects1 + [None] * (self.num_objects - len(objects1))
-
-        if len(objects2) < self.num_objects:
-            objects2 = objects2 + [None] * (self.num_objects - len(objects2))
+        objects1, objects2 = self.nodes_visible, self.nodes_visible
 
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
         (o1, o1_id) = objects1[my_agent_action[1][0]]
         (o2, o2_id) = objects2[my_agent_action[2][0]]
         
         #action_str = actions[my_agent_action]
-        obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
-        obj2_str = '' if o2 is None else f'<{o2}> ({o2_id})' 
+        if o1 == 'no_obj':
+            o1 = None
+        if o2 == 'no_obj':
+            o2 = None
+
+        obj1_str = '' if o1 is o1 is None or o1 == 'no_obj' else f'<{o1}> ({o1_id})'
+        obj2_str = '' if o2 is o2 is None or o2 == 'no_obj' else f'<{o2}> ({o2_id})'
         action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
 
-        print(action_str)
-        
         if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
             return action_str
         else:
+
             return None
 
     def step(self, my_agent_action):
@@ -582,6 +584,7 @@ class UnityEnv:
             self.last_subgoals[0] = system_agent_info['subgoals'][0]
             if system_agent_action is not None:
                 action_dict[0] = system_agent_action
+
         # user agent action
         action_str = self.get_action_command(my_agent_action)
         if action_str is not None:
@@ -797,6 +800,7 @@ class UnityEnv:
         mask = torch.Tensor(mask)[None, :]
     
         graph_inputs, graph_viz = self.graph_helper.build_graph(graph, visible_objects, plot_graph=drawing)
+        self.nodes_visible = graph_viz[-1]
         graph_inputs = list(graph_inputs)
         #rel_coords = torch.Tensor(position_objects)[None, :]
         current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]

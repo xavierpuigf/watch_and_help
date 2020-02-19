@@ -1,10 +1,12 @@
 from utils import DictObjId
+import torch
 from gym import spaces, envs
 from dgl import DGLGraph
 import numpy as np
 import os
 import json
 import pdb
+
 
 class GraphHelper():
     def __init__(self):
@@ -41,35 +43,49 @@ class GraphHelper():
         self.obj2_affordance = None
         self.get_action_affordance_map()
 
-    def update_probs(self, log_probs, i, actions):
+    def update_probs(self, log_probs, i, actions, object_classes):
         """
         :param log_probs: current log probs
         :param i: which action are we currently considering
         :param actions: actions already selected
         :return:
         """
-        pdb.set_trace()
+        inf_val = 1e9
         if i == 1:
             # Deciding on the object
             return log_probs
-        if i == 0:
+        elif i == 0:
             # Deciding on the action
-            selected_obj1 = actions[1]
-            mask = (self.obj1_affordance[:, selected_obj1] == 1)
-            log_probs = log_probs * mask + (1.-mask) * -np.inf
+            selected_obj1 = object_classes[range(object_classes.shape[0]), actions[1]].long()
+            mask = torch.Tensor(self.obj1_affordance[None, :][:, :, selected_obj1] == 1).to(log_probs.device)
+            log_probs = log_probs * mask + (1.-mask) * -inf_val
             return log_probs
+
         else:
             # deciding on object 2
-            selected_action = actions[1]
-            mask = (self.obj2_affordance[selected_action, :] == 1)
-            log_probs = log_probs * mask + (1.-mask) * -np.inf
+            selected_action = actions[0]
+
+            # batch x object_class
+            mask_object_class = torch.LongTensor(self.obj2_affordance[None, :][:, selected_action, :] == 1).unsqueeze(1)
+
+            # batch x nodes x object_class
+            one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_()
+            target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
+
+            # the first node is the character
+            mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
+            mask = mask_nodes.to(log_probs.device).float()
+            log_probs = log_probs * mask + (1.-mask) * -inf_val
+
+
             return log_probs
+
 
     def get_action_affordance_map(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(f'{dir_path}/dataset/object_info.json', 'r') as f:
             content = json.load(f)
-        
+
         n_actions = len(self.actions)
         n_objects = len(self.object_dict)
         self.obj1_affordance = np.zeros((n_actions, n_objects))
@@ -98,7 +114,7 @@ class GraphHelper():
         for action in ['putback', 'putin']:
             self.obj1_affordance[action_id, id_grab] = 1
             id2 = id_containers if action == 'putin' else id_surface
-            self.obj1_affordance[action_id, id2] = 1
+            self.obj2_affordance[action_id, id2] = 1
 
 
 
@@ -131,9 +147,13 @@ class GraphHelper():
         max_edges = self.num_edges
         edges = [edge for edge in graph['edges'] if edge['from_id'] in ids and edge['to_id'] in ids]
         nodes = [id2node[idi] for idi in ids]
+        nodes.append({'id': -1, 'class_name': 'no_obj', 'states': []})
+
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
         class_names_str = [node['class_name'] for node in nodes]
+        visible_nodes = [(node['class_name'], node['id']) for node in nodes]
+
         class_names = np.array([self.object_dict.get_id(class_name) for class_name in class_names_str])
         node_states = np.array([self.one_hot(node['states']) for node in nodes])
 
@@ -153,7 +173,7 @@ class GraphHelper():
         all_edge_types = np.zeros((max_edges))
 
         mask_nodes = np.zeros((max_nodes))
-        all_class_names = np.zeros((max_nodes))
+        all_class_names = np.zeros((max_nodes)).astype(np.int32)
         all_node_states = np.zeros((max_nodes, len(self.state_dict)))
         
         if len(edges) > 0:
@@ -175,7 +195,7 @@ class GraphHelper():
             graph_viz = None
 
         return (all_class_names, all_node_states, 
-                all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict)
+                all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict, visible_nodes)
 
 def can_perform_action(action, o1, o2, agent_id, graph):
     num_args = len([None for ob in [o1, o2] if ob is not None])
@@ -193,7 +213,7 @@ def args_per_action(action):
     action_dict = {'turnleft': 0,
     'walkforward': 0,
     'turnright': 0,
-    'walktowards': 0,
+    'walktowards': 1,
     'open': 1,
     'close': 1,
     'putback':2,
