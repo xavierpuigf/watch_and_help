@@ -10,7 +10,7 @@ from tqdm import tqdm
 class MCTS:
     def __init__(self, env, agent_id, char_index, max_episode_length, num_simulation, max_rollout_step, c_init, c_base, seed=1):
         self.env = env
-        self.discount = 0.4
+        self.discount = 1.0#0.4
         self.agent_id = agent_id
         self.char_index = char_index
         self.max_episode_length = max_episode_length
@@ -20,10 +20,100 @@ class MCTS:
         self.c_base = c_base
         self.seed = 1
         self.heuristic_dict = None
+        self.opponent_subgoal = None
+        self.last_opened = None
         np.random.seed(self.seed)
         random.seed(self.seed)
+
+
+    def check_progress(self, state, goal_spec):
+        """TODO: add more predicate checkers; currently only ON"""
+        count = 0
+        for key, value in goal_spec.items():
+            if key.startswith('off'):
+                count += value
+        id2node = {node['id']: node for node in state['nodes']}
+        for key, value in goal_spec.items():
+            elements = key.split('_')
+            for edge in state['edges']:
+                if elements[0] in ['on', 'inside']:
+                    if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        count += 1
+                elif elements[0] == 'offOn':
+                    if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        count -= 1
+                elif elements[1] == 'offIn':
+                    if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        count -= 1
+        return count
         
-    def run(self, curr_root, t, heuristic_dict):
+    def run(self, curr_root, t, heuristic_dict, last_subgoal, opponent_subgoal):
+        self.opponent_subgoal = opponent_subgoal
+        print('check subgoal')
+        curr_vh_state_tmp, curr_state_tmp, _, satisfied, unsatisfied, _, actions_parent = curr_root.id[1]
+        subgoals = self.get_subgoal_space(curr_state_tmp, satisfied, unsatisfied, opponent_subgoal, verbose=1)
+        # subgoals = [sg for sg in subgoals if sg[0] != opponent_subgoal] # avoid repreating
+        print(curr_state_tmp['edges'])
+        print('satisfied:', satisfied)
+        print('unsatisfied:', unsatisfied)
+        print('subgoals:', subgoals)
+        print('last_subgoal:', last_subgoal)
+        need_to_close = False
+        if self.last_opened is not None and self.last_opened[0] != '<toilet>':
+            for node in curr_state_tmp['nodes']:
+                # print(node)
+                # ipdb.set_trace()
+                if '({})'.format(node['id']) == self.last_opened[1]:
+                    # print('check opened node:', node)
+                    # ipdb.set_trace()
+                    if 'OPEN' in node['states']:
+                        need_to_close = True
+                    else:
+                        self.last_opened = None
+                    break
+        print('last_opened:', self.last_opened, need_to_close)
+        for subgoal in subgoals:
+            if subgoal[0] == last_subgoal:
+                heuristic = heuristic_dict[last_subgoal.split('_')[0]]
+                actions, costs = heuristic(self.agent_id, self.char_index, curr_state_tmp, self.env, last_subgoal)
+                plan = [self.get_action_str(action) for action in actions] 
+                if len(plan) > 0:
+                    elements = plan[0].split(' ')               
+                    if need_to_close and (elements[0] == '[walk]' or elements[0] == '[open]' and elements[2] != self.last_opened[1]):
+                        if self.last_opened is not None:
+                            for edge in curr_state_tmp['edges']:
+                                if edge['relation_type'] == 'CLOSE' and \
+                                    ('({})'.format(edge['from_id']) == self.last_opened[1] and edge['to_id'] == self.agent_id or \
+                                    '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
+                                    plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
+                                    break
+                print('repeat subgoal plan:', plan)
+                if len(plan) > 0 and plan[0].startswith('[open]'):
+                    elements = plan[0].split(' ')
+                    self.last_opened = [elements[1], elements[2]]
+                return None, plan, [last_subgoal]
+        """TODO: what if the predicte has been fulfilled but still grabbing the object?"""
+        for edge in curr_state_tmp['edges']:
+            if edge['relation_type'].startswith('HOLDS') \
+                and self.agent_id in [edge['from_id'], edge['to_id']]:
+                heuristic = heuristic_dict[last_subgoal.split('_')[0]]
+                actions, costs = heuristic(self.agent_id, self.char_index, curr_state_tmp, self.env, last_subgoal)
+                plan = [self.get_action_str(action) for action in actions] 
+                if len(plan) > 0:
+                    elements = plan[0].split(' ') 
+                    if need_to_close and (elements[0] == '[walk]' or elements[0] == '[open]' and elements[2] != self.last_opened[1]):
+                        if self.last_opened is not None:
+                            for edge in curr_state_tmp['edges']:
+                                if edge['relation_type'] == 'CLOSE' and \
+                                    ('({})'.format(edge['from_id']) == self.last_opened[1] and edge['to_id'] == self.agent_id or \
+                                    '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
+                                    plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
+                                    break
+                    print(plan[0])
+                if len(plan) > 0 and plan[0].startswith('[open]'):
+                    elements = plan[0].split(' ')
+                    self.last_opened = [elements[1], elements[2]]           
+                return None, plan, [last_subgoal]
 
         self.heuristic_dict = heuristic_dict
         if not curr_root.is_expanded:
@@ -32,6 +122,7 @@ class MCTS:
         for explore_step in tqdm(range(self.num_simulation)):
             curr_node = curr_root
             node_path = [curr_node]
+            next_node = None
 
             while curr_node.is_expanded:
                 #print('Select', curr_node.id.keys())
@@ -52,36 +143,64 @@ class MCTS:
 
         next_root = None
         plan = []
+        subgoals = []
         while curr_root.is_expanded:
             actions_taken, children_visit, next_root = self.select_next_root(curr_root)
             curr_root = next_root
             plan += actions_taken
-
-        return next_root, plan
+            subgoals.append(next_root.id[0])
+        if len(plan) > 0:
+            elements = plan[0].split(' ')
+            if need_to_close and (elements[0] == '[walk]' or elements[0] == '[open]' and elements[2] != self.last_opened[1]):
+                if self.last_opened is not None:
+                    for edge in curr_state_tmp['edges']:
+                        if edge['relation_type'] == 'CLOSE' and \
+                            ('({})'.format(edge['from_id']) == self.last_opened[1] and edge['to_id'] == self.agent_id or \
+                            '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
+                            plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
+                            break
+            print(plan[0])
+        if len(plan) > 0 and plan[0].startswith('[open]'):
+            elements = plan[0].split(' ')
+            self.last_opened = [elements[1], elements[2]]
+        return next_root, plan, subgoals
 
 
     def rollout(self, leaf_node, t):
         reached_terminal = False
 
         leaf_node_values = leaf_node.id[1]
-        curr_vh_state, curr_state, goals, num_steps, actions_parent = leaf_node_values
+        curr_vh_state, curr_state, goal_spec, satisified, unsatisfied, num_steps, actions_parent = leaf_node_values
         sum_reward = 0
         last_reward = 0
+        satisified = copy.deepcopy(satisified)
+        unsatisfied = copy.deepcopy(unsatisfied)
 
         # TODO: we should start with goals at random, or with all the goals
         # Probably not needed here since we already computed whern expanding node
 
-        list_goals = list(range(len(goals)))
+        subgoals = self.get_subgoal_space(curr_state, satisified, unsatisfied, self.opponent_subgoal)
+        list_goals = list(range(len(subgoals)))
         random.shuffle(list_goals)
         for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
-            goal_selected = goals[list_goals[rollout_step]]
+            # # subgoals = self.get_subgoal_space(curr_state, satisified, unsatisfied)
+            # print(rollout_step)
+            # print(len(list_goals))
+            # print(list_goals[rollout_step])
+            # print(subgoals)
+            # print(subgoals[list_goals[rollout_step]])
+            goal_selected = subgoals[list_goals[rollout_step]][0]
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
-            actions = heuristic(self.agent_id, self.char_index, curr_state, self.env, goal_selected)
+            actions, costs = heuristic(self.agent_id, self.char_index, curr_state, self.env, goal_selected)
             
+            # print(actions)
+
             if actions is None:
                 delta_reward = 0
             else:
                 num_steps += len(actions)
+                cost = sum(costs)
+                # print(cost)
                 for action_id, action in enumerate(actions):
                     # Check if action can be performed
                     # if action_performed:
@@ -93,13 +212,13 @@ class MCTS:
                     next_state = next_vh_state.to_dict()
                     curr_vh_state, curr_state = next_vh_state, next_state
 
-                curr_reward = 1 # self.env.reward(0, next_state)
-                delta_reward = curr_reward - last_reward# - 0.05
-                delta_reward = delta_reward * self.discount**(len(actions))
+                curr_reward = self.check_progress(next_state, goal_spec) # self.env.reward(0, next_state)
+                delta_reward = curr_reward - last_reward - cost
+                delta_reward = delta_reward #* self.discount**(len(actions))
                 # print(curr_rewward, last_reward)
                 last_reward = curr_reward
             sum_reward += delta_reward
-            
+            # curr_state = next_state
     
         # print(sum_reward, reached_terminal)
         return sum_reward
@@ -108,7 +227,7 @@ class MCTS:
     def calculate_score(self, curr_node, child):
         parent_visit_count = curr_node.num_visited
         self_visit_count = child.num_visited
-        action_prior = child.action_prior
+        subgoal_prior = child.subgoal_prior
 
         if self_visit_count == 0:
             u_score = 1e6 #np.inf
@@ -116,7 +235,7 @@ class MCTS:
         else:
             exploration_rate = np.log((1 + parent_visit_count + self.c_base) /
                                       self.c_base) + self.c_init
-            u_score = exploration_rate * action_prior * np.sqrt(
+            u_score = exploration_rate * subgoal_prior * np.sqrt(
                 parent_visit_count) / float(1 + self_visit_count)
             q_score = child.sum_value / self_visit_count
 
@@ -134,15 +253,15 @@ class MCTS:
         selected_child_index = random.choice(maxIndex)
         selected_child = curr_node.children[selected_child_index]
         return selected_child
-        
 
-    def get_action_prior(self, action_space):
-        action_space_size = len(action_space)
-        action_prior = {
-            action: 1.0 / action_space_size
-            for action in action_space
+
+    def get_subgoal_prior(self, subgoal_space):
+        subgoal_space_size = len(subgoal_space)
+        subgoal_prior = {
+            subgoal: 1.0 / subgoal_space_size
+            for subgoal in subgoal_space
         }
-        return action_prior
+        return subgoal_prior
 
 
     def expand(self, leaf_node, t):
@@ -165,11 +284,12 @@ class MCTS:
 
 
     def select_next_root(self, curr_root):
+        children_ids = [child.id[0] for child in curr_root.children]
         children_visit = [child.num_visited for child in curr_root.children]
         children_value = [child.sum_value for child in curr_root.children]
-        # print('children_ids:', children_ids)
-        # print('children_visit:', children_visit)
-        # print('children_value:', children_value)
+        print('children_ids:', children_ids)
+        print('children_visit:', children_visit)
+        print('children_value:', children_value)
         # print(list([c.id.keys() for c in curr_root.children]))
         maxIndex = np.argwhere(
             children_visit == np.max(children_visit)).flatten()
@@ -177,40 +297,61 @@ class MCTS:
         actions = curr_root.children[selected_child_index].id[1][-1]
         return actions, children_visit, curr_root.children[selected_child_index]
 
+    def transition_subgoal(self, satisfied, unsatisified, subgoal):
+        """transition on predicate level"""
+        elements = subgoal.split('_')
+        if elements[0] == 'put':
+            predicate_key = 'on_{}_{}'.format(self.env.id2node[int(elements[1])], elements[2])
+            predicate_value = 'on_{}_{}'.format(elements[1], elements[2])
+            satisfied[predicate_key].append(satisfied)
+
+
     def initialize_children(self, node):
         leaf_node_values = node.id[1]
-        vh_state, state, goals, steps, actions_parent = leaf_node_values
+        vh_state, state, goal_spec, satisfied, unsatisfied, steps, actions_parent = leaf_node_values
 
+        # print('init child, satisfied:\n', satisfied)
+        # print('init child, unsatisfied:\n', unsatisfied)
 
-        parent_action = node.id[0]
-        goal_id = leaf_node_values[2]
-        
-        action_space = []
-        goal_incomplete = False
+        subgoals = self.get_subgoal_space(state, satisfied, unsatisfied, self.opponent_subgoal)
+        # subgoals = [sg for sg in subgoals if sg[0] != self.opponent_subgoal] # avoid repeating
+        # print('init child, subgoals:\n', subgoals)
+        if len(subgoals) == 0:
+            return None
 
         goals_expanded = 0
-        for goal in goals:
-
+        for goal_predicate in subgoals:
+            goal, predicate, aug_predicate = goal_predicate[0], goal_predicate[1], goal_predicate[2] # subgoal, goal predicate, the new satisfied predicate
             heuristic = self.heuristic_dict[goal.split('_')[0]]
-            actions_heuristic = heuristic(self.agent_id, self.char_index, state, self.env, goal)
+            actions_heuristic, costs = heuristic(self.agent_id, self.char_index, state, self.env, goal)
             if actions_heuristic is None:
                 continue
+            cost = sum(costs)
+            # print(goal_predicate, cost)
             next_vh_state = vh_state
             actions_str = []
             for action in actions_heuristic:
                 action_str = self.get_action_str(action)
                 actions_str.append(action_str)
-
+                # print([edge for edge in state['edges'] if edge['from_id'] == int(goal.split('_')[1])])
+                # print(goal_predicate, action_str)
                 # TODO: this could just be computed in the heuristics?
                 next_vh_state = self.env.transition(next_vh_state, {0: action_str})
             goals_expanded += 1
-            goals_remain = [goal_r for goal_r in goals if goal_r != goal]
+
+            next_satisfied = copy.deepcopy(satisfied)
+            next_unsatisfied = copy.deepcopy(unsatisfied)
+            if aug_predicate is not None:
+                next_satisfied[predicate].append(aug_predicate)
+            next_unsatisfied[predicate] -= 1
+
+            # goals_remain = [goal_r for goal_r in goals if goal_r != goal]
             Node(parent=node,
-                id=(goal, [next_vh_state, next_vh_state.to_dict(), goals_remain, 
+                id=(goal, [next_vh_state, next_vh_state.to_dict(), goal_spec, next_satisfied, next_unsatisfied,
                     len(actions_heuristic), actions_str]),
                  num_visited=0,
                  sum_value=0,
-                 action_prior=len(goals),
+                 subgoal_prior=1.0 / len(subgoals),
                  is_expanded=False)
 
         if goals_expanded == 0:
@@ -221,6 +362,74 @@ class MCTS:
         obj_args = [x for x in list(action_tuple)[1:] if x is not None]
         objects_str = ' '.join(['<{}> ({})'.format(x[0], x[1]) for x in obj_args])
         return '[{}] {}'.format(action_tuple[0], objects_str)
+
+    def get_subgoal_space(self, state, satisified, unsatisfied, opponent_subgoal=None, verbose=0):
+        """
+        Get subgoal space
+        Args:
+            state: current state
+            satisfied: satisfied predicates
+            unsatisified: # of unstatisified predciates
+        Returns:
+            subgoal space
+        """
+        """TODO: add more subgoal heuristics; currently only have (put x y)"""
+        # print('get subgoal space, state:\n', state['nodes'])
+
+        inhand_objects = []
+        for edge in state['edges']:
+            if edge['relation_type'].startswith('HOLDS') and \
+                edge['from_id'] == self.agent_id:
+                inhand_objects.append(edge['to_id'])
+
+        # if verbose:
+        #     print('inhand_objects:', inhand_objects)
+        #     print(state['edges'])
+
+        opponent_predciate_1 = None
+        opponent_predciate_2 = None
+        if opponent_subgoal is not None:
+            elements = opponent_subgoal.split('_')
+            if elements[0] in ['put', 'putIn']:
+                for node in state['nodes']:
+                    if node['id'] == int(elements[1]):
+                        obj1_class = node['class_name']
+                        break
+                opponent_predciate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
+                opponent_predciate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
+
+        subgoal_space = []
+        for predicate, count in unsatisfied.items():
+            if count > 1 or count > 0 and predicate not in [opponent_predciate_1, opponent_predciate_2]:
+                elements = predicate.split('_')
+                # print(elements)
+                if elements[0] == 'on':
+                    subgoal_type = 'put'
+                    obj = elements[1]
+                    surface = elements[2] # assuming it is a graph node id
+                    for node in state['nodes']:
+                        if node['class_name'] == obj or str(node['id']) == obj:
+                            # if verbose:
+                            #     print(node)
+                            tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 
+                            if tmp_predicate not in satisified[predicate]:
+                                subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                if node['id'] in inhand_objects:
+                                    return [subgoal_space[-1]]
+                elif elements[0] == 'inside':
+                    subgoal_type = 'putIn'
+                    obj = elements[1]
+                    surface = elements[2] # assuming it is a graph node id
+                    for node in state['nodes']:
+                        if node['class_name'] == obj or str(node['id']) == obj:
+                            # if verbose:
+                            #     print(node)
+                            tmp_predicate = 'inside_{}_{}'.format(node['id'], surface) 
+                            if tmp_predicate not in satisified[predicate]:
+                                subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                if node['id'] in inhand_objects:
+                                    return [subgoal_space[-1]]
+        return subgoal_space
 
 
 
