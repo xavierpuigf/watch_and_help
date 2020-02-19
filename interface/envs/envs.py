@@ -405,13 +405,18 @@ class UnityEnv:
             return self.viewer.isopen
          
 
-    def reset(self):# graph, task_goal):
+    def reset(self, graph=None, task_goal=None):
         # reset system agent
-        #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
-        #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
-        self.unity_simulator.comm.fast_reset(self.env_id)
-        #self.unity_simulator.comm.add_character()
-        #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
+        # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+        if graph is None:
+            self.unity_simulator.comm.fast_reset(self.env_id)
+        # #self.unity_simulator.comm.add_character()
+        # #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
+        
+        if task_goal is not None:
+            self.goal_spec = task_goal[self.system_agent_id]
+            self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         obs = self.get_observations()[0]
         self.num_steps = 0
@@ -473,10 +478,10 @@ class UnityEnv:
                                num_samples=1,
                                num_processes=1)
 
-    def get_system_agent_action(self, task_goal):
+    def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
-        action, info = self.agents[self.system_agent_id].get_action(task_goal[0])
+        action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
 
         if action is None:
             print("system agent action is None! DONE!")
