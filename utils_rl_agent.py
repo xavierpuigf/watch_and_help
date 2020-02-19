@@ -4,6 +4,7 @@ from dgl import DGLGraph
 import numpy as np
 import os
 import json
+import pdb
 
 class GraphHelper():
     def __init__(self):
@@ -11,9 +12,22 @@ class GraphHelper():
         self.relations = ['inside', 'close', 'facing', 'on']
         self.objects = self.get_objects()
         rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
+        self.actions = [
+            'turnleft',
+            'walkforward',
+            'turnright',
+            'walktowards',
+            'open',
+            'close',
+            'putback',
+            'putin',
+            'grab',
+            'no_action'
+        ]
         self.object_dict = DictObjId(self.objects + ['character'] + rooms + ['no_obj'])
         self.relation_dict = DictObjId(self.relations)
         self.state_dict = DictObjId(self.states)
+        self.action_dict = DictObjId(self.actions, include_other=False)
 
         self.num_objects = 100
         self.num_edges = 200 
@@ -21,20 +35,35 @@ class GraphHelper():
         self.num_classes = len(self.object_dict)
         self.num_states = len(self.state_dict)
 
-        self.actions = ['no_action',
-                        'turnleft',
-                        'walkforward',
-                        'turnright',
-                        'walktowards',
-                        'open',
-                        'close',
-                        'putback',
-                        'putin',
-                        'grab']
+
         
         self.obj1_affordance = None
         self.obj2_affordance = None
         self.get_action_affordance_map()
+
+    def update_probs(self, log_probs, i, actions):
+        """
+        :param log_probs: current log probs
+        :param i: which action are we currently considering
+        :param actions: actions already selected
+        :return:
+        """
+        pdb.set_trace()
+        if i == 1:
+            # Deciding on the object
+            return log_probs
+        if i == 0:
+            # Deciding on the action
+            selected_obj1 = actions[1]
+            mask = (self.obj1_affordance[:, selected_obj1] == 1)
+            log_probs = log_probs * mask + (1.-mask) * -np.inf
+            return log_probs
+        else:
+            # deciding on object 2
+            selected_action = actions[1]
+            mask = (self.obj2_affordance[selected_action, :] == 1)
+            log_probs = log_probs * mask + (1.-mask) * -np.inf
+            return log_probs
 
     def get_action_affordance_map(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -47,10 +76,9 @@ class GraphHelper():
         self.obj2_affordance = np.zeros((n_actions, n_objects))
 
         id_no_obj = self.object_dict.get_id('no_obj')
-        id_grab = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_grab']) 
-        id_surface = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_surface']) 
-        id_containers = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_inside']) 
-        
+        id_grab = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_grab']])
+        id_surface = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_surface']])
+        id_containers = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_inside']])
         for action in ['no_action', 'turnleft', 'walkforward', 'turnright']:
             action_id = self.action_dict.get_id(action)
             self.obj1_affordance[action_id, id_no_obj] = 1
@@ -170,7 +198,8 @@ def args_per_action(action):
     'close': 1,
     'putback':2,
     'putin': 2,
-    'grab': 1}
+    'grab': 1,
+    'no_action': 0}
     return action_dict[action]
 
 class GraphSpace(spaces.Space):

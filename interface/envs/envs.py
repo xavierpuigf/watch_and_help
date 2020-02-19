@@ -363,8 +363,7 @@ class UnityEnv:
         self.observation_type = observation_type # Image, Coords
         self.viewer = None
         self.num_objects = 100
-        self.num_actions = 9
-        self.action_space = spaces.Tuple((spaces.Discrete(self.num_actions), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
+        self.action_space = spaces.Tuple((spaces.Discrete(len(self.graph_helper.action_dict)), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
         if self.observation_type == 'coords':
 
             # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges, 
@@ -531,29 +530,28 @@ class UnityEnv:
         self.num_steps = 0
         return obs
 
-    def obtain_actions(self, graph):
+    def obtain_objects(self, graph):
         actions = ['turnleft', 'walkforward', 'turnright', 'walktowards', 'open', 'close', 'putback', 'putin', 'grab'] 
         objects = [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
         objects = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms'] + objects
         char_id = self.my_agent_id
         objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
         objects2 = objects
-        return actions, objects, objects2
+        return objects, objects2
 
     def get_action_command(self, my_agent_action):
         if my_agent_action is None:
             return None
         current_graph = self.unity_simulator.get_graph()
-        actions, objects1, objects2 = self.obtain_actions(current_graph)
-        if len(actions) < self.num_actions:
-            actions = actions + [None] * (self.num_actions - len(actions))
+        objects1, objects2 = self.obtain_objects(current_graph)
 
         if len(objects1) < self.num_objects:
             objects1 = objects1 + [None] * (self.num_objects - len(objects1))
 
         if len(objects2) < self.num_objects:
             objects2 = objects2 + [None] * (self.num_objects - len(objects2))
-        action = actions[my_agent_action[0][0]]
+
+        action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
         (o1, o1_id) = objects1[my_agent_action[1][0]]
         (o2, o2_id) = objects2[my_agent_action[2][0]]
         

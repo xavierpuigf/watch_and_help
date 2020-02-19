@@ -21,10 +21,11 @@ from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
 
 from a2c_ppo_acktr.arguments import get_args
+home_path = os.getcwd()
+home_path = '/'.join(home_path.split('/')[:-2])
 
-
-
-
+sys.path.append(home_path+'/vh_multiagent_models')
+import utils_rl_agent as utils_rl_agent
 
 def main():
     args = get_args()
@@ -87,6 +88,7 @@ def main():
     actor_critic = Policy(
         envs.observation_space,
         envs.action_space,
+        agent_helper=utils_rl_agent.GraphHelper(),
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 

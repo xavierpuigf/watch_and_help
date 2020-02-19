@@ -16,8 +16,9 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, agent_helper=None, base=None, base_kwargs=None):
         super(Policy, self).__init__()
+        self.agent_helper = agent_helper
         action_inst = False
         if base_kwargs is None:
             base_kwargs = {}

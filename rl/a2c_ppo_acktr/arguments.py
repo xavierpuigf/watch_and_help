@@ -145,7 +145,7 @@ def get_args():
     parser.add_argument(
         '--recurrent-policy',
         action='store_true',
-        default=False,
+        default=True,
         help='use a recurrent policy')
 
     parser.add_argument(
