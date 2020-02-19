@@ -1,6 +1,6 @@
 from utils import DictObjId
 from gym import spaces, envs
-import dgl
+from dgl import DGLGraph
 import numpy as np
 import os
 import json
@@ -37,19 +37,19 @@ class GraphHelper():
             one_hot[self.state_dict.get_id(state)] = 1
         return one_hot
 
-    def build_graph(self, graph, ids):
+    def build_graph(self, graph, ids, plot_graph=False):
         ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
-
+        id2node = {node['id']: node for node in graph['nodes']}
         # Character is always the first one
         ids = [node['id'] for node in graph['nodes'] if node['class_name'] == 'character'] + ids
         max_nodes = self.num_objects
         max_edges = self.num_edges
         edges = [edge for edge in graph['edges'] if edge['from_id'] in ids and edge['to_id'] in ids]
-        nodes = [node for node in graph['nodes'] if node['id'] in ids]
+        nodes = [id2node[idi] for idi in ids]
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
-
-        class_names = np.array([self.object_dict.get_id(node['class_name']) for node in nodes])
+        class_names_str = [node['class_name'] for node in nodes]
+        class_names = np.array([self.object_dict.get_id(class_name) for class_name in class_names_str])
         node_states = np.array([self.one_hot(node['states']) for node in nodes])
 
         edge_types = np.array([self.relation_dict.get_id(edge['relation_type']) for edge in edges])
@@ -79,8 +79,18 @@ class GraphHelper():
         mask_nodes[:len(nodes)] = 1.
         all_class_names[:len(nodes)] = class_names
         all_node_states[:len(nodes)] = node_states
+
+        
+        if plot_graph:
+            graph_viz = DGLGraph()
+            graph_viz.add_nodes(len(nodes), {'names': class_names})
+            labeldict =  {it: class_str for it, class_str in enumerate(class_names_str)}
+        else:
+            labeldict = None
+            graph_viz = None
+
         return (all_class_names, all_node_states, 
-                all_edge_ids, all_edge_types, mask_nodes, mask_edges)
+                all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict)
 
 def can_perform_action(action, o1, o2, agent_id, graph):
     num_args = len([None for ob in [o1, o2] if ob is not None])
