@@ -66,10 +66,10 @@ class GraphHelper():
             selected_action = actions[0]
 
             # batch x object_class
-            mask_object_class = torch.LongTensor(self.obj2_affordance[None, :][:, selected_action, :] == 1).unsqueeze(1)
+            mask_object_class = torch.Tensor(self.obj2_affordance[None, :][:, selected_action, :] == 1).unsqueeze(1).to(object_classes.device)
 
             # batch x nodes x object_class
-            one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_()
+            one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_().to(object_classes.device)
             target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
 
             # the first node is the character
