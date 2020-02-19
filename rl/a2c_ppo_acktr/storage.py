@@ -16,7 +16,7 @@ class RolloutStorage(object):
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
-        self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
+        self.action_log_probs = [torch.zeros(num_steps, num_processes, 1) for _ in range(len(action_space))]
 
 
         action_shape = []
@@ -61,7 +61,7 @@ class RolloutStorage(object):
             self.obs[type_ob_id][self.step + 1].copy_(obs[type_ob_id])
         self.recurrent_hidden_states[self.step +
                                      1].copy_(recurrent_hidden_states)
-
+        
         for type_action_id in range(len(self.actions)):
             self.actions[type_action_id][self.step].copy_(actions[type_action_id])
             self.action_log_probs[type_action_id][self.step].copy_(action_log_probs[type_action_id])

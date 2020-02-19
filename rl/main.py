@@ -167,6 +167,7 @@ def main():
                     [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step])
 
+
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             # obs: tensor, [1, 4, 84, 84],  |       [2, 4, 84, 84]
