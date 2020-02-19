@@ -32,7 +32,7 @@ import utils_rl_agent
 logger = logging.getLogger("mlagents_envs")
 
 class UnityEnvWrapper:
-    def __init__(self, env_id, env_copy_id, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
+    def __init__(self, env_id, env_copy_id, init_graph=None, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
         atexit.register(self.close)
         self.port_number = base_port + env_copy_id 
         print(self.port_number)
@@ -58,6 +58,8 @@ class UnityEnvWrapper:
         
 
         self.comm.reset(env_id)
+        if init_graph is not None:
+            self.comm.expand_scene(init_graph)
         # Assumption, over initializing the env wrapper, we only use one enviroment id
         # TODO: make sure this is true
         self.offset_cameras = self.comm.camera_count()[1]
@@ -65,7 +67,7 @@ class UnityEnvWrapper:
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
 
-        _, graph = self.comm.environment_graph()
+        graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
         #comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
@@ -75,8 +77,6 @@ class UnityEnvWrapper:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
             else:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
-
-        self.get_graph()
         #self.test_prep()
    
     def returncode_to_signal_name(returncode: int):
@@ -326,6 +326,7 @@ class UnityEnv:
                  seed=0, 
                  env_id=0, 
                  env_copy_id=0, 
+                 init_graph=None,
                  observation_type='coords', 
                  max_episode_length=100,
                  enable_alice=True):
@@ -337,7 +338,7 @@ class UnityEnv:
         self.env_id = env_id
         self.max_episode_length = max_episode_length
 
-        self.unity_simulator = UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)    
+        self.unity_simulator = UnityEnvWrapper(int(env_id), int(env_copy_id), init_graph=init_graph, num_agents=self.num_agents)    
         self.agent_ids =  self.unity_simulator.agent_ids()
         self.agents = {}
 
