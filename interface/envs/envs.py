@@ -44,8 +44,6 @@ class UnityEnvWrapper:
         print('Checking connection')
         self.comm.check_connection()
 
-
-        
         self.num_agents = num_agents
         self.graph = None
         self.recording = False
@@ -53,6 +51,7 @@ class UnityEnvWrapper:
         self.num_camera_per_agent = 6
         self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
         
+
         self.comm.reset(env_id)
 # Assumption, over initializing the env wrapper, we only use one enviroment id
         # TODO: make sure this is true
@@ -60,7 +59,7 @@ class UnityEnvWrapper:
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
         self.offset_cameras = self.comm.camera_count()[1]
-        characters = ['Chars/Male1', 'Chars/Female1']
+        characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
         #comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
@@ -413,7 +412,14 @@ class UnityEnv:
 
 
     def reward(self):
-        satisfied, unsatisfied = self.unity_simulator.check_progress(self.unity_simulator.get_graph(), goal_spec)
+        '''
+        goal format:
+        {predicate: number}
+        predicate format:
+            on_objclass_id
+            inside_objclass_id 
+        '''
+        satisfied, unsatisfied = self.unity_simulator.check_progress(self.unity_simulator.get_graph(), self.goal_spec)
         count = 0
         done = True
         for key, value in satisfied.items():
@@ -475,6 +481,24 @@ class UnityEnv:
         self.num_steps = 0
         return obs
 
+    def reset_alice(self, graph=None, task_goal=None):
+        # reset system agent
+        # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+        if graph is None:
+            self.unity_simulator.comm.fast_reset(self.env_id)
+        # #self.unity_simulator.comm.add_character()
+        # #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
+        
+        if task_goal is not None:
+            self.goal_spec = task_goal[self.system_agent_id]
+            self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        self.prev_dist = self.get_distance()
+        # obs = self.get_observations()[0]
+        obs = None
+        self.num_steps = 0
+        return obs
+
     def obtain_actions(self, graph):
         actions = ['turnleft', 'walkforward', 'turnright', 'walktowards', 'open', 'close', 'putback', 'putin', 'grab'] 
         objects = [(None, None)] + self.unity_simulator.rooms + [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
@@ -505,6 +529,43 @@ class UnityEnv:
         self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
+        reward, info = self.compute_toy_reward()  
+        # reward, done = self.reward()
+        reward = torch.Tensor([reward])
+        done = info['done']
+        if self.num_steps >= self.max_episode_length:
+            done = True
+        done = np.array([done])
+        infos = {}
+        #if done:
+        #    obs = self.reset()
+        return obs, reward, done, infos
+
+    def step_alice(self):
+        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+        # _, current_graph = self.unity_simulator.comm.environment_graph()
+        # actions, objects1, objects2 = self.obtain_actions(current_graph)
+        # if len(actions) < self.num_actions:
+        #     actions = actions + [None] * (self.num_actions - len(actions))
+
+        # if len(objects1) < self.num_objects:
+        #     objects1 = objects1 + [None] * (self.num_objects - len(objects1))
+
+        # if len(objects2) < self.num_objects:
+        #     objects2 = objects2 + [None] * (self.num_objects - len(objects2))
+        # pdb.set_trace()
+        # action = actions[my_agent_action[0][0]]
+        # (o1, o1_id) = objects1[my_agent_action[1][0]]
+        # (o2, o2_id) = objects2[my_agent_action[2][0]]
+        
+        # #action_str = actions[my_agent_action]
+        # obj1_str = '' if o1 is None else '<o1> (o1_id)' 
+        # obj2_str = '' if o1 is None else '<o2> (o2_id)' 
+        # action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
+        # self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
+        self.num_steps += 1
+        # obs, _ = self.get_observations()
+        obs = None
         # reward, info = self.compute_toy_reward()  
         reward, done = self.reward()
         reward = torch.Tensor([reward])

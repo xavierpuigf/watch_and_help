@@ -494,6 +494,7 @@ class MCTS_agent:
         # graph = self.unity_env.inside_not_trans(graph)
         all_agent_id = self.unity_env.get_all_agent_id()
         ## --------------------------------------------------------
+        num_agents = 1 if single_agent else 2
 
         if not single_agent:
             self.reset(graph, task_goal, seed=self.agent_id)
@@ -523,7 +524,7 @@ class MCTS_agent:
 
             num_steps += 1
             id2node = {node['id']: node for node in graph['nodes']}
-            for agent_id in range(2):
+            for agent_id in range(num_agents):
                 saved_info['init_pos'][agent_id] = id2node[all_agent_id[agent_id]]['bounding_box']['center']
             
             ##### We won't need this once the character location is working well ####
@@ -619,7 +620,7 @@ class MCTS_agent:
                 with open('../logs/logs_agent.json', 'w+') as f:
                     f.write(json.dumps(saved_info, indent=4))
 
-            obs, reward, done, infos = self.unity_env.step(action_dict)
+            obs, reward, done, infos = self.unity_env.step_alice()
             if done[0]: # ended
                 break
 
