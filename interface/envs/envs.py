@@ -1,7 +1,12 @@
 import numpy as np
+import networkx as nx
+
 import cv2
 from PIL import ImageFont, ImageDraw, Image
+import matplotlib
+matplotlib.use('Agg')
 
+import matplotlib.pyplot as plt
 import time
 import logging
 import atexit
@@ -391,6 +396,7 @@ class UnityEnv:
         self.prev_dist = None
 
         self.micro_id = -1
+        self.last_action = ''
 
     def seed(self, seed):
         pass
@@ -441,17 +447,34 @@ class UnityEnv:
         dist = np.linalg.norm(np.array(char_node) - np.array(micro_node), norm)
         return dist
 
+
     def render(self, mode='human'):
-        obs, img = self.get_observations(mode='normal', image_width=256, image_height=256)
-        im_pil = Image.fromarray(img)
+        image_width = 500
+        image_height = 500
+        obs, img = self.get_observations(mode='normal', image_width=image_width, image_height=image_height, drawing=True)
+        
+        fig = plt.figure()
+        graph_viz = img[1][0].to_networkx()
+        nx.draw(graph_viz, with_labels=True, labels=img[1][1])
+        plt.show()
+        fig.canvas.draw()
+        image_from_plot = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        plt.close()
+        img_graph = cv2.resize(image_from_plot, (image_width, image_height))
+        # canvas.tostring_argb give pixmap in ARGB mode. Roll the ALPHA channel to have it in RGBA mode
+        im_pil = Image.fromarray(img[0])
         draw = ImageDraw.Draw(im_pil)
         # Choose a font
-        font = ImageFont.truetype("Roboto-Regular.ttf", 20)
+        font = ImageFont.truetype("Roboto-Regular.ttf", 30)
         reward, info = self.compute_toy_reward()
 
         # Draw the text
-        draw.text((0, 0), "dist: {:.3f}".format(info['reward']), font=font)
+        draw.text((0, 0), "dist: {:.3f}".format(info['dist']), font=font)
+        draw.text((0, 60), "dist: {:.3f}".format(info['reward']), font=font)
+        draw.text((0, 90), "last action: {}".format(self.last_action), font=font)
         img = cv2.cvtColor(np.array(im_pil), cv2.COLOR_RGB2BGR)
+        img = np.concatenate([img, img_graph], 1)
 
 
         distance = info['dist']
@@ -531,7 +554,7 @@ class UnityEnv:
         action_str = f'<char1> [{action}] {obj1_str} {obj2_str}'.strip()
         
         if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
-            print(action_str)
+            self.last_action = action_str
             self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
@@ -686,7 +709,7 @@ class UnityEnv:
         graph['edges'] = edges_inside + other_edges
         return graph
    
-    def get_observations(self, mode='seg_class', image_width=None, image_height=None):
+    def get_observations(self, mode='seg_class', image_width=None, image_height=None, drawing=False):
         if image_height is None:
             image_height = self.image_height
         if image_width is None:
@@ -707,10 +730,11 @@ class UnityEnv:
         position_objects = torch.Tensor(position_objects_tensor)[None, :]
         mask = torch.Tensor(mask)[None, :]
     
-        graph_inputs = list(self.graph_helper.build_graph(graph, visible_objects))
+        graph_inputs, graph_viz = self.graph_helper.build_graph(graph, visible_objects, plot_graph=drawing)
+        graph_inputs = list(graph_inputs)
         #rel_coords = torch.Tensor(position_objects)[None, :]
         current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]
-        return current_obs, images[0]
+        return current_obs, (images[0], graph_viz)
 
     def print_action(self, system_agent_action, my_agent_action):
         self.actions['system_agent'].append(system_agent_action)
