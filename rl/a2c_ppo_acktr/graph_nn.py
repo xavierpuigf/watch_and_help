@@ -62,9 +62,8 @@ class RGCNLayer(nn.Module):
         else:
             def message_func(edges):
                 w = weight[edges.data['rel_type']]
-                print(w.shape, edges.src['h'].shape)
+
                 msg = torch.bmm(edges.src['h'].unsqueeze(1), w).squeeze()
-                print(msg.shape, edges.data['norm'].shape)
                 msg = msg * edges.data['norm']
                 return {'msg': msg}
 

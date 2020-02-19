@@ -170,7 +170,6 @@ def main():
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-            pdb.set_trace()
             # obs: tensor, [1, 4, 84, 84],  |       [2, 4, 84, 84]
             # reward: tensor, [1, 1]        |       [2, 1]
             # done: array, array([False])   |       array([False, False])
@@ -189,7 +188,6 @@ def main():
             bad_masks = torch.FloatTensor(
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
-            pdb.set_trace()
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
         with torch.no_grad():

@@ -60,7 +60,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
-            env = UnityEnv(num_agents=1, env_copy_id=rank, seed=rank)
+            env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank)
         else:
             env = gym.make(env_id)
 
