@@ -54,15 +54,16 @@ class UnityEnvWrapper:
         self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
         
         self.comm.reset(env_id)
-# Assumption, over initializing the env wrapper, we only use one enviroment id
+        # Assumption, over initializing the env wrapper, we only use one enviroment id
         # TODO: make sure this is true
-        _, graph = self.comm.environment_graph()
-        self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
-        self.id2node = {node['id']: node for node in graph['nodes']}
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Male1', 'Chars/Female1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
+
+        _, graph = self.comm.environment_graph()
+        self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
+        self.id2node = {node['id']: node for node in graph['nodes']}
         #comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
         #comm.render_script(['<char1> [walk] <bathroom> (11)'], camera_mode=False, gen_vid=False)  
         if self.follow:
@@ -424,7 +425,10 @@ class UnityEnv:
 
     def obtain_actions(self, graph):
         actions = ['turnleft', 'walkforward', 'turnright', 'walktowards', 'open', 'close', 'putback', 'putin', 'grab'] 
-        objects = [(None, None)] + self.unity_simulator.rooms + [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
+        objects = [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
+        objects = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms'] + objects
+        char_id = self.my_agent_id
+        objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
         objects2 = objects
         return actions, objects, objects2
 
@@ -447,11 +451,11 @@ class UnityEnv:
         
         #action_str = actions[my_agent_action]
         obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
-        obj2_str = '' if o1 is None else f'<{o2}> ({o2_id})' 
+        obj2_str = '' if o2 is None else f'<{o2}> ({o2_id})' 
         action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
         
-        num_args = sum([len(ob_str) > 1 for ob_str in [obj1_str, obj2_str]])
-        if num_args == utils_rl_agent.args_per_action(action):
+        if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
+            print(action_str)
             self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()

@@ -38,7 +38,7 @@ class GraphHelper():
         return one_hot
 
     def build_graph(self, graph, ids):
-        ids += [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms']
+        ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
 
         # Character is always the first one
         ids = [node['id'] for node in graph['nodes'] if node['class_name'] == 'character'] + ids
@@ -82,6 +82,16 @@ class GraphHelper():
         return (all_class_names, all_node_states, 
                 all_edge_ids, all_edge_types, mask_nodes, mask_edges)
 
+def can_perform_action(action, o1, o2, agent_id, graph):
+    num_args = len([None for ob in [o1, o2] if ob is not None])
+    grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
+    if num_args != args_per_action(action):
+        return False
+    if 'put' in action:
+        if o1 not in grabbed_objects:
+            return False
+
+    return True
 
 def args_per_action(action):
 
