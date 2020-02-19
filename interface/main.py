@@ -74,7 +74,7 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         
-        num_agents = 1
+        num_agents = 2
         # data = pickle.load(open(args.dataset_path, 'rb'))
         # for problem_setup in data:
         #     env_id = problem_setup['apartment']
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         #     goal = problem_setup['goal'][task_name]
         #     if task_name == 'setup_table':
         #         break
-        unity_env = UnityEnv(env_id=1,
+        unity_env = UnityEnv(env_id=0,
                              num_agents=num_agents, 
                              max_episode_length=100)
         
@@ -97,15 +97,17 @@ if __name__ == '__main__':
         ## Preparing the goal
         ## ------------------------------------------------------------------------------
         graph = unity_env.get_graph()
-        # # glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
-        # # # print(glasses_id)
+        # glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
+        # print(glasses_id)
         # # # print([edge for edge in graph['edges'] if edge['from_id'] in glasses_id])
         table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
         print(table_id)
         # # goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
         # goals = {'on_{}_{}'.format('wineglass', table_id): 2}
-        task_name = 'clean_table'
-        goal = {task_name: [{'take_plate_off_{}'.format(table_id): 2}]}
+        # task_name = 'clean_table'
+        task_name = 'setup_table'
+        # goal = {task_name: [{'take_plate_off_{}'.format(table_id): 2}]}
+        goal = {task_name: [{'put_wineglass_on_{}'.format(table_id): 2}]}
         goals = convert_goal_spec(task_name, goal[task_name], graph)
 
         # # # put dishes into the dish washer

@@ -569,10 +569,11 @@ class MCTS_agent:
             saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
             print('Alice action:', system_agent_action)
 
+            action_dict = {}
+            if system_agent_action is not None:
+                action_dict[0] = system_agent_action
             if single_agent:
                 my_agent_action = None
-                action_dict = {0: system_agent_action}
-
             else:
                 observations = self.env.get_observations(char_index=1)
                 self.sample_belief(observations)
@@ -585,9 +586,9 @@ class MCTS_agent:
 
                 if my_agent_action is None:
                     print("system my action is None! DONE!")
-                    pdb.set_trace()
-
-                action_dict = {0: system_agent_action, 1: my_agent_action}
+                    # ipdb.set_trace()
+                else:
+                    action_dict[1] = my_agent_action
                 
                 print(my_agent_info['plan'][:3])
 
@@ -609,7 +610,10 @@ class MCTS_agent:
                 for it, agent_id in enumerate(all_agent_id):
                     
                     last_walk_room[it] = False
-                    action = action_dict[it]
+                    if it in action_dict:
+                        action = action_dict[it]
+                    else:
+                        action = None
                     if 'walk' in action:
                         walk_id = int(action.split('(')[1][:-1])
                         if id2node[walk_id]['category'] == 'Rooms':

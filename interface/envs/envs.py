@@ -257,7 +257,8 @@ class UnityEnvWrapper:
         script_list = ['']
         for agent_id in agent_do:
             script = actions[agent_id]
-            current_script = ['<char{}> {}'.format(agent_id, script)]
+
+            current_script = ['<char{}> {}'.format(agent_id, script)] if script is not None else None
             
 
             script_list = [x+ '|' +y if len(x) > 0 else y for x,y in zip (script_list, current_script)]
