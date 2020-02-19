@@ -333,10 +333,10 @@ class UnityEnv:
         self.agent_ids =  self.unity_simulator.agent_ids()
         self.agents = {}
 
-
         self.system_agent_id = self.agent_ids[0]
-        last_actions = [None] * self.num_agents
-        last_subgoals = [None] * self.num_agents
+        self.last_actions = [None] * self.num_agents
+        self.last_subgoals = [None] * self.num_agents
+        self.task_goal, self.goal_spec = {0: {}, 1: {}}, {}
 
         if self.num_agents>1:
             self.my_agent_id = self.agent_ids[1]
@@ -478,6 +478,7 @@ class UnityEnv:
         
         if task_goal is not None:
             self.goal_spec = task_goal[self.system_agent_id]
+            self.task_goal = task_goal
             self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         obs = self.get_observations()[0]
@@ -495,6 +496,7 @@ class UnityEnv:
         
         if task_goal is not None:
             self.goal_spec = task_goal[self.system_agent_id]
+            self.task_goal = task_goal
             self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         # obs = self.get_observations()[0]
@@ -510,7 +512,6 @@ class UnityEnv:
         objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
         objects2 = objects
         return actions, objects, objects2
-
 
     def get_action_command(self, my_agent_action):
         if my_agent_action is None:
@@ -539,58 +540,79 @@ class UnityEnv:
         else:
             return None
 
-    def step(self, my_agent_action):
-        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
-        action_dict = {}
-        action_str = self.get_action_command(my_agent_action)
-        if action_str is not None:
-            print(action_str)
-            action_dict[1] = action_str
-        self.unity_simulator.execute(action_dict)
-        self.num_steps += 1
-        obs, _ = self.get_observations()
-        reward, info = self.compute_toy_reward()  
-        # reward, done = self.reward()
-        reward = torch.Tensor([reward])
-        done = info['done']
-        if self.num_steps >= self.max_episode_length:
-            done = True
-        done = np.array([done])
-        infos = {}
-        #if done:
-        #    obs = self.reset()
-        return obs, reward, done, infos
-
-
-    def step_with_system_agent(self, my_agent_action):
+    def step(self, my_agent_action, enable_alice=True):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
         action_dict = {}
         # system agent action
-        system_agent_action, system_agent_info = self.get_system_agent_action(task_goal, self.last_actions[0], self.last_subgoals[0])
-        self.last_actions[0] = system_agent_action
-        self.last_subgoals[0] = system_agent_info['subgoals'][0]
-        if system_agent_action is not None:
-            action_dict[0] = system_agent_action
+        if enable_alice:
+            graph = self.get_graph()
+            # pdb.set_trace()
+            if self.num_steps == 0:
+                graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+            self.env.reset(graph , self.task_goal)
+            system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
+            self.last_actions[0] = system_agent_action
+            self.last_subgoals[0] = system_agent_info['subgoals'][0]
+            if system_agent_action is not None:
+                action_dict[0] = system_agent_action
         # user agent action
         action_str = self.get_action_command(my_agent_action)
         if action_str is not None:
             print(action_str)
             action_dict[1] = action_str
-
-        self.unity_simulator.execute(action_dict)
+        dict_results = self.unity_simulator.execute(action_dict)
         self.num_steps += 1
         obs, _ = self.get_observations()
-        reward, info = self.compute_toy_reward()  
+        reward,  = self.compute_toy_reward()  
         # reward, done = self.reward()
         reward = torch.Tensor([reward])
         done = info['done']
         if self.num_steps >= self.max_episode_length:
             done = True
         done = np.array([done])
-        infos = {}
+        # infos = {}
         #if done:
         #    obs = self.reset()
-        return obs, reward, done, infos
+        return obs, reward, done, dict_results
+
+
+    def step_with_system_agent_oracle(self, my_agent_action):
+        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+        action_dict = {}
+        # system agent action
+        graph = self.get_graph()
+        # pdb.set_trace()
+        if self.num_steps == 0:
+            graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+        self.env.reset(graph , self.task_goal)
+        system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
+        self.last_actions[0] = system_agent_action
+        self.last_subgoals[0] = system_agent_info['subgoals'][0]
+        if system_agent_action is not None:
+            action_dict[0] = system_agent_action
+        system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
+        self.last_actions[0] = system_agent_action
+        self.last_subgoals[0] = system_agent_info['subgoals'][0]
+        if system_agent_action is not None:
+            action_dict[0] = system_agent_action
+        # user agent action
+        action_str = my_agent_action
+        if action_str is not None:
+            print(action_str)
+            action_dict[1] = action_str
+
+        dict_results = self.unity_simulator.execute(action_dict)
+        self.num_steps += 1
+        obs = None
+        reward, done = self.reward()
+        reward = torch.Tensor([reward])
+        if self.num_steps >= self.max_episode_length:
+            done = True
+        done = np.array([done])
+        # infos = {}
+        #if done:
+        #    obs = self.reset()
+        return obs, reward, done, dict_results
 
     def step_alice(self):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']

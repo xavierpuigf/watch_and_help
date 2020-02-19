@@ -74,7 +74,7 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         
-        num_agents = 2
+        num_agents = 1
         # data = pickle.load(open(args.dataset_path, 'rb'))
         # for problem_setup in data:
         #     env_id = problem_setup['apartment']
@@ -136,7 +136,7 @@ if __name__ == '__main__':
         for i in range(2):
             task_goal[i] = goals
 
-        ## reset unity environment based on tthe goal
+        ## reset unity environment based on the goal
         unity_env.reset_alice(graph, task_goal)
 
 

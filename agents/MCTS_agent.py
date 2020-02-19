@@ -597,10 +597,11 @@ class MCTS_agent:
                 saved_info['subgoal'][1].append(my_agent_info['subgoals'][:2])
             ## --------------------------------------------------------
             #self.unity_env.print_action(system_agent_action, my_agent_action)
-            dict_results = self.unity_env.unity_simulator.execute(action_dict)
+            # dict_results = self.unity_env.unity_simulator.execute(action_dict)
+            obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
             ## --------------------------------------------------------
 
-            for char_id, (success, message) in dict_results.items():
+            for char_id, (success, message) in infos.items():
                 if not success:
                     print(char_id, message)
 
@@ -621,10 +622,10 @@ class MCTS_agent:
                             last_walk_room[it] = True
 
 
-                with open('../logs/logs_agent.json', 'w+') as f:
-                    f.write(json.dumps(saved_info, indent=4))
+            with open('../logs/logs_agent.json', 'w+') as f:
+                f.write(json.dumps(saved_info, indent=4))
 
-            obs, reward, done, infos = self.unity_env.step_alice()
+            # obs, reward, done, infos = self.unity_env.step_alice()
             if done[0]: # ended
                 break
 
