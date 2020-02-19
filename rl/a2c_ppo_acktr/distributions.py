@@ -62,10 +62,10 @@ class DotProdCategorical(nn.Module):
         super(DotProdCategorical, self).__init__()
 
 
-    def forward(self, x):
+    def forward(self, x, y):
         # n x dim
-        x0 = x[:, :1, :]
-        logs = torch.bmm(x0, x[:, 1:, :].transpose(1,2))[:, 0, :]
+        x0  = x.unsqueeze(1)
+        logs = torch.bmm(x0, y[:, 1:, :].transpose(1,2))[:, 0, :]
         
         return FixedCategorical(logs)
 

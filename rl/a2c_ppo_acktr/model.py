@@ -73,15 +73,22 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        outputs = self.base(inputs, rnn_hxs, masks)
+        if len(outputs) == 3:
+            value, actor_features, rnn_hxs = outputs
+            summary_node = actor_features
+        else:
+            value, summary_nodes, actor_features, rnn_hxs = outputs
+        pdb.set_trace()
         mask_observations = inputs[-1]
         actions = []
         actions_log_probs = []
         for i, distr in enumerate(self.dist):
             if i == 0:
-                dist = distr(actor_features[:, 0, :])
+                dist = distr(summary_nodes)
             else:
-                dist = distr(actor_features)
+                dist = distr(summary_nodes, actor_features)
+
             if deterministic:
                 action = dist.mode()
             else:
@@ -212,7 +219,7 @@ class GraphBase(NNBase):
                                constant_(x, 0), nn.init.calculate_gain('relu'))
 
         self.main = GraphEncoder(hidden_size)
-        self.critic_linear = init_(nn.Linear(hidden_size, 2))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -220,8 +227,8 @@ class GraphBase(NNBase):
         x = self.main(inputs[1:7])
         char_node = x[:, 0]
         if self.is_recurrent:
-            _, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
-        return self.critic_linear(x), x, rnn_hxs
+            char_node, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
+        return self.critic_linear(char_node), char_node, x, rnn_hxs
 
 
 class CNNBaseResnetDist(NNBase):

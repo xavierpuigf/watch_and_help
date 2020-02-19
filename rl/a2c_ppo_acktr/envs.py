@@ -210,15 +210,15 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
-        
+        new_action_list = [] 
         for i, action in enumerate(actions):
             action = action.cpu()
             if isinstance(action, torch.LongTensor):
                 # Squeeze the dimension for discrete actions
                 action = action.squeeze(1)
             action = action.numpy()
-            actions[i] = action
-        self.venv.step_async(actions)
+            new_action_list.append(action)
+        self.venv.step_async(new_action_list)
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
