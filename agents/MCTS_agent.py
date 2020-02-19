@@ -614,7 +614,7 @@ class MCTS_agent:
                         action = action_dict[it]
                     else:
                         action = None
-                    if 'walk' in action:
+                    if action is not None and 'walk' in action:
                         walk_id = int(action.split('(')[1][:-1])
                         if id2node[walk_id]['category'] == 'Rooms':
                             last_position[it] = walk_id
