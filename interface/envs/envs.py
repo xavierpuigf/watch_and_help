@@ -278,14 +278,56 @@ class UnityEnvWrapper:
         return result
 
 
+    def check_progress(self, state, goal_spec):
+        """TODO: add more predicate checkers; currently only ON"""
+        unsatisfied = {}
+        satisfied = {}
+        id2node = {node['id']: node for node in state['nodes']}
+        for key, value in goal_spec.items():
+            elements = key.split('_')
+            unsatisfied[key] = value if elements[0] in ['on', 'inside'] else 0
+            satisfied[key] = [None] * 2
+            satisfied[key]
+            satisfied[key] = []
+            for edge in state['edges']:
+                if elements[0] in ['on', 'inside']:
+                    if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                        satisfied[key].append(predicate)
+                        unsatisfied[key] -= 1
+                elif elements[0] == 'offOn':
+                    if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                        unsatisfied[key] += 1
+                elif elements[1] == 'offIn':
+                    if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                        unsatisfied[key] += 1
+        return satisfied, unsatisfied
+
+    def is_terminal(self, goal_spec):
+        _, unsatisfied = self.check_progress(self.graph, goal_spec)
+        for predicate, count in unsatisfied.items():
+            if count > 0:
+                return False
+        return True
+
+
 
 
 class UnityEnv:
-    def __init__(self, num_agents=2, seed=0, env_id=0, env_copy_id=0, observation_type='coords'):
+    def __init__(self, 
+                 num_agents=2, 
+                 seed=0, 
+                 env_id=0, 
+                 env_copy_id=0, 
+                 observation_type='coords', 
+                 max_episode_length=100):
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
         self.env_id = env_id
+        self.max_episode_length = max_episode_length
 
         self.unity_simulator = UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)    
         self.agent_ids =  self.unity_simulator.agent_ids()
@@ -368,6 +410,17 @@ class UnityEnv:
             reward += 10
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, info
+
+
+    def reward(self):
+        satisfied, unsatisfied = self.unity_simulator.check_progress(self.unity_simulator.get_graph(), goal_spec)
+        count = 0
+        done = True
+        for key, value in satisfied.items():
+            count += len(value)
+            if unsatisfied[key] > 0:
+                done = False
+        return count, done
     
 
     def get_distance(self, norm=None):
@@ -428,7 +481,6 @@ class UnityEnv:
         objects2 = objects
         return actions, objects, objects2
 
-
     def step(self, my_agent_action):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
         _, current_graph = self.unity_simulator.comm.environment_graph()
@@ -453,10 +505,11 @@ class UnityEnv:
         self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
-        reward, info = self.compute_toy_reward() 
+        # reward, info = self.compute_toy_reward()  
+        reward, done = self.reward()
         reward = torch.Tensor([reward])
-        done = info['done']
-        if self.num_steps > 40:
+        # done = info['done']
+        if self.num_steps >= self.max_episode_length:
             done = True
         done = np.array([done])
         infos = {}
