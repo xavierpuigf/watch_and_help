@@ -21,6 +21,63 @@ class GraphHelper():
         self.num_classes = len(self.object_dict)
         self.num_states = len(self.state_dict)
 
+        self.actions = ['no_action',
+                        'turnleft',
+                        'walkforward',
+                        'turnright',
+                        'walktowards',
+                        'open',
+                        'close',
+                        'putback',
+                        'putin',
+                        'grab']
+        
+        self.obj1_affordance = None
+        self.obj2_affordance = None
+        self.get_action_affordance_map()
+
+    def get_action_affordance_map(self):
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        with open(f'{dir_path}/dataset/object_info.json', 'r') as f:
+            content = json.load(f)
+        
+        n_actions = len(self.actions)
+        n_objects = len(self.object_dict)
+        self.obj1_affordance = np.zeros((n_actions, n_objects))
+        self.obj2_affordance = np.zeros((n_actions, n_objects))
+
+        id_no_obj = self.object_dict.get_id('no_obj')
+        id_grab = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_grab']) 
+        id_surface = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_surface']) 
+        id_containers = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_inside']) 
+        
+        for action in ['no_action', 'turnleft', 'walkforward', 'turnright']:
+            action_id = self.action_dict.get_id(action)
+            self.obj1_affordance[action_id, id_no_obj] = 1
+            self.obj2_affordance[action_id, id_no_obj] = 1
+
+        for action in ['walktowards', 'open', 'close', 'grab']:
+            action_id = self.action_dict.get_id(action)
+            self.obj2_affordance[action_id, id_no_obj] = 1
+            if action in ['open', 'close']:
+                self.obj1_affordance[action_id, id_containers] = 1
+            if action in ['grab']:
+                self.obj1_affordance[action_id, id_grab] = 1
+            if action in ['walktowards']:
+                self.obj1_affordance[action_id, :] = 1
+                self.obj1_affordance[action_id,id_no_obj] = 0
+                
+        for action in ['putback', 'putin']:
+            self.obj1_affordance[action_id, id_grab] = 1
+            id2 = id_containers if action == 'putin' else id_surface
+            self.obj1_affordance[action_id, id2] = 1
+
+
+
+
+
+
+
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 

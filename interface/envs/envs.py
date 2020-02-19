@@ -201,7 +201,7 @@ class UnityEnvWrapper:
         return pixelcoords[:2, :]
 
     def get_visible_objects(self):
-        camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
+        camera_ids = [[self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)][1]]
         object_ids = [int(idi) for idi in self.comm.get_visible_objects(camera_ids)[1].keys()]
         _, cam_data = self.comm.camera_data(camera_ids)
         _, graph = self.comm.environment_graph()
@@ -211,7 +211,7 @@ class UnityEnvWrapper:
         return object_ids, obj_pos
 
     def get_observations(self, mode='normal', image_width=128, image_height=128):
-        camera_ids = [self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)]
+        camera_ids = [[self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)][1]]
         s, images = self.comm.camera_image(camera_ids, mode=mode, image_width=image_width, image_height=image_height)
         #images = [image[:,:,::-1] for image in images]
         return images
@@ -561,6 +561,8 @@ class UnityEnv:
         obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
         obj2_str = '' if o2 is None else f'<{o2}> ({o2_id})' 
         action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
+
+        print(action_str)
         
         if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
             return action_str
