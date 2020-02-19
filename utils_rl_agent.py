@@ -39,7 +39,9 @@ class GraphHelper():
 
     def build_graph(self, graph, ids):
         ids += [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms']
-        ids += [node['id'] for node in graph['nodes'] if node['class_name'] == 'character']
+
+        # Character is always the first one
+        ids = [node['id'] for node in graph['nodes'] if node['class_name'] == 'character'] + ids
         max_nodes = self.num_objects
         max_edges = self.num_edges
         edges = [edge for edge in graph['edges'] if edge['from_id'] in ids and edge['to_id'] in ids]
@@ -80,6 +82,19 @@ class GraphHelper():
         return (all_class_names, all_node_states, 
                 all_edge_ids, all_edge_types, mask_nodes, mask_edges)
 
+
+def args_per_action(action):
+
+    action_dict = {'turnleft': 0,
+    'walkforward': 0,
+    'turnright': 0,
+    'walktowards': 0,
+    'open': 1,
+    'close': 1,
+    'putback':2,
+    'putin': 2,
+    'grab': 1}
+    return action_dict[action]
 
 class GraphSpace(spaces.Space):
     def __init__(self):

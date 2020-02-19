@@ -436,16 +436,18 @@ class UnityEnv:
 
         if len(objects2) < self.num_objects:
             objects2 = objects2 + [None] * (self.num_objects - len(objects2))
-        pdb.set_trace()
         action = actions[my_agent_action[0][0]]
         (o1, o1_id) = objects1[my_agent_action[1][0]]
         (o2, o2_id) = objects2[my_agent_action[2][0]]
         
         #action_str = actions[my_agent_action]
-        obj1_str = '' if o1 is None else '<o1> (o1_id)' 
-        obj2_str = '' if o1 is None else '<o2> (o2_id)' 
+        obj1_str = '' if o1 is None else f'<{o1}> ({o1_id})' 
+        obj2_str = '' if o1 is None else f'<{o2}> ({o2_id})' 
         action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
-        self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
+        
+        num_args = sum([len(ob_str) > 1 for ob_str in [obj1_str, obj2_str]])
+        if num_args == utils_rl_agent.args_per_action(action):
+            self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
         self.num_steps += 1
         obs, _ = self.get_observations()
         reward, info = self.compute_toy_reward() 
