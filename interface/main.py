@@ -66,7 +66,7 @@ parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--max-episode-length', type=int, default=100, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: unity (default), python')
-parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_20.p', help='Dataset path')
+parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10.p', help='Dataset path')
 
 if __name__ == '__main__':
         args = parser.parse_args()
