@@ -517,8 +517,8 @@ class MCTS_agent:
         while True:
             graph = self.unity_env.get_graph()
             # pdb.set_trace()
-            if num_steps == 0:
-                graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
+            # if num_steps == 0:
+            #     graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
             # graph = self.unity_env.inside_not_trans(graph)
 
 
@@ -545,7 +545,7 @@ class MCTS_agent:
             #         graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
 
 
-            self.unity_env.env.reset(graph , task_goal)
+            # self.unity_env.env.reset(graph, task_goal)
 
             # print([edge for edge in graph['edges'] if edge['relation_type'] == 'CLOSE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
             # print([edge for edge in graph['edges'] if edge['relation_type'] == 'INSIDE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
@@ -597,35 +597,36 @@ class MCTS_agent:
                 saved_info['subgoal'][1].append(my_agent_info['subgoals'][:2])
             ## --------------------------------------------------------
             #self.unity_env.print_action(system_agent_action, my_agent_action)
-            infos = self.unity_env.unity_simulator.execute(action_dict)
+            # infos = self.unity_env.unity_simulator.execute(action_dict)
+            obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
             # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
             ## --------------------------------------------------------
 
-            for char_id, (success, message) in infos.items():
-                if not success:
-                    print(char_id, message)
+            # for char_id, (success, message) in infos.items():
+            #     if not success:
+            #         print(char_id, message)
 
 
 
-            if success:
-                for it, agent_id in enumerate(all_agent_id):
+            # if success:
+            #     for it, agent_id in enumerate(all_agent_id):
                     
-                    last_walk_room[it] = False
-                    if it in action_dict:
-                        action = action_dict[it]
-                    else:
-                        action = None
-                    if action is not None and 'walk' in action:
-                        walk_id = int(action.split('(')[1][:-1])
-                        if id2node[walk_id]['category'] == 'Rooms':
-                            last_position[it] = walk_id
-                            last_walk_room[it] = True
+            #         last_walk_room[it] = False
+            #         if it in action_dict:
+            #             action = action_dict[it]
+            #         else:
+            #             action = None
+            #         if action is not None and 'walk' in action:
+            #             walk_id = int(action.split('(')[1][:-1])
+            #             if id2node[walk_id]['category'] == 'Rooms':
+            #                 last_position[it] = walk_id
+            #                 last_walk_room[it] = True
 
 
             with open('../logs/logs_agent.json', 'w+') as f:
                 f.write(json.dumps(saved_info, indent=4))
 
-            obs, reward, done, infos = self.unity_env.step_alice()
+            # obs, reward, done, infos = self.unity_env.step_alice()
             if done[0]: # ended
                 break
 

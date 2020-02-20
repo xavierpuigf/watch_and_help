@@ -34,7 +34,7 @@ simulator_type = 'unity' # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
 
 
-def convert_goal_spec(task_name, goal, state):
+def convert_goal_spec(task_name, goal, state, exclude=[]):
     goals = {}
     containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]
     id2node = {node['id']: node for node in state['nodes']}
@@ -42,6 +42,7 @@ def convert_goal_spec(task_name, goal, state):
         key = list(key_count.keys())[0]
         count = key_count[key]
         elements = key.split('_') 
+        if elements[1] in exclude: continue
         if task_name == 'setup_table':
             predicate = 'on_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
@@ -65,8 +66,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--max-episode-length', type=int, default=100, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
-parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: unity (default), python')
+parser.add_argument('--simulator-type', type=str, default='python', help='Simulator type: python (default), unity')
 parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10.p', help='Dataset path')
+
 
 if __name__ == '__main__':
         args = parser.parse_args()
@@ -74,9 +76,9 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         
-        num_agents = 1
+        num_agents = 2
         data = pickle.load(open(args.dataset_path, 'rb'))
-        for problem_setup in data:
+        for problem_setup in data[1:]:
             env_id = problem_setup['apartment']
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
@@ -86,13 +88,20 @@ if __name__ == '__main__':
         unity_env = UnityEnv(env_id=env_id-1,
                              init_graph=init_graph,
                              num_agents=num_agents, 
-                             max_episode_length=100)
+                             max_episode_length=args.max_episode_length,
+                             simulator_type=args.simulator_type)
         
-        goals = convert_goal_spec(task_name, goal, init_graph)
+        goals = convert_goal_spec(task_name, goal, init_graph, 
+                                  exclude=[])
         print('env_id:', env_id)
         print('task_name:', task_name)
         print('goals:', goals)
 
+        task_goal = {}
+        for i in range(2):
+            task_goal[i] = goals
+        unity_env.setup(init_graph, task_goal)
+        unity_env.reset()
 
         ## ------------------------------------------------------------------------------
         ## Preparing the goal
@@ -133,12 +142,12 @@ if __name__ == '__main__':
         #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
         # print('goals:', goals)
 
-        task_goal = {}
-        for i in range(2):
-            task_goal[i] = goals
+        
 
         ## reset unity environment based on the goal
-        unity_env.reset_alice(graph, task_goal)
+        # unity_env.reset_alice(graph, task_goal)
+        # unity_env.setup(graph, task_goal)
+        # unity_env.reset()
 
 
         if num_agents==1:
