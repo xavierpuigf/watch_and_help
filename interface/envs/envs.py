@@ -338,7 +338,6 @@ class UnityEnv:
     def __init__(self, 
                  num_agents=2, 
                  seed=0, 
-                 env_id=0, 
                  env_copy_id=0, 
                  init_graph=None,
                  observation_type='coords', 
@@ -351,7 +350,6 @@ class UnityEnv:
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
-        self.env_id = env_id
         self.env_copy_id = env_copy_id
         self.max_episode_length = max_episode_length
         self.simulator_type = simulator_type
@@ -454,10 +452,13 @@ class UnityEnv:
             satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
         else:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
+        print('reward satisfied:', satisfied)
+        print('reward unsatisfied:', unsatisfied)
+        print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
         for key, value in satisfied.items():
-            count += len(value)
+            count += min(len(value), self.goal_spec[key])
             if unsatisfied[key] > 0:
                 done = False
         return count, done
@@ -522,6 +523,11 @@ class UnityEnv:
         env_task = random.choice(self.env_task_set)
         self.init_graph = env_task['init_graph']
         self.task_goal = env_task['task_goal']
+        self.task_name = env_task['task_name']
+        self.env_id = env_task['env_id']
+        print('env_id:', self.env_id)
+        print('task_name:', self.task_name)
+        print('goals:', self.task_goal[0])
         if self.unity_simulator is None:
             self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
 
@@ -542,7 +548,6 @@ class UnityEnv:
             obs = obs_n[-1]
             self.env.to_pomdp()
         self.goal_spec = self.task_goal[self.system_agent_id]
-        self.task_goal = self.task_goal
         self.agents[self.system_agent_id].reset(self.inside_not_trans(self.unity_simulator.get_graph()), self.task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
@@ -552,12 +557,16 @@ class UnityEnv:
         env_task = random.choice(self.env_task_set)
         self.init_graph = env_task['init_graph']
         self.task_goal = env_task['task_goal']
+        self.task_name = env_task['task_name']
+        self.env_id = env_task['env_id']
+        print('env_id:', self.env_id)
+        print('task_name:', self.task_name)
+        print('goals:', self.task_goal[0])
         if self.unity_simulator is None:
             self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
         self.goal_spec = self.task_goal[self.system_agent_id]
-        self.task_goal = self.task_goal
         self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
@@ -777,7 +786,7 @@ class UnityEnv:
 
         if action is None:
             print("system agent action is None! DONE!")
-            pdb.set_trace()
+            # pdb.set_trace()
         # else:
         #     print(action, info['plan'])
 

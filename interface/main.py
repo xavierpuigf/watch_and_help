@@ -78,102 +78,101 @@ if __name__ == '__main__':
         
         num_agents = 2
         data = pickle.load(open(args.dataset_path, 'rb'))
-        for problem_setup in data[1:]:
-            env_id = problem_setup['apartment']
+        env_task_set = []
+        for problem_setup in data:
+            env_id = problem_setup['apartment'] - 1
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
             goal = problem_setup['goal'][task_name]
-            if task_name == 'setup_table':
-                break
-        
-        goals = convert_goal_spec(task_name, goal, init_graph, 
+            if task_name != 'setup_table':
+                continue
+            goals = convert_goal_spec(task_name, goal, init_graph, 
                                   exclude=[])
-        print('env_id:', env_id)
-        print('task_name:', task_name)
-        print('goals:', goals)
+            # print('env_id:', env_id)
+            # print('task_name:', task_name)
+            # print('goals:', goals)
 
-        task_goal = {}
-        for i in range(2):
-            task_goal[i] = goals
+            task_goal = {}
+            for i in range(2):
+                task_goal[i] = goals
 
-        env_task_set=[{'init_graph': init_graph, 'task_goal': task_goal}]
+            env_task_set.append({'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal})
         # unity_env.setup(init_graph, task_goal)
 
-        unity_env = UnityEnv(env_id=env_id-1,
-                             init_graph=init_graph,
-                             num_agents=num_agents, 
+        unity_env = UnityEnv(num_agents=num_agents, 
                              max_episode_length=args.max_episode_length,
                              simulator_type=args.simulator_type,
                              env_task_set=env_task_set)
-        unity_env.reset()
-
-        ## ------------------------------------------------------------------------------
-        ## Preparing the goal
-        ## ------------------------------------------------------------------------------
-        graph = unity_env.get_graph()
-        # # glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
-        # # print(glasses_id)
-        # # # # print([edge for edge in graph['edges'] if edge['from_id'] in glasses_id])
-        # table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-        # print(table_id)
-        # # # goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
-        # # goals = {'on_{}_{}'.format('wineglass', table_id): 2}
-        # # task_name = 'clean_table'
-        # task_name = 'setup_table'
-        # # goal = {task_name: [{'take_plate_off_{}'.format(table_id): 2}]}
-        # goal = {task_name: [{'put_wineglass_on_{}'.format(table_id): 2}]}
-        # goals = convert_goal_spec(task_name, goal[task_name], graph)
-
-        # # # put dishes into the dish washer
-        # # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'dishwasher'][0]
-        # # obj_class_names = ['plate', 'dishbowl']
-        # # # goals = {}
-        # # for obj_class_name in obj_class_names:
-        # #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
-        # #     if count == 0:
-        # #         continue
-        # #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
-        # # print('goals:', goals)
-
-        # # put food into the fridge
-        # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'fridge'][0]
-        # obj_class_names = ['cupcake']
-        # # goals = {}
-        # for obj_class_name in obj_class_names:
-        #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
-        #     if count == 0:
-        #         continue
-        #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
-        # print('goals:', goals)
-
-        
-
-        ## reset unity environment based on the goal
-        # unity_env.reset_alice(graph, task_goal)
-        # unity_env.setup(graph, task_goal)
-        # unity_env.reset()
-
-
-        if num_agents==1:
-            unity_env.agents[unity_env.system_agent_id].run(graph, task_goal, single_agent=True)
-
-        else:
-            ## ------------------------------------------------------------------------------
-            ## your agent, add your code here
-            ## ------------------------------------------------------------------------------
-            my_agent_id = unity_env.get_my_agent_id()
-            my_agent = MCTS_agent(unity_env=unity_env,
-                                                         agent_id=my_agent_id,
-                                                         char_index=1,
-                                                         max_episode_length=5,
-                                                         num_simulation=100,
-                                                         max_rollout_steps=3,
-                                                         c_init=0.1,
-                                                         c_base=1000000,
-                                                         num_samples=1,
-                                                         num_processes=1)
+        for episode_id in range(10):
+            unity_env.reset()
 
             ## ------------------------------------------------------------------------------
-            ## run your agent
+            ## Preparing the goal
             ## ------------------------------------------------------------------------------
-            my_agent.run(graph, task_goal)
+            graph = unity_env.get_graph()
+            # # glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
+            # # print(glasses_id)
+            # # # # print([edge for edge in graph['edges'] if edge['from_id'] in glasses_id])
+            # table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
+            # print(table_id)
+            # # # goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
+            # # goals = {'on_{}_{}'.format('wineglass', table_id): 2}
+            # # task_name = 'clean_table'
+            # task_name = 'setup_table'
+            # # goal = {task_name: [{'take_plate_off_{}'.format(table_id): 2}]}
+            # goal = {task_name: [{'put_wineglass_on_{}'.format(table_id): 2}]}
+            # goals = convert_goal_spec(task_name, goal[task_name], graph)
+
+            # # # put dishes into the dish washer
+            # # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'dishwasher'][0]
+            # # obj_class_names = ['plate', 'dishbowl']
+            # # # goals = {}
+            # # for obj_class_name in obj_class_names:
+            # #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
+            # #     if count == 0:
+            # #         continue
+            # #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
+            # # print('goals:', goals)
+
+            # # put food into the fridge
+            # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'fridge'][0]
+            # obj_class_names = ['cupcake']
+            # # goals = {}
+            # for obj_class_name in obj_class_names:
+            #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
+            #     if count == 0:
+            #         continue
+            #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
+            # print('goals:', goals)
+
+            
+
+            ## reset unity environment based on the goal
+            # unity_env.reset_alice(graph, task_goal)
+            # unity_env.setup(graph, task_goal)
+            # unity_env.reset()
+
+
+            if num_agents==1:
+                unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
+
+            else:
+                ## ------------------------------------------------------------------------------
+                ## your agent, add your code here
+                ## ------------------------------------------------------------------------------
+                my_agent_id = unity_env.get_my_agent_id()
+                my_agent = MCTS_agent(unity_env=unity_env,
+                                                             agent_id=my_agent_id,
+                                                             char_index=1,
+                                                             max_episode_length=5,
+                                                             num_simulation=100,
+                                                             max_rollout_steps=3,
+                                                             c_init=0.1,
+                                                             c_base=1000000,
+                                                             num_samples=1,
+                                                             num_processes=1)
+
+                ## ------------------------------------------------------------------------------
+                ## run your agent
+                ## ------------------------------------------------------------------------------
+                my_agent.run()

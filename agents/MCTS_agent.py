@@ -282,6 +282,7 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
         init_vh_state = env.vh_state
 
     satisfied, unsatisfied = check_progress(init_state, goal_spec)
+    print('goal_spec:', goal_spec)
     # print('get plan:', init_state)
 
     if env.is_terminal(0, init_state):
@@ -415,7 +416,7 @@ class MCTS_agent:
             s, graph = self.comm.environment_graph()
 
 
-
+        """TODO: do no need this?"""
         self.env.reset(graph, task_goal)
         self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
@@ -489,7 +490,9 @@ class MCTS_agent:
         return history
 
 
-    def run(self, graph, task_goal, single_agent=False):
+    def run(self, single_agent=False):
+        graph = self.env.state
+        task_goal = self.unity_env.task_goal
         ## --------------------------------------------------------
         # graph = self.unity_env.inside_not_trans(graph)
         all_agent_id = self.unity_env.get_all_agent_id()
@@ -561,7 +564,7 @@ class MCTS_agent:
             ## --------------------------------------------------------
 
             last_actions[0] = system_agent_action
-            last_subgoals[0] = system_agent_info['subgoals'][0]
+            last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
 
             print(system_agent_info['plan'][:3])
             saved_info['action'][0].append(system_agent_action)
@@ -578,7 +581,7 @@ class MCTS_agent:
                 observations = self.env.get_observations(char_index=1)
                 self.sample_belief(observations)
                 self.sim_env.reset(self.previous_belief_graph, task_goal)
-                my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], system_agent_info['subgoals'][0])
+                my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
 
                 last_actions[1] = my_agent_action
                 print('bob subgoal:', my_agent_info['subgoals'])
@@ -599,6 +602,7 @@ class MCTS_agent:
             #self.unity_env.print_action(system_agent_action, my_agent_action)
             # infos = self.unity_env.unity_simulator.execute(action_dict)
             obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
+            print('done:', done)
             # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
             ## --------------------------------------------------------
 
