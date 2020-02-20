@@ -54,20 +54,22 @@ from interface.envs.envs import UnityEnv
 
 
 
-def make_env(env_id, seed, rank, log_dir, allow_early_resets):
+def make_env(env_id, simulator_type, seed, rank, log_dir, allow_early_resets):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
+            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10.p', 'rb'))
+            init_graph = data[0]['init_graph']
 
             env_task_set = [{
                 'env_id': 0,
                 'task_name': 'setup_table',
-                'init_graph': None,
+                'init_graph': init_graph,
                 'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
             }]
-            env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set, simulator_type='python')
+            env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set, simulator_type=simulator_type)
         else:
             env = gym.make(env_id)
 
@@ -111,6 +113,7 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
 
 
 def make_vec_envs(env_name,
+                  simulator_type,
                   seed,
                   num_processes,
                   gamma,
@@ -129,7 +132,7 @@ def make_vec_envs(env_name,
     
     else:
         envs = [
-            make_env(env_name, seed, i, log_dir, allow_early_resets)
+            make_env(env_name, simulator_type, seed, i, log_dir, allow_early_resets)
             for i in range(num_processes)
         ]
 

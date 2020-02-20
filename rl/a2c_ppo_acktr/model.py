@@ -75,16 +75,19 @@ class Policy(nn.Module):
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         outputs = self.base(inputs, rnn_hxs, masks)
-        object_classes = inputs[1]
+        if len(inputs) > 6:
+            object_classes = inputs[1]
+            mask_observations = inputs[-5]
+        else:
+            object_classes = inputs[0]
+            mask_observations = inputs[-2]
+
         if len(outputs) == 3:
             value, actor_features, rnn_hxs = outputs
             summary_nodes = actor_features
         else:
             value, summary_nodes, actor_features, rnn_hxs = outputs
-        mask_observations = inputs[-5]
 
-        actions = []
-        actions_log_probs = []
         if len(self.dist) == 3:
             indices = [1, 0, 2] # object1, action, object2
         else:
@@ -249,7 +252,11 @@ class GraphBase(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs[1:7])
+        if len(inputs) > 6:
+            x = self.main(inputs[1:7])
+        else:
+            x = self.main(inputs)
+
         char_node = x[:, 0]
         if self.is_recurrent:
             char_node, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)

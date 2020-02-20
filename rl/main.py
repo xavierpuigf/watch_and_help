@@ -29,6 +29,7 @@ import utils_rl_agent as utils_rl_agent
 
 def main():
     args = get_args()
+    simulator_type = args.simulator_type
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -37,8 +38,8 @@ def main():
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-    experiment_name = 'env.{}/algo{}-gamma{}'.format(
-            args.env_name, args.algo, args.gamma)
+    experiment_name = 'env.{}/algo{}-gamma{}-sim{}'.format(
+            args.env_name, args.algo, args.gamma, args.simulator_type)
     log_dir = os.path.expanduser('{}/{}'.format(args.log_dir, experiment_name))
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
@@ -56,7 +57,7 @@ def main():
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
-    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
+    envs = make_vec_envs(args.env_name, simulator_type, args.seed, args.num_processes,
             args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
 
 
@@ -88,7 +89,7 @@ def main():
     actor_critic = Policy(
         envs.observation_space,
         envs.action_space,
-        agent_helper=utils_rl_agent.GraphHelper(),
+        agent_helper=utils_rl_agent.GraphHelper(simulator_type=simulator_type),
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 

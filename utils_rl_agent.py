@@ -9,23 +9,36 @@ import pdb
 
 
 class GraphHelper():
-    def __init__(self, max_num_objects=100, max_num_edges=200):
+    def __init__(self, max_num_objects=100, max_num_edges=200, simulator_type='unity'):
         self.states = ['on', 'open', 'off', 'closed']
         self.relations = ['inside', 'close', 'facing', 'on']
+        self.simulaor_type = simulator_type
         self.objects = self.get_objects()
         rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
-        self.actions = [
-            'turnleft',
-            'walkforward',
-            'turnright',
-            'walktowards',
-            'open',
-            'close',
-            'putback',
-            'putin',
-            'grab',
-            'no_action'
-        ]
+
+        if simulator_type == 'unity':
+            self.actions = [
+                'turnleft',
+                'walkforward',
+                'turnright',
+                'walktowards',
+                'open',
+                'close',
+                'putback',
+                'putin',
+                'grab',
+                'no_action'
+            ]
+        else:
+            self.actions = [
+                'walk',
+                'open',
+                'close',
+                'putback',
+                'putin',
+                'grab',
+                'no_action'
+            ]
         self.object_dict = DictObjId(self.objects + ['character'] + rooms + ['no_obj'])
         self.relation_dict = DictObjId(self.relations)
         self.state_dict = DictObjId(self.states)
@@ -98,26 +111,28 @@ class GraphHelper():
         id_grab = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_grab']])
         id_surface = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_surface']])
         id_containers = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_inside']])
-        for action in ['no_action', 'turnleft', 'walkforward', 'turnright']:
-            action_id = self.action_dict.get_id(action)
-            self.obj1_affordance[action_id, id_no_obj] = 1
-            self.obj2_affordance[action_id, id_no_obj] = 1
+        for action in self.actions:
+            if args_per_action(action) == 0:
+                action_id = self.action_dict.get_id(action)
+                self.obj1_affordance[action_id, id_no_obj] = 1
+                self.obj2_affordance[action_id, id_no_obj] = 1
 
-        for action in ['walktowards', 'open', 'close', 'grab']:
-            action_id = self.action_dict.get_id(action)
-            self.obj2_affordance[action_id, id_no_obj] = 1
-            if action in ['open', 'close']:
-                self.obj1_affordance[action_id, id_containers] = 1
-            if action in ['grab']:
-                self.obj1_affordance[action_id, id_grab] = 1
-            if action in ['walktowards']:
-                self.obj1_affordance[action_id, :] = 1
-                self.obj1_affordance[action_id,id_no_obj] = 0
+            if args_per_action(action) == 1:
+
+                action_id = self.action_dict.get_id(action)
+                self.obj2_affordance[action_id, id_no_obj] = 1
+                if action in ['open', 'close']:
+                    self.obj1_affordance[action_id, id_containers] = 1
+                if action in ['grab']:
+                    self.obj1_affordance[action_id, id_grab] = 1
+                if action in ['walktowards', 'walk']:
+                    self.obj1_affordance[action_id, :] = 1
+                    self.obj1_affordance[action_id,id_no_obj] = 0
                 
-        for action in ['putback', 'putin']:
-            self.obj1_affordance[action_id, id_grab] = 1
-            id2 = id_containers if action == 'putin' else id_surface
-            self.obj2_affordance[action_id, id2] = 1
+            if args_per_action(action) == 2:
+                self.obj1_affordance[action_id, id_grab] = 1
+                id2 = id_containers if action == 'putin' else id_surface
+                self.obj2_affordance[action_id, id2] = 1
 
 
 
@@ -134,6 +149,8 @@ class GraphHelper():
         for obj in content.values():
             objects += obj
         return objects
+
+
     
     def one_hot(self, states):
         one_hot = np.zeros(len(self.state_dict))
@@ -233,7 +250,8 @@ def args_per_action(action):
     'putback':2,
     'putin': 2,
     'grab': 1,
-    'no_action': 0}
+    'no_action': 0,
+    'walk': 1}
     return action_dict[action]
 
 class GraphSpace(spaces.Space):

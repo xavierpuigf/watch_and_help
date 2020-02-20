@@ -77,6 +77,12 @@ def get_args():
             '--env-name',
             default='virtualhome',
         help='environment to train on (default: PongNoFrameskip-v4)')
+
+    parser.add_argument(
+        '--simulator-type',
+        default='python',
+        options=['unity', 'python'],
+        help='environment to train on (default: PongNoFrameskip-v4)')
     
     parser.add_argument(
         '--num-processes',

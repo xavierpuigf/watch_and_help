@@ -350,7 +350,7 @@ class UnityEnv:
                  init_graph=None,
                  observation_type='coords', 
                  max_episode_length=100,
-                 enable_alice=True,
+                 enable_alice=False,
                  simulator_type='python',
                  env_task_set=[],
                  max_num_objects=150):
@@ -377,8 +377,7 @@ class UnityEnv:
         self.task_goal, self.goal_spec = {0: {}, 1: {}}, {}
 
         if self.num_agents>1:
-            self.my_agent_id = self.agent_ids[1]
-
+            self.my_agent_id = self.agent_ids[-1]
         self.add_system_agent()
 
         self.actions = {}
@@ -386,7 +385,7 @@ class UnityEnv:
         self.actions['my_agent'] = []
         self.image_width = 224
         self.image_height = 224
-        self.graph_helper = utils_rl_agent.GraphHelper(max_num_objects=max_num_objects)
+        self.graph_helper = utils_rl_agent.GraphHelper(max_num_objects=max_num_objects, simulator_type=simulator_type)
 
 
         ## ------------------------------------------------------------------------------------        
@@ -483,10 +482,10 @@ class UnityEnv:
         else:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
 
-
-        print('reward satisfied:', satisfied)
-        print('reward unsatisfied:', unsatisfied)
-        print('reward goal spec:', self.goal_spec)
+        if False:
+            print('reward satisfied:', satisfied)
+            print('reward unsatisfied:', unsatisfied)
+            print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
         for key, value in satisfied.items():
@@ -615,7 +614,6 @@ class UnityEnv:
                                                 seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
-        pdb.set_trace()
         return obs
 
     def reset_2agents_python(self):
@@ -713,6 +711,7 @@ class UnityEnv:
             if action_str is not None:
                 print(action_str)
                 action_dict[1] = action_str
+
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
             obs, _ = self.get_observations()
@@ -741,11 +740,16 @@ class UnityEnv:
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
             action_str = self.get_action_command(my_agent_action)
-            if my_agent_action is not None:
+
+            if action_str is not None:
                 print(action_str)
-                action_dict[1] = action_dict
+                action_dict[1] = action_str
+
             _, obs_n, dict_results = self.env.step(action_dict)
-            obs = obs_n[1]
+            obs, _ = self.get_observations()
+
+
+
             self.num_steps += 1
             reward, done = self.reward()
             reward = torch.Tensor([reward])
@@ -754,7 +758,6 @@ class UnityEnv:
             done = np.array([done])
 
         self.last_action = action_str
-        pdb.set_trace()
         return obs, reward, done, dict_results
 
     def step_2agents_python(self, action_dict):
@@ -789,7 +792,6 @@ class UnityEnv:
         # user agent action
         action_str = my_agent_action
         if action_str is not None:
-            print(action_str)
             action_dict[1] = action_str
 
         dict_results = self.unity_simulator.execute(action_dict)
@@ -983,6 +985,7 @@ class UnityEnv:
             graph_inputs, graph_viz = self.graph_helper.build_graph(obs,
                                                                     character_id=self.my_agent_id, plot_graph=drawing)
             current_obs = graph_inputs
+            self.nodes_visible = graph_viz[-1]
             return current_obs, (None, graph_viz)
 
     def print_action(self, system_agent_action, my_agent_action):
