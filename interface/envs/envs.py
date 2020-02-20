@@ -227,13 +227,9 @@ class UnityEnvWrapper:
         pass
 
     def get_graph(self):
-        if self.simulator_type == 'unity':
-            if True:  # self.graph is None:
-                _, graph = self.comm.environment_graph()
+        if True:  # self.graph is None:
+            _, self.graph = self.comm.environment_graph()
 
-        else:
-            graph = self.env.state
-        self.graph = self.inside_not_trans(graph)
 
         return self.graph
 
@@ -843,9 +839,12 @@ class UnityEnv:
         return self.my_agent_id
 
     def get_graph(self):
-        graph = self.unity_simulator.get_graph()
+
+        if self.simulator_type == 'unity':
+            graph = self.unity_simulator.get_graph()
+        else:
+            graph = self.env.state
         graph = self.inside_not_trans(graph)
-        return graph
 
     def get_system_agent_observations(self, modality=['rgb_image']):
         observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.system_agent_id, modality)
