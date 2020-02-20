@@ -141,11 +141,18 @@ class GraphHelper():
             one_hot[self.state_dict.get_id(state)] = 1
         return one_hot
 
-    def build_graph(self, graph, ids, plot_graph=False):
+    def build_graph(self, graph, character_id, ids=None, plot_graph=False):
+        if ids is None:
+            ids = [node['id'] for node in graph['nodes']]
+
         ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
+        ids = [idi for idi in ids if idi != character_id]
+        ids = list(set(ids))
         id2node = {node['id']: node for node in graph['nodes']}
+
+
         # Character is always the first one
-        ids = [node['id'] for node in graph['nodes'] if node['class_name'] == 'character'] + ids
+        ids = [character_id] + ids
         max_nodes = self.num_objects
         max_edges = self.num_edges
         edges = [edge for edge in graph['edges'] if edge['from_id'] in ids and edge['to_id'] in ids]

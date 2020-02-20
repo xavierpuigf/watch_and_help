@@ -78,7 +78,12 @@ if __name__ == '__main__':
         
         num_agents = 2
         data = pickle.load(open(args.dataset_path, 'rb'))
-        env_task_set = []
+        env_task_set = [{
+            'env_id': 0,
+            'task_name': 'setup_table',
+            'init_graph': None,
+            'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
+        }]
         for problem_setup in data:
             env_id = problem_setup['apartment'] - 1
             task_name = problem_setup['task_name']

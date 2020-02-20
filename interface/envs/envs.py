@@ -395,30 +395,42 @@ class UnityEnv:
         self.viewer = None
         self.num_objects = max_num_objects
         self.action_space = spaces.Tuple((spaces.Discrete(len(self.graph_helper.action_dict)), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
-        if self.observation_type == 'coords':
 
-            # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges, 
-            #           rel_coords, position_objects, mask]
-            self.observation_space = spaces.Tuple((
-                # Image
-                spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)), 
-                # Graph
-                #utils_rl_agent.GraphSpace(),
+        if self.simulator_type == 'unity':
+            if self.observation_type == 'coords':
 
-                spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )), 
-                spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)), 
-                spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)), 
-                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
-                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )), 
-                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )), 
+                # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges,
+                #           rel_coords, position_objects, mask]
+                self.observation_space = spaces.Tuple((
+                    # Image
+                    spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)),
+                    # Graph
+                    #utils_rl_agent.GraphSpace(),
 
-                # Target object
-                spaces.Box(low=-100, high=100, shape=(2,)),
-                spaces.Box(low=0, high=max(self.image_height, self.image_width), 
-                           shape=(self.num_objects, 2)), # 2D coords of the objects
-                spaces.Box(low=0, high=1, shape=(self.num_objects, ))))
+                    spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
+                    spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
+                    spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
+                    spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
+                    spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )),
+                    spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )),
+
+                    # Target object
+                    spaces.Box(low=-100, high=100, shape=(2,)),
+                    spaces.Box(low=0, high=max(self.image_height, self.image_width),
+                               shape=(self.num_objects, 2)), # 2D coords of the objects
+                    spaces.Box(low=0, high=1, shape=(self.num_objects, ))))
+            else:
+                self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
         else:
-            self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
+            self.observation_space = spaces.Tuple((
+                spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects,)),
+                spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
+                spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
+                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges,)),
+                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects,)),
+                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,))))
+
+
         self.reward_range = (-10, 50.)
         self.metadata = {'render.modes': ['human']}
         self.spec = envs.registration.EnvSpec('virtualhome-v0')
@@ -568,18 +580,20 @@ class UnityEnv:
                 self.unity_simulator.reset(self.env_id, self.init_graph)
 
             #self.env.reset(self.init_graph, self.task_goal)
-            obs = self.get_observations()[0]
+
 
         else:
             self.unity_simulator.reset(self.env_id, self.init_graph)
             graph = self.inside_not_trans(self.unity_simulator.get_graph())
             obs_n = self.env.reset(graph, self.task_goal)
-            obs = obs_n[-1]
             self.env.to_pomdp()
 
+        obs = self.get_observations()[0]
+
         self.goal_spec = self.task_goal[self.system_agent_id]
-        self.agents[self.system_agent_id].reset(self.inside_not_trans(self.unity_simulator.get_graph()), self.task_goal,
-                                        seed=self.system_agent_id)
+        self.agents[self.system_agent_id].reset(self.inside_not_trans(self.unity_simulator.get_graph()),
+                                                self.task_goal,
+                                                seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
         pdb.set_trace()
@@ -599,6 +613,8 @@ class UnityEnv:
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
         self.goal_spec = self.task_goal[self.system_agent_id]
+
+        pdb.set_trace()
         self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
@@ -909,38 +925,46 @@ class UnityEnv:
         return graph
    
     def get_observations(self, mode='seg_class', image_width=None, image_height=None, drawing=False):
-        if image_height is None:
-            image_height = self.image_height
-        if image_width is None:
-            image_width = self.image_width
-        images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
-        current_obs = images[0]
-        current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
-        graph = self.unity_simulator.get_graph()
+        if self.simulator_type == 'unity':
+            if image_height is None:
+                image_height = self.image_height
+            if image_width is None:
+                image_width = self.image_width
+            images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
+            current_obs = images[0]
+            current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
+            graph = self.unity_simulator.get_graph()
 
-        distance = self.get_distance(norm='no')
-        rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
-        visible_objects, position_objects = self.unity_simulator.get_visible_objects()
-        id2node = {node['id']: node for node in graph['nodes']}
-        visible_objects = [object for object in visible_objects if self.graph_helper.object_dict.get_id(id2node[object]['class_name']) != 0]
+            distance = self.get_distance(norm='no')
+            rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
+            visible_objects, position_objects = self.unity_simulator.get_visible_objects()
+            id2node = {node['id']: node for node in graph['nodes']}
+            visible_objects = [object for object in visible_objects if self.graph_helper.object_dict.get_id(id2node[object]['class_name']) != 0]
 
-        position_objects_tensor = np.zeros((self.num_objects, 2))
-        mask = np.zeros((self.num_objects))
+            position_objects_tensor = np.zeros((self.num_objects, 2))
+            mask = np.zeros((self.num_objects))
 
-        if position_objects is not None:
-            position_objects = position_objects.transpose()
-            mask[:position_objects.shape[0]] = 1
-            position_objects_tensor[:position_objects.shape[0], :] = position_objects
+            if position_objects is not None:
+                position_objects = position_objects.transpose()
+                mask[:position_objects.shape[0]] = 1
+                position_objects_tensor[:position_objects.shape[0], :] = position_objects
 
-        position_objects = torch.Tensor(position_objects_tensor)[None, :]
-        mask = torch.Tensor(mask)[None, :]
-    
-        graph_inputs, graph_viz = self.graph_helper.build_graph(graph, visible_objects, plot_graph=drawing)
-        self.nodes_visible = graph_viz[-1]
-        graph_inputs = list(graph_inputs)
-        #rel_coords = torch.Tensor(position_objects)[None, :]
-        current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]
-        return current_obs, (images[0], graph_viz)
+            position_objects = torch.Tensor(position_objects_tensor)[None, :]
+            mask = torch.Tensor(mask)[None, :]
+
+            graph_inputs, graph_viz = self.graph_helper.build_graph(graph, visible_objects, character_id=self.my_agent_id, plot_graph=drawing)
+            self.nodes_visible = graph_viz[-1]
+            graph_inputs = list(graph_inputs)
+            #rel_coords = torch.Tensor(position_objects)[None, :]
+            current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]
+            return current_obs, (images[0], graph_viz)
+
+        else:
+            obs = self.env.get_observations(char_index=1)
+            graph_inputs, graph_viz = self.graph_helper.build_graph(obs,
+                                                                    character_id=self.my_agent_id, plot_graph=drawing)
+            current_obs = graph_inputs
+            return current_obs, (None, graph_viz)
 
     def print_action(self, system_agent_action, my_agent_action):
         self.actions['system_agent'].append(system_agent_action)
