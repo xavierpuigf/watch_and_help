@@ -85,11 +85,6 @@ if __name__ == '__main__':
             goal = problem_setup['goal'][task_name]
             if task_name == 'setup_table':
                 break
-        unity_env = UnityEnv(env_id=env_id-1,
-                             init_graph=init_graph,
-                             num_agents=num_agents, 
-                             max_episode_length=args.max_episode_length,
-                             simulator_type=args.simulator_type)
         
         goals = convert_goal_spec(task_name, goal, init_graph, 
                                   exclude=[])
@@ -100,7 +95,16 @@ if __name__ == '__main__':
         task_goal = {}
         for i in range(2):
             task_goal[i] = goals
-        unity_env.setup(init_graph, task_goal)
+
+        env_task_set=[{'init_graph': init_graph, 'task_goal': task_goal}]
+        # unity_env.setup(init_graph, task_goal)
+
+        unity_env = UnityEnv(env_id=env_id-1,
+                             init_graph=init_graph,
+                             num_agents=num_agents, 
+                             max_episode_length=args.max_episode_length,
+                             simulator_type=args.simulator_type,
+                             env_task_set=env_task_set)
         unity_env.reset()
 
         ## ------------------------------------------------------------------------------

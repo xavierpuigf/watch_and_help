@@ -344,7 +344,8 @@ class UnityEnv:
                  observation_type='coords', 
                  max_episode_length=100,
                  enable_alice=True,
-                 simulator_type='python'):
+                 simulator_type='python',
+                 env_task_set=[]):
 
         self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
@@ -356,6 +357,7 @@ class UnityEnv:
         self.simulator_type = simulator_type
         self.init_graph = init_graph
         self.task_goal = None
+        self.env_task_set = env_task_set
 
         self.unity_simulator = None
         self.agent_ids =  [1, 2]
@@ -377,7 +379,6 @@ class UnityEnv:
         self.image_width = 224
         self.image_height = 224
         self.graph_helper = utils_rl_agent.GraphHelper()
-
 
         ## ------------------------------------------------------------------------------------        
         self.observation_type = observation_type # Image, Coords
@@ -440,10 +441,6 @@ class UnityEnv:
             reward += 10
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, info
-
-    def setup(self, graph, task_goal):
-        self.init_graph = graph
-        self.task_goal = task_goal
 
     def reward(self):
         '''
@@ -522,6 +519,9 @@ class UnityEnv:
          
 
     def reset(self):
+        env_task = random.choice(self.env_task_set)
+        self.init_graph = env_task['init_graph']
+        self.task_goal = env_task['task_goal']
         if self.unity_simulator is None:
             self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
 
@@ -549,6 +549,9 @@ class UnityEnv:
         return obs
 
     def reset_2agents_python(self):
+        env_task = random.choice(self.env_task_set)
+        self.init_graph = env_task['init_graph']
+        self.task_goal = env_task['task_goal']
         if self.unity_simulator is None:
             self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
