@@ -128,7 +128,7 @@ class GraphHelper():
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
-        with open(f'{dir_path}/dataset/object_info.json', 'r') as f:
+        with open(f'{dir_path}/dataset/object_info_rl.json', 'r') as f:
             content = json.load(f)
         objects = []
         for obj in content.values():

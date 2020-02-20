@@ -64,7 +64,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-
+        self.graph = None
         _, graph = self.comm.environment_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
@@ -184,9 +184,8 @@ class UnityEnvWrapper:
         pass
 
     def get_graph(self):
-        #if self.graph is None:
-        #    print('Restarting graph')
-        _, self.graph = self.comm.environment_graph()
+        if True: #self.graph is None:
+            _, self.graph = self.comm.environment_graph()
         return self.graph
 
     # TODO: put in some utils
