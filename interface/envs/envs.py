@@ -31,8 +31,35 @@ from profilehooks import profile
 import utils_rl_agent
 logger = logging.getLogger("mlagents_envs")
 
+def check_progress(state, goal_spec):
+    """TODO: add more predicate checkers; currently only ON"""
+    unsatisfied = {}
+    satisfied = {}
+    id2node = {node['id']: node for node in state['nodes']}
+    for key, value in goal_spec.items():
+        elements = key.split('_')
+        unsatisfied[key] = value if elements[0] in ['on', 'inside'] else 0
+        satisfied[key] = [None] * 2
+        satisfied[key]
+        satisfied[key] = []
+        for edge in state['edges']:
+            if elements[0] in ['on', 'inside']:
+                if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+            elif elements[0] == 'offOn':
+                if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    unsatisfied[key] += 1
+            elif elements[1] == 'offIn':
+                if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    unsatisfied[key] += 1
+    return satisfied, unsatisfied
+
 class UnityEnvWrapper:
-    def __init__(self, env_id, env_copy_id, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
+    def __init__(self, env_id, env_copy_id, init_graph=None, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
         atexit.register(self.close)
         self.port_number = base_port + env_copy_id 
         print(self.port_number)
@@ -58,14 +85,17 @@ class UnityEnvWrapper:
         
 
         self.comm.reset(env_id)
+        if init_graph is not None:
+            self.comm.expand_scene(init_graph)
+
         # Assumption, over initializing the env wrapper, we only use one enviroment id
         # TODO: make sure this is true
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
             self.comm.add_character(characters[i])
-        self.graph = None
-        _, graph = self.comm.environment_graph()
+
+        graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
         #comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
@@ -78,6 +108,19 @@ class UnityEnvWrapper:
 
         self.get_graph()
         #self.test_prep()
+
+    def reset(self, env_id, init_graph=None):
+        self.comm.reset(env_id)
+        if init_graph is not None:
+            self.comm.expand_scene(init_graph)
+        self.offset_cameras = self.comm.camera_count()[1]
+        characters = ['Chars/Female1', 'Chars/Male1']
+        for i in range(self.num_agents):
+            self.comm.add_character(characters[i])
+
+        graph = self.get_graph()
+        self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
+        self.id2node = {node['id']: node for node in graph['nodes']}
    
     def returncode_to_signal_name(returncode: int):
         """
@@ -184,8 +227,14 @@ class UnityEnvWrapper:
         pass
 
     def get_graph(self):
-        if True: #self.graph is None:
-            _, self.graph = self.comm.environment_graph()
+        if self.simulator_type == 'unity':
+            if True:  # self.graph is None:
+                _, graph = self.comm.environment_graph()
+
+        else:
+            graph = self.env.state
+        self.graph = self.inside_not_trans(graph)
+
         return self.graph
 
     # TODO: put in some utils
@@ -286,35 +335,9 @@ class UnityEnvWrapper:
         return result
 
 
-    def check_progress(self, state, goal_spec):
-        """TODO: add more predicate checkers; currently only ON"""
-        unsatisfied = {}
-        satisfied = {}
-        id2node = {node['id']: node for node in state['nodes']}
-        for key, value in goal_spec.items():
-            elements = key.split('_')
-            unsatisfied[key] = value if elements[0] in ['on', 'inside'] else 0
-            satisfied[key] = [None] * 2
-            satisfied[key]
-            satisfied[key] = []
-            for edge in state['edges']:
-                if elements[0] in ['on', 'inside']:
-                    if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                        satisfied[key].append(predicate)
-                        unsatisfied[key] -= 1
-                elif elements[0] == 'offOn':
-                    if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                        unsatisfied[key] += 1
-                elif elements[1] == 'offIn':
-                    if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                        predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                        unsatisfied[key] += 1
-        return satisfied, unsatisfied
 
     def is_terminal(self, goal_spec):
-        _, unsatisfied = self.check_progress(self.graph, goal_spec)
+        _, unsatisfied = check_progress(self.graph, goal_spec)
         for predicate, count in unsatisfied.items():
             if count > 0:
                 return False
@@ -328,21 +351,29 @@ class UnityEnv:
                  num_agents=2, 
                  seed=0, 
                  env_id=0, 
-                 env_copy_id=0, 
+                 env_copy_id=0,
+                 init_graph=None,
                  observation_type='coords', 
                  max_episode_length=100,
                  enable_alice=True,
+                 simulator_type='python',
+                 env_task_set=[],
                  max_num_objects=150):
 
         self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
-        self.env_id = env_id
+        self.env_copy_id = env_copy_id
         self.max_episode_length = max_episode_length
+        self.simulator_type = simulator_type
+        self.init_graph = init_graph
+        self.task_goal = None
+        self.env_task_set = env_task_set
 
-        self.unity_simulator = UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)    
-        self.agent_ids =  self.unity_simulator.agent_ids()
+
+        self.unity_simulator = None # UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)
+        self.agent_ids =  [1,2] # self.unity_simulator.agent_ids()
         self.agents = {}
 
         self.system_agent_id = self.agent_ids[0]
@@ -438,18 +469,31 @@ class UnityEnv:
             on_objclass_id
             inside_objclass_id 
         '''
-        satisfied, unsatisfied = self.unity_simulator.check_progress(self.unity_simulator.get_graph(), self.goal_spec)
+
+        if self.simulator_type == 'unity':
+            satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
+
+        else:
+            satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
+
+
+        print('reward satisfied:', satisfied)
+        print('reward unsatisfied:', unsatisfied)
+        print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
         for key, value in satisfied.items():
-            count += len(value)
+            count += min(len(value), self.goal_spec[key])
             if unsatisfied[key] > 0:
                 done = False
         return count, done
     
 
     def get_distance(self, norm=None):
-        gr = self.unity_simulator.get_graph()
+        if self.simulator_type == 'unity':
+            gr = self.unity_simulator.get_graph()
+        else:
+            gr = self.env.state
         char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
         micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
         micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
@@ -505,20 +549,62 @@ class UnityEnv:
         # reset system agent
         # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
-        if graph is None:
-            self.unity_simulator.comm.fast_reset(self.env_id)
-        # #self.unity_simulator.comm.add_character()
-        # #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
-        self.graph = None
-        if task_goal is not None:
-            self.goal_spec = task_goal[self.system_agent_id]
-            self.task_goal = task_goal
-            self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        env_task = random.choice(self.env_task_set)
+        self.init_graph = env_task['init_graph']
+        self.task_goal = env_task['task_goal']
+        self.task_name = env_task['task_name']
+        self.env_id = env_task['env_id']
+        print('env_id:', self.env_id)
+        print('task_name:', self.task_name)
+        print('goals:', self.task_goal[0])
+        if self.unity_simulator is None:
+            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph,
+                                                   num_agents=self.num_agents)
 
-        obs = self.get_observations()[0]
-        self.num_steps = 0
+        if self.simulator_type == 'unity':
+            # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+            # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+            # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+            # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]	        if graph is None:
+            if True:
+                self.unity_simulator.comm.fast_reset(self.env_id)
+            else:
+                self.unity_simulator.reset(self.env_id, self.init_graph)
+            self.env.reset(self.init_graph, self.task_goal)
+            obs = self.get_observations()[0]
+
+        else:
+            self.unity_simulator.reset(self.env_id, self.init_graph)
+            graph = self.inside_not_trans(self.unity_simulator.get_graph())
+            obs_n = self.env.reset(graph, self.task_goal)
+            obs = obs_n[-1]
+            self.env.to_pomdp()
+
+        self.goal_spec = self.task_goal[self.system_agent_id]
+        self.agents[self.system_agent_id].reset(self.inside_not_trans(self.unity_simulator.get_graph()), self.task_goal,
+                                        seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
+        self.num_steps = 0
         return obs
+
+    def reset_2agents_python(self):
+        env_task = random.choice(self.env_task_set)
+        self.init_graph = env_task['init_graph']
+        self.task_goal = env_task['task_goal']
+        self.task_name = env_task['task_name']
+        self.env_id = env_task['env_id']
+        print('env_id:', self.env_id)
+        print('task_name:', self.task_name)
+        print('goals:', self.task_goal[0])
+        if self.unity_simulator is None:
+            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
+        graph = self.inside_not_trans(self.unity_simulator.get_graph())
+        obs_n = self.env.reset(graph, self.task_goal)
+        self.goal_spec = self.task_goal[self.system_agent_id]
+        self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
+        self.prev_dist = self.get_distance()
+        self.num_steps = 0
+        return obs_n
 
     def reset_alice(self, graph=None, task_goal=None):
         # reset system agent
@@ -543,7 +629,12 @@ class UnityEnv:
     def get_action_command(self, my_agent_action):
         if my_agent_action is None:
             return None
-        current_graph = self.unity_simulator.get_graph()
+
+        if self.simulator_type == 'unity':
+            current_graph = self.unity_simulator.get_graph()
+        else:
+            current_graph = self.env.state
+
         objects1, objects2 = self.nodes_visible, self.nodes_visible
 
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
@@ -568,41 +659,79 @@ class UnityEnv:
 
     def step(self, my_agent_action):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
-        action_dict = {}
-        # system agent action
-        if self.enable_alice:
-            graph = self.get_graph()
-            # pdb.set_trace()
-            if self.num_steps == 0:
-                graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
-            self.env.reset(graph , self.task_goal)
-            system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
-            self.last_actions[0] = system_agent_action
-            self.last_subgoals[0] = system_agent_info['subgoals'][0]
-            if system_agent_action is not None:
-                action_dict[0] = system_agent_action
+        if self.simulator_type == 'unity':
+            action_dict = {}
+            # system agent action
 
-        # user agent action
-        action_str = self.get_action_command(my_agent_action)
-        if action_str is not None:
-            print(action_str)
-            action_dict[1] = action_str
-        dict_results = self.unity_simulator.execute(action_dict)
-        self.num_steps += 1
-        obs, _ = self.get_observations()
-        reward, self.info = self.compute_toy_reward()
-        # reward, done = self.reward()
-        reward = torch.Tensor([reward])
-        done = self.info['done']
-        if self.num_steps >= self.max_episode_length:
-            done = True
-        done = np.array([done])
-        # infos = {}
-        #if done:
-        #    obs = self.reset()
+            if self.enable_alice:
+                graph = self.get_graph()
+                # pdb.set_trace()
+                if self.num_steps == 0:
+                    graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+                self.env.reset(graph , self.task_goal)
+                system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
+                self.last_actions[0] = system_agent_action
+                self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                if system_agent_action is not None:
+                    action_dict[0] = system_agent_action
+
+                # user agent action
+                action_str = self.get_action_command(my_agent_action)
+                if action_str is not None:
+                    print(action_str)
+                    action_dict[1] = action_str
+                dict_results = self.unity_simulator.execute(action_dict)
+                self.num_steps += 1
+                obs, _ = self.get_observations()
+                reward, self.info = self.compute_toy_reward()
+                # reward, done = self.reward()
+                reward = torch.Tensor([reward])
+                done = self.info['done']
+                if self.num_steps >= self.max_episode_length:
+                    done = True
+                done = np.array([done])
+                graph = self.unity_simulator.get_graph()
+                self.env.reset(graph, self.task_goal)
+        else:
+            action_dict = {}
+            if self.enable_alice:
+                graph = self.env.state
+                if self.num_steps == 0:
+                    graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (
+                                edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+                self.env.reset(graph, self.task_goal)
+                system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal,
+                                                                                      self.last_actions[0],
+                                                                                      self.last_subgoals[0])
+                self.last_actions[0] = system_agent_action
+                self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                if system_agent_action is not None:
+                    action_dict[0] = system_agent_action
+            action_str = self.get_action_command(my_agent_action)
+            if my_agent_action is not None:
+                print(action_str)
+                action_dict[1] = action_dict
+            _, obs_n, dict_results = self.env.step(action_dict)
+            obs = obs_n[1]
+            self.num_steps += 1
+            reward, done = self.reward()
+            reward = torch.Tensor([reward])
+            if self.num_steps >= self.max_episode_length:
+                done = True
+            done = np.array([done])
+
         self.last_action = action_str
         return obs, reward, done, dict_results
 
+    def step_2agents_python(self, action_dict):
+        _, obs_n, info_n = self.env.step(action_dict)
+        self.num_steps += 1
+        reward, done = self.reward()
+        reward = torch.Tensor([reward])
+        if self.num_steps >= self.max_episode_length:
+            done = True
+        done = np.array([done])
+        return obs_n, reward, done, info_n
 
     def step_with_system_agent_oracle(self, my_agent_action):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
