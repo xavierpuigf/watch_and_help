@@ -508,7 +508,10 @@ class MCTS_agent:
         num_steps = 0
 
 
-        saved_info = {'action': {0: [], 1: []}, 
+        saved_info = {'env_id': self.unity_env.env_id,
+                      'task_name': self.unity_env.task_name,
+                      'goals': task_goal[0],
+                      'action': {0: [], 1: []}, 
                       'plan': {0: [], 1: []},
                       'subgoal': {0: [], 1: []},
                       'init_pos': {0: None, 1: None}}
