@@ -238,7 +238,7 @@ class GraphEncoder(nn.Module):
         return hidden_feats
 
 class GraphBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, dist_size=10, max_nodes=150):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=128, dist_size=10, max_nodes=150):
         super(GraphBase, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
