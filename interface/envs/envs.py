@@ -566,7 +566,8 @@ class UnityEnv:
                 self.unity_simulator.comm.fast_reset(self.env_id)
             else:
                 self.unity_simulator.reset(self.env_id, self.init_graph)
-            self.env.reset(self.init_graph, self.task_goal)
+
+            #self.env.reset(self.init_graph, self.task_goal)
             obs = self.get_observations()[0]
 
         else:
@@ -581,6 +582,7 @@ class UnityEnv:
                                         seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
+        pdb.set_trace()
         return obs
 
     def reset_2agents_python(self):
@@ -671,23 +673,23 @@ class UnityEnv:
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
 
-                # user agent action
-                action_str = self.get_action_command(my_agent_action)
-                if action_str is not None:
-                    print(action_str)
-                    action_dict[1] = action_str
-                dict_results = self.unity_simulator.execute(action_dict)
-                self.num_steps += 1
-                obs, _ = self.get_observations()
-                reward, self.info = self.compute_toy_reward()
-                # reward, done = self.reward()
-                reward = torch.Tensor([reward])
-                done = self.info['done']
-                if self.num_steps >= self.max_episode_length:
-                    done = True
-                done = np.array([done])
-                graph = self.unity_simulator.get_graph()
-                self.env.reset(graph, self.task_goal)
+            # user agent action
+            action_str = self.get_action_command(my_agent_action)
+            if action_str is not None:
+                print(action_str)
+                action_dict[1] = action_str
+            dict_results = self.unity_simulator.execute(action_dict)
+            self.num_steps += 1
+            obs, _ = self.get_observations()
+            reward, self.info = self.compute_toy_reward()
+            # reward, done = self.reward()
+            reward = torch.Tensor([reward])
+            done = self.info['done']
+            if self.num_steps >= self.max_episode_length:
+                done = True
+            done = np.array([done])
+            graph = self.unity_simulator.get_graph()
+            self.env.reset(graph, self.task_goal)
         else:
             action_dict = {}
             if self.enable_alice:
@@ -717,6 +719,7 @@ class UnityEnv:
             done = np.array([done])
 
         self.last_action = action_str
+        pdb.set_trace()
         return obs, reward, done, dict_results
 
     def step_2agents_python(self, action_dict):

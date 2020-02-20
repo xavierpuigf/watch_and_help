@@ -60,7 +60,9 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
-            env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False)
+            env_task_set = [{'env_id': 0, 'task_name': 'find', 'task_goal': {0: {'find_1': 1}, 1: {'find_1': 1}},
+                             'init_graph': None}]
+            env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set, simulator_type='unity')
         else:
             env = gym.make(env_id)
 
