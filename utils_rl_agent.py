@@ -43,16 +43,18 @@ class GraphHelper():
         self.obj2_affordance = None
         self.get_action_affordance_map()
 
-    def update_probs(self, log_probs, i, actions, object_classes):
+    def update_probs(self, log_probs, i, actions, object_classes, mask_observations):
         """
         :param log_probs: current log probs
         :param i: which action are we currently considering
         :param actions: actions already selected
+        :param mask_observations: bs x max_nodes with the valid nodes
         :return:
         """
         inf_val = 1e9
         if i == 1:
             # Deciding on the object
+            log_probs =  log_probs * mask_observations + (1.-mask_observations) * -inf_val
             return log_probs
         elif i == 0:
             # Deciding on the action
@@ -63,6 +65,7 @@ class GraphHelper():
 
         else:
             # deciding on object 2
+            log_probs = log_probs * mask_observations + (1. - mask_observations) * -inf_val
             selected_action = actions[0]
 
             # batch x object_class
@@ -198,6 +201,10 @@ class GraphHelper():
                 all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict, visible_nodes)
 
 def can_perform_action(action, o1, o2, agent_id, graph):
+    if action == 'no_action':
+        return False
+    if action in ['open', 'close', 'grab', 'putback']:
+        return False
     num_args = len([None for ob in [o1, o2] if ob is not None])
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
     if num_args != args_per_action(action):

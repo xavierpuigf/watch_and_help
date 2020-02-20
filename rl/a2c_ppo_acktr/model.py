@@ -75,14 +75,14 @@ class Policy(nn.Module):
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
         outputs = self.base(inputs, rnn_hxs, masks)
-
         object_classes = inputs[1]
         if len(outputs) == 3:
             value, actor_features, rnn_hxs = outputs
             summary_nodes = actor_features
         else:
             value, summary_nodes, actor_features, rnn_hxs = outputs
-        mask_observations = inputs[-1]
+        mask_observations = inputs[-5]
+
         actions = []
         actions_log_probs = []
         if len(self.dist) == 3:
@@ -98,7 +98,8 @@ class Policy(nn.Module):
                 dist = distr(summary_nodes)
             else:
                 dist = distr(summary_nodes, actor_features)
-            new_log_probs = self.agent_helper.update_probs(dist.original_logits, i, actions, object_classes)
+
+            new_log_probs = self.agent_helper.update_probs(dist.original_logits, i, actions, object_classes, mask_observations)
             dist = distr.update_logs(new_log_probs)
             # Correct probabilities according to previously selected acitons
             if deterministic:
@@ -229,7 +230,7 @@ class GraphEncoder(nn.Module):
         self.hidden_size=hidden_size
         self.graph_encoder = GraphModel(
                 num_classes=150,
-                num_nodes=num_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels)
+                num_nodes=num_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, max_nodes=num_nodes)
 
     def forward(self, inputs):
         # Build the graph

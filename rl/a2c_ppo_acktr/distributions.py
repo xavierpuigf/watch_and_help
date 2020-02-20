@@ -74,7 +74,6 @@ class ElementWiseCategorical(nn.Module):
 
     def forward(self, x, y):
         # n x dim
-
         x0 = x.unsqueeze(1)
         if self.method == 'dotprod':
             logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]
@@ -83,9 +82,10 @@ class ElementWiseCategorical(nn.Module):
             comb_embed = torch.cat([x0.repeat(1, num_nodes, 1), y], dim=2)
             logs = self.layer(comb_embed).squeeze(-1)
 
-        mask = np.ones(logs.shape)
-        mask[:, 0] = 0.
-        logs = logs * torch.Tensor(mask).to(logs.device)
+        mask_char = np.ones(logs.shape)
+        mask_char[:, 0] = 0.
+        logs = logs * torch.Tensor(mask_char).to(logs.device)
+
         self.original_logits = logs
         return FixedCategorical(logits=logs)
 

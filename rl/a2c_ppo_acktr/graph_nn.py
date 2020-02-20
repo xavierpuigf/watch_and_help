@@ -3,6 +3,7 @@ import pdb
 import torch.nn as nn
 import torch.nn.functional as F
 from dgl import DGLGraph
+import dgl
 import dgl.function as fn
 from functools import partial
 
@@ -80,7 +81,7 @@ class RGCNLayer(nn.Module):
 
 class GraphModel(nn.Module):
     def __init__(self, num_classes, num_nodes, h_dim, out_dim, num_rels,
-                 num_bases=-1, num_hidden_layers=1):
+                 num_bases=-1, max_nodes=100, num_hidden_layers=1):
         super(GraphModel, self).__init__()
         self.num_nodes = num_nodes
         self.h_dim = h_dim
@@ -88,7 +89,7 @@ class GraphModel(nn.Module):
         self.num_rels = num_rels
         self.num_bases = num_bases
         self.num_hidden_layers = num_hidden_layers
-
+        self.max_nodes = max_nodes
         # create rgcn layers
         self.build_model()
 
@@ -134,6 +135,7 @@ class GraphModel(nn.Module):
          mask_nodes, mask_edges) = inputs
         num_envs = len(all_class_names)
         hs = []
+        graphs = []
         for env_id in range(num_envs):
             g = DGLGraph()
             num_nodes = int(mask_nodes[env_id].sum().item())
@@ -151,10 +153,19 @@ class GraphModel(nn.Module):
 
             if self.features is None:
                 g.ndata['h'] = self.feat_in(ids.long())
-            
-            for layer in self.layers:
-                layer(g)
-            hs.append(g.ndata.pop('h'))
-        hs = torch.cat([h.unsqueeze(0) for h in hs])
+            graphs.append(g)
+
+        batch_graph = dgl.batch(graphs)
+
+        for layer in self.layers:
+            layer(batch_graph)
+        graphs = dgl.unbatch(batch_graph)
+        hs_list = []
+        for graph in graphs:
+            curr_graph = graph.ndata.pop('h').unsqueeze(0)
+            curr_nodes = curr_graph.shape[1]
+            curr_graph = F.pad(curr_graph, (0,0,0, self.max_nodes - curr_nodes), 'constant', 0.)
+            hs_list.append(curr_graph)
+        hs = torch.cat(hs_list, dim=0)
         return hs
 
