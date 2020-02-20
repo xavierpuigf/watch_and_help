@@ -70,9 +70,8 @@ class UnityEnvWrapper:
 
 
         # TODO: get rid of this, should be notfiied somehow else
-        
-        self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
 
+        self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
         print('Checking connection')
         self.comm.check_connection()
 
@@ -500,17 +499,22 @@ class UnityEnv:
     def get_distance(self, norm=None):
         if self.simulator_type == 'unity':
             gr = self.unity_simulator.get_graph()
+            char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
+            micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+            micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+            self.micro_id = micro_node_id
+            if norm == 'no':
+                return np.array(char_node) - np.array(micro_node)
+            dist = (np.linalg.norm(np.array(char_node) - np.array(micro_node), norm))
+            #print([node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'])
+            # print(dist, char_node, micro_node)
         else:
             gr = self.env.state
-        char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
-        micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-        micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-        self.micro_id = micro_node_id
-        if norm == 'no':
-            return np.array(char_node) - np.array(micro_node)
-        dist = (np.linalg.norm(np.array(char_node) - np.array(micro_node), norm))
-        #print([node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'])
-        # print(dist, char_node, micro_node)
+            micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
+            if len([edge for edge in gr['edges'] if edge['from_id'] == micro_node_id and edge['to_id'] == self.my_agent_id]) > 0:
+                dist = 0
+            else:
+                dist = 5.
         return dist
 
     def render(self, mode='human'):
@@ -565,11 +569,13 @@ class UnityEnv:
         print('env_id:', self.env_id)
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
-        if self.unity_simulator is None:
-            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph,
-                                                   num_agents=self.num_agents)
+
 
         if self.simulator_type == 'unity':
+            if self.unity_simulator is None:
+                self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
+                                                       init_graph=self.init_graph,
+                                                       num_agents=self.num_agents)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
@@ -580,18 +586,31 @@ class UnityEnv:
                 self.unity_simulator.reset(self.env_id, self.init_graph)
 
             #self.env.reset(self.init_graph, self.task_goal)
+            curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
 
 
         else:
-            self.unity_simulator.reset(self.env_id, self.init_graph)
-            graph = self.inside_not_trans(self.unity_simulator.get_graph())
+            room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
+            room_ids = random.choices(room_ids, k=2)
+            char_positions = [{'from_id': 1,  'to_id': room_ids[0], 'relation_type': 'INSIDE'},
+                              {'from_id': 2,  'to_id': room_ids[1], 'relation_type': 'INSIDE'}]
+            dummybbox = {'center': [0,0,0], 'size': [0,0,0]}
+            char_nodes = [{'id': 1, 'class_name': 'character', 'bounding_box': dummybbox, 'states': [], 'category': 'Characters', 'properties': []},
+                          {'id': 2, 'class_name': 'character', 'bounding_box': dummybbox, 'states': [], 'category': 'Characters', 'properties': []}]
+            init_graph_chars = {
+                'edges': self.init_graph['edges'] + char_positions,
+                'nodes': self.init_graph['nodes'] + char_nodes,
+            }
+            init_graph_chars['edges'] = [edge for edge in init_graph_chars['edges'] if edge['relation_type'] != 'CLOSE']
+            graph = self.inside_not_trans(init_graph_chars)
             obs_n = self.env.reset(graph, self.task_goal)
             self.env.to_pomdp()
+            curr_graph_system_agent = graph
 
         obs = self.get_observations()[0]
 
         self.goal_spec = self.task_goal[self.system_agent_id]
-        self.agents[self.system_agent_id].reset(self.inside_not_trans(self.unity_simulator.get_graph()),
+        self.agents[self.system_agent_id].reset(curr_graph_system_agent,
                                                 self.task_goal,
                                                 seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
