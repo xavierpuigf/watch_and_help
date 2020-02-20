@@ -9,7 +9,7 @@ import pdb
 
 
 class GraphHelper():
-    def __init__(self):
+    def __init__(self, max_num_objects=100, max_num_edges=200):
         self.states = ['on', 'open', 'off', 'closed']
         self.relations = ['inside', 'close', 'facing', 'on']
         self.objects = self.get_objects()
@@ -31,8 +31,8 @@ class GraphHelper():
         self.state_dict = DictObjId(self.states)
         self.action_dict = DictObjId(self.actions, include_other=False)
 
-        self.num_objects = 100
-        self.num_edges = 200 
+        self.num_objects = max_num_objects
+        self.num_edges = max_num_edges
         self.num_edge_types = len(self.relation_dict)
         self.num_classes = len(self.object_dict)
         self.num_states = len(self.state_dict)

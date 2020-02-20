@@ -191,6 +191,8 @@ class UnityEnvWrapper:
     # TODO: put in some utils
     def world2im(self, camera_data, wcoords):
         wcoords = wcoords.transpose()
+        if len(wcoords.shape) < 2:
+            return None
         proj = np.array(camera_data['projection_matrix']).reshape((4,4)).transpose()
         w2cam = np.array(camera_data['world_to_camera_matrix']).reshape((4,4)).transpose()
         cw = np.concatenate([wcoords, np.ones((1, wcoords.shape[1]))], 0) # 4 x N
@@ -207,7 +209,7 @@ class UnityEnvWrapper:
         _, graph = self.comm.environment_graph()
         object_position = np.array(
                 [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] in object_ids])
-        obj_pos = self.world2im(cam_data[0], object_position) 
+        obj_pos = self.world2im(cam_data[0], object_position)
         return object_ids, obj_pos
 
     def get_observations(self, mode='normal', image_width=128, image_height=128):
@@ -328,7 +330,8 @@ class UnityEnv:
                  env_copy_id=0, 
                  observation_type='coords', 
                  max_episode_length=100,
-                 enable_alice=True):
+                 enable_alice=True,
+                 max_num_objects=150):
 
         self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
@@ -356,13 +359,13 @@ class UnityEnv:
         self.actions['my_agent'] = []
         self.image_width = 224
         self.image_height = 224
-        self.graph_helper = utils_rl_agent.GraphHelper()
+        self.graph_helper = utils_rl_agent.GraphHelper(max_num_objects=max_num_objects)
 
 
         ## ------------------------------------------------------------------------------------        
         self.observation_type = observation_type # Image, Coords
         self.viewer = None
-        self.num_objects = 100
+        self.num_objects = max_num_objects
         self.action_space = spaces.Tuple((spaces.Discrete(len(self.graph_helper.action_dict)), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
         if self.observation_type == 'coords':
 
@@ -450,7 +453,7 @@ class UnityEnv:
         self.micro_id = micro_node_id
         if norm == 'no':
             return np.array(char_node) - np.array(micro_node)
-        dist = np.linalg.norm(np.array(char_node) - np.array(micro_node), norm)
+        dist = (np.linalg.norm(np.array(char_node) - np.array(micro_node), norm)//5) * 5
         return dist
 
     def render(self, mode='human'):
@@ -534,6 +537,9 @@ class UnityEnv:
 
     def obtain_objects(self, graph):
         objects = [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
+
+        # Only use objects that are of interest
+        objects = [object for object in objects if self.graph_helper.object_dict.get_el(object[0]) != 0]
         objects = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms'] + objects
         char_id = self.my_agent_id
         objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
