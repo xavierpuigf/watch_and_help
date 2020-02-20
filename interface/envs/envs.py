@@ -184,7 +184,8 @@ class UnityEnvWrapper:
         pass
 
     def get_graph(self):
-
+        #if self.graph is None:
+        #    print('Restarting graph')
         _, self.graph = self.comm.environment_graph()
         return self.graph
 
@@ -206,7 +207,7 @@ class UnityEnvWrapper:
         camera_ids = [[self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)][1]]
         object_ids = [int(idi) for idi in self.comm.get_visible_objects(camera_ids)[1].keys()]
         _, cam_data = self.comm.camera_data(camera_ids)
-        _, graph = self.comm.environment_graph()
+        graph = self.get_graph()
         object_position = np.array(
                 [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] in object_ids])
         obj_pos = self.world2im(cam_data[0], object_position)
@@ -272,6 +273,7 @@ class UnityEnvWrapper:
         #if self.follow:
         script_list = [x.replace('[walk]', '[walktowards]') for x in script_list]
         # script_all = script_list
+        self.graph = None
         if self.recording:
             success, message = self.comm.render_script(script_list, recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
         else:
@@ -446,7 +448,7 @@ class UnityEnv:
     
 
     def get_distance(self, norm=None):
-        s, gr = self.unity_simulator.comm.environment_graph()
+        gr = self.unity_simulator.get_graph()
         char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character'][0]
         micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
         micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
@@ -506,7 +508,7 @@ class UnityEnv:
             self.unity_simulator.comm.fast_reset(self.env_id)
         # #self.unity_simulator.comm.add_character()
         # #self.unity_simulator.comm.render_script(['<char0> [walk] <kitchentable> (225)'], gen_vid=False, recording=True)
-        
+        self.graph = None
         if task_goal is not None:
             self.goal_spec = task_goal[self.system_agent_id]
             self.task_goal = task_goal
@@ -539,7 +541,7 @@ class UnityEnv:
         objects = [(self.unity_simulator.id2node[id_obj]['class_name'], id_obj) for id_obj in self.unity_simulator.get_visible_objects()[0]]
 
         # Only use objects that are of interest
-        objects = [object for object in objects if self.graph_helper.object_dict.get_el(object[0]) != 0]
+        objects = [object for object in objects if self.graph_helper.object_dict.get_id(object[0]) != 0]
         objects = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms'] + objects
         char_id = self.my_agent_id
         objects = [(self.unity_simulator.id2node[char_id]['class_name'], char_id)] + objects
@@ -795,11 +797,17 @@ class UnityEnv:
         distance = self.get_distance(norm='no')
         rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
         visible_objects, position_objects = self.unity_simulator.get_visible_objects()
-        position_objects = position_objects.transpose()
+        id2node = {node['id']: node for node in graph['nodes']}
+        visible_objects = [object for object in visible_objects if self.graph_helper.object_dict.get_id(id2node[object]['class_name']) != 0]
+
         position_objects_tensor = np.zeros((self.num_objects, 2))
         mask = np.zeros((self.num_objects))
-        position_objects_tensor[:position_objects.shape[0], :] = position_objects
-        mask[:position_objects.shape[0]] = 1
+
+        if position_objects is not None:
+            position_objects = position_objects.transpose()
+            mask[:position_objects.shape[0]] = 1
+            position_objects_tensor[:position_objects.shape[0], :] = position_objects
+
         position_objects = torch.Tensor(position_objects_tensor)[None, :]
         mask = torch.Tensor(mask)[None, :]
     
