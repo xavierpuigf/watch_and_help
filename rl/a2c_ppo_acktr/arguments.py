@@ -93,7 +93,7 @@ def get_args():
     parser.add_argument(
         '--num-steps',
         type=int,
-        default=5,
+        default=30,
         help='number of forward steps in A2C (default: 5)')
     parser.add_argument(
         '--ppo-epoch',

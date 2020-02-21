@@ -97,7 +97,7 @@ class GraphHelper():
                     self.obj1_affordance[action_id, :] = 1
                     self.obj1_affordance[action_id, id_no_obj] = 0
 
-                    
+
 
                 # putin, put
                 else:

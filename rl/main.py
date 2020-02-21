@@ -149,7 +149,7 @@ def main():
     rollouts.to(device)
 
     
-    episode_rewards = deque(maxlen=10)
+    episode_rewards = deque(maxlen=args.num_steps)
 
     start = time.time()
     num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
@@ -237,6 +237,7 @@ def main():
 
         
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
+            pdb.set_trace()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             print(
@@ -249,6 +250,7 @@ def main():
                         action_loss))
 
             if tensorboard_writer is not None:
+
                 tensorboard_writer.add_scalar("mean_reward", np.mean(episode_rewards), total_num_steps)
                 tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
                 tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)

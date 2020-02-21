@@ -496,9 +496,9 @@ class UnityEnv:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
 
 
-        print('reward satisfied:', satisfied)
-        print('reward unsatisfied:', unsatisfied)
-        print('reward goal spec:', self.goal_spec)
+        # print('reward satisfied:', satisfied)
+        # print('reward unsatisfied:', unsatisfied)
+        # print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
         for key, value in satisfied.items():
@@ -722,15 +722,13 @@ class UnityEnv:
             # user agent action
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
-                print(action_str)
                 action_dict[1] = action_str
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
             obs, _ = self.get_observations()
-            reward, self.info = self.compute_toy_reward()
-            # reward, done = self.reward()
+
+            reward, done = self.reward()
             reward = torch.Tensor([reward])
-            done = self.info['done']
             if self.num_steps >= self.max_episode_length:
                 done = True
             done = np.array([done])
@@ -752,14 +750,17 @@ class UnityEnv:
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
             action_str = self.get_action_command(my_agent_action)
+
             if action_str is not None:
-                print(action_str)
+                if 'walk' not in action_str:
+                    print(action_str)
                 action_dict[1] = action_str
 
             _, obs_n, dict_results = self.env.step(action_dict)
             obs, _ = self.get_observations()
             self.num_steps += 1
             reward, done = self.reward()
+            reward = reward - 0.01
             reward = torch.Tensor([reward])
             if self.num_steps >= self.max_episode_length:
                 done = True
