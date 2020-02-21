@@ -78,7 +78,7 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, deterministic=False):
+    def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0):
         affordance_obj1 = inputs[-1]
         inputs = inputs[:-1]
         outputs = self.base(inputs, rnn_hxs, masks)
@@ -111,12 +111,20 @@ class Policy(nn.Module):
 
             new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
             dist = distr.update_logs(new_log_probs)
+            if i == 1:
+                print(new_log_probs)
             # Correct probabilities according to previously selected acitons
-            if deterministic:
-                action = dist.mode()
+            u = np.random.random()
+            if False:#u < epsilon:
+                random_policy = torch.distributions.Categorical(logits=torch.ones(dist.probs.shape).to(new_log_probs.device) * new_log_probs)
+                action = random_policy.sample()
             else:
-                action = dist.sample()
-            actions[i] = action
+                if deterministic:
+                    action = dist.mode()
+                else:
+                    action = dist.sample()
+                actions[i] = action
+            print(action)
             actions_log_probs[i] = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
         return value, actions, actions_log_probs, rnn_hxs
