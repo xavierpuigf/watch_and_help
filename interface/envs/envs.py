@@ -329,8 +329,6 @@ class UnityEnvWrapper:
 
         return result
 
-
-
     def is_terminal(self, goal_spec):
         _, unsatisfied = check_progress(self.graph, goal_spec)
         for predicate, count in unsatisfied.items():
@@ -575,10 +573,12 @@ class UnityEnv:
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
         env_task = random.choice(self.env_task_set)
         self.init_graph = env_task['init_graph']
+        self.init_rooms = env_task['init_rooms']
         self.task_goal = env_task['task_goal']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
-
+        self.goal_spec = self.task_goal[self.system_agent_id]
+        self.level = env_task['level']
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
@@ -605,8 +605,10 @@ class UnityEnv:
 
 
         else:
-            room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
-            room_ids = random.choices(room_ids, k=2)
+            # room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
+            # random.choices(room_ids, k=2)
+            room_ids = list(self.init_rooms)
+            # ipdb.set_trace()
             char_positions = [{'from_id': 1,  'to_id': room_ids[0], 'relation_type': 'INSIDE'},
                               {'from_id': 2,  'to_id': room_ids[1], 'relation_type': 'INSIDE'}]
             dummybbox = {'center': [0,0,0], 'size': [0,0,0]}
@@ -628,7 +630,6 @@ class UnityEnv:
 
         obs = self.get_observations()[0]
 
-        self.goal_spec = self.task_goal[self.system_agent_id]
         self.agents[self.system_agent_id].reset(curr_graph_system_agent,
                                                 self.task_goal,
                                                 seed=self.system_agent_id)
@@ -643,6 +644,7 @@ class UnityEnv:
         self.task_goal = env_task['task_goal']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
+        self.goal_spec = self.task_goal[self.system_agent_id]
         print('env_id:', self.env_id)
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
@@ -650,7 +652,6 @@ class UnityEnv:
             self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
-        self.goal_spec = self.task_goal[self.system_agent_id]
 
         pdb.set_trace()
         self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
@@ -754,18 +755,18 @@ class UnityEnv:
             action_str = self.get_action_command(my_agent_action)
 
             if action_str is not None:
-                if 'walk' not in action_str:
-                    print(action_str)
+                # if 'walk' not in action_str:
+                print(action_str)
                 action_dict[1] = action_str
 
             _, obs_n, dict_results = self.env.step(action_dict)
             obs, _ = self.get_observations()
             self.num_steps += 1
             reward, done = self.reward()
-            reward = reward - 0.01
+            reward = reward# - 0.01
             reward = torch.Tensor([reward])
-            if self.num_steps >= self.max_episode_length:
-                done = True
+            # if self.num_steps >= self.max_episode_length:
+            #     done = True
             done = np.array([done])
 
         self.last_action = action_str
@@ -1017,7 +1018,31 @@ class UnityEnv:
 
         else:
             obs = self.env.get_observations(char_index=1)
-            graph_inputs, graph_viz = self.graph_helper.build_graph(obs,
+            class2id = {node['class_name']: node['id'] for node in obs['nodes']}
+            category2id = {node['category']: node['id'] for node in obs['nodes']}
+
+            ## filter graph
+            obj_ids = []
+            # class_types = ['character', 'kitchentable','coffeetable', 'kitchencounter', 'kitchencabinets', 'cabinet', 'bathroomcabinet', 'bookshelf', 'toilet', 'microwave', 'dishwahser', 'oven']
+            class_types = ['character', 'kitchentable']
+            for predicate in self.goal_spec:
+                elements = predicate.split('_')
+                class_types += list(elements[1:])
+            if self.level == 0: # single room level
+                obj_ids = [node['id'] for node in obs['nodes'] if str(node['id']) in class_types or \
+                                            node['class_name'] in class_types]
+            else:
+                obj_ids = [node['id'] for node in obs['nodes'] if str(node['id']) in class_types or \
+                                            node['class_name'] in class_types or \
+                                            node['category'] == 'Rooms']
+            filtered_obs = {
+                'nodes': [node for node in obs['nodes'] if node['id'] in obj_ids],
+                'edges': [edge for edge in obs['edges'] if edge['from_id'] in obj_ids and edge['to_id'] in obj_ids] 
+            }
+            # print([(node['id'], node['class_name'])for node in filtered_obs['nodes']])
+            # ipdb.set_trace()
+
+            graph_inputs, graph_viz = self.graph_helper.build_graph(filtered_obs,
                                                                     character_id=self.my_agent_id, plot_graph=drawing)
 
             graph_inputs = list(graph_inputs)

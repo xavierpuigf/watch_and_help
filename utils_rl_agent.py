@@ -175,8 +175,8 @@ class GraphHelper():
                         id2index[edge['from_id']], 
                         id2index[edge['to_id']]])[None, :] for edge in edges], axis=0)
 
-        else:
-            pdb.set_trace()
+        # else:
+        #     pdb.set_trace()
 
         mask_edges = np.zeros(max_edges)
         all_edge_ids = np.zeros((max_edges, 2))
@@ -213,7 +213,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     # if action in ['open', 'close', 'grab', 'putback']:
     #     return False
     obj2_str = ''
-    id2node = {node['id']: node['class_name'] for node in graph['nodes']}
+    id2node = {node['id']: node for node in graph['nodes']}
     num_args = 0 if o1 is None else 1
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
     if num_args != args_per_action(action):
@@ -223,11 +223,16 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             return None
         else:
             o2_id = grabbed_objects[0]
-            o2 = id2node[o2_id]
+            o2 = id2node[o2_id]['class_name']
             obj2_str = f'<{o2}> ({o2_id})'
 
     obj1_str = f'<{o1}> ({o1_id})'
-    action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
+    if action.startswith('put'):
+        if 'CONTAINERS' in id2node[o1_id]['properties']:
+            action = 'putin'
+        elif 'SURFACES' in id2node[o1_id]['properties']:
+            action = 'putback'
+    action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
 
     return action_str
 

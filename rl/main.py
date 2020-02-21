@@ -3,6 +3,7 @@ import glob
 import os
 import time
 import pdb
+import ipdb
 import sys
 from collections import deque
 
@@ -44,7 +45,7 @@ def main():
     eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
     utils.cleanup_log_dir(eval_log_dir)
-    tensorboard_writer = None
+    # tensorboard_writer = None
 
 
     if args.tensorboard_logdir is not None:
@@ -58,7 +59,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     envs = make_vec_envs(args.env_name, simulator_type, args.seed, args.num_processes,
-            args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
+            args.gamma, args.log_dir, device, True, num_frame_stack=args.num_frame_stack)
 
 
 
@@ -134,26 +135,24 @@ def main():
             shuffle=True,
             drop_last=drop_last)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                              tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
-                              actor_critic.recurrent_hidden_state_size)
-
-    if 'virtualhome' in args.env_name:
-        obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
-    else:
-        obs = envs.reset()
     
-    for it in range(len(obs)):
-        # TODO: movidy
-        rollouts.obs[it][0].copy_(obs[it])
-    rollouts.to(device)
+
+    # if 'virtualhome' in args.env_name:
+    #     obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
+    # else:
+    #     obs = envs.reset()
+    
+    # for it in range(len(obs)):
+    #     # TODO: movidy
+    #     rollouts.obs[it][0].copy_(obs[it])
+
 
     
     episode_rewards = deque(maxlen=args.num_steps)
 
     start = time.time()
     num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
-
+    total_num_steps = 0
     
     for j in range(num_updates):
 
@@ -162,17 +161,31 @@ def main():
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
-        # obs = envs.reset()
+        rollouts = RolloutStorage(args.num_steps, args.num_processes,
+                              tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
+                              actor_critic.recurrent_hidden_state_size)
+        if 'virtualhome' in args.env_name:
+            obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
+        else:
+            obs = envs.reset()
+        
+        for it in range(len(obs)):
+            # TODO: movidy
+            rollouts.obs[it][0].copy_(obs[it])
+        rollouts.to(device)
+        
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step], epsilon=0.0)
+                    rollouts.masks[step], epsilon=0.01)
 
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+            if (step + 1) % args.t_max == 0:
+                recurrent_hidden_states = recurrent_hidden_states.detach()
             # obs: tensor, [1, 4, 84, 84],  |       [2, 4, 84, 84]
             # reward: tensor, [1, 1]        |       [2, 1]
             # done: array, array([False])   |       array([False, False])
@@ -193,14 +206,18 @@ def main():
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-            print(done)
+            print(step, reward[0], done[0])
+            total_num_steps += 1
             if done[0]: # break out after finishing an episode
                 break
         print('one episode finished')
         with torch.no_grad():
+            # print(rollouts.recurrent_hidden_states)
+            # print(rollouts.masks)
+            # ipdb.set_trace()
             next_value = actor_critic.get_value(
-                [ob[-1] for ob in rollouts.obs], rollouts.recurrent_hidden_states[-1],
-                rollouts.masks[-1]).detach()
+                [ob[rollouts.step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[rollouts.step],
+                rollouts.masks[rollouts.step]).detach()
 
         if args.gail:
             if j >= 10:
@@ -243,7 +260,7 @@ def main():
         
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             # pdb.set_trace()
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
+            # total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             print(
                 "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"

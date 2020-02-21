@@ -93,8 +93,13 @@ def get_args():
     parser.add_argument(
         '--num-steps',
         type=int,
-        default=30,
-        help='number of forward steps in A2C (default: 5)')
+        default=100,
+        help='number of forward steps in A2C (default: 100)')
+    parser.add_argument(
+        '--t-max',
+        type=int,
+        default=20,
+        help='number of bptt steps (default: 20)')
     parser.add_argument(
         '--ppo-epoch',
         type=int,

@@ -111,20 +111,21 @@ class Policy(nn.Module):
 
             new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
             dist = distr.update_logs(new_log_probs)
-            if i == 1:
-                print(new_log_probs)
+            # if i == 1:
+            #     print(new_log_probs)
             # Correct probabilities according to previously selected acitons
             u = np.random.random()
             if False:#u < epsilon:
-                random_policy = torch.distributions.Categorical(logits=torch.ones(dist.probs.shape).to(new_log_probs.device) * new_log_probs)
+                random_policy = torch.distributions.Categorical(logits=torch.ones(dist.probs.shape).to(new_log_probs.device) * mask_observations + (1 - mask_observations) * (-1e9))
                 action = random_policy.sample()
+                random
             else:
                 if deterministic:
                     action = dist.mode()
                 else:
                     action = dist.sample()
                 actions[i] = action
-            print(action)
+            # print(new_log_probs.shape)
             actions_log_probs[i] = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()
         return value, actions, actions_log_probs, rnn_hxs
