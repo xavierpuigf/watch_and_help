@@ -79,8 +79,8 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        affordance_obj1, affordance_obj2 = inputs[-2:]
-        inputs = inputs[:-2]
+        affordance_obj1 = inputs[-1]
+        inputs = inputs[:-1]
         outputs = self.base(inputs, rnn_hxs, masks)
         if len(inputs) > 6:
             object_classes = inputs[1]
@@ -95,8 +95,8 @@ class Policy(nn.Module):
         else:
             value, summary_nodes, actor_features, rnn_hxs = outputs
 
-        if len(self.dist) == 3:
-            indices = [1, 0, 2] # object1, action, object2
+        if len(self.dist) > 1:
+            indices = [1, 0] # object1, action
         else:
             indices = list(range(len(self.dist)))
 
@@ -108,7 +108,8 @@ class Policy(nn.Module):
                 dist = distr(summary_nodes)
             else:
                 dist = distr(summary_nodes, actor_features)
-            new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1, affordance_obj2)
+
+            new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
             dist = distr.update_logs(new_log_probs)
             # Correct probabilities according to previously selected acitons
             if deterministic:
@@ -122,11 +123,11 @@ class Policy(nn.Module):
 
     def get_value(self, inputs, rnn_hxs, masks):
 
-        outputs_model = self.base(inputs[:-2], rnn_hxs, masks)
+        outputs_model = self.base(inputs[:-1], rnn_hxs, masks)
         return outputs_model[0]
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        outputs_model = self.base(inputs[:-2], rnn_hxs, masks)
+        outputs_model = self.base(inputs[:-1], rnn_hxs, masks)
         if len(outputs_model) == 3:
             value, actor_features, rnn_hxs = outputs_model
             summary_nodes = actor_features

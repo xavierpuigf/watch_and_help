@@ -53,7 +53,6 @@ class GraphHelper():
 
         
         self.obj1_affordance = None
-        self.obj2_affordance = None
         self.get_action_affordance_map()
 
 
@@ -67,7 +66,6 @@ class GraphHelper():
         n_actions = len(self.actions)
         n_objects = len(self.object_dict)
         self.obj1_affordance = np.zeros((n_actions, n_objects))
-        self.obj2_affordance = np.zeros((n_actions, n_objects))
 
         id_no_obj = self.object_dict.get_id('no_obj')
         id_grab = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_grab']])
@@ -78,21 +76,13 @@ class GraphHelper():
             if args_per_action(action) == 0:
 
                 self.obj1_affordance[action_id, id_no_obj] = 1
-                self.obj2_affordance[action_id, id_no_obj] = 1
 
             if args_per_action(action) == 1:
 
-                self.obj2_affordance[action_id, id_no_obj] = 1
                 if action in ['open', 'close']:
                     self.obj1_affordance[action_id, id_containers] = 1
-                    if current_task is not None:
-                        self.obj1_affordance[action_id, :] = 0
-                        obj_names = [t.split('_')[1] for t in current_task[0].keys()]
-                        ids_goal = [self.object_dict.get_id(obj_name) for obj_name in obj_names]
-                        id_goal = np.array(ids_goal)
-                        self.obj1_affordance[action_id, id_goal] = 1
 
-                if action in ['grab']:
+                elif action in ['grab']:
                     self.obj1_affordance[action_id, id_grab] = 1
 
                     if current_task is not None:
@@ -103,37 +93,25 @@ class GraphHelper():
                         self.obj1_affordance[action_id, id_goal] = 1
 
 
-                if action in ['walktowards', 'walk']:
+                elif action in ['walktowards', 'walk']:
                     self.obj1_affordance[action_id, :] = 1
                     self.obj1_affordance[action_id, id_no_obj] = 0
 
+                    
+
+                # putin, put
+                else:
+                    id2 = id_containers if action == 'putin' else id_surface
+                    self.obj1_affordance[action_id, id2] = 1
+
+
                     if current_task is not None:
                         self.obj1_affordance[action_id, :] = 0
-                        obj_names = [t.split('_')[1] for t in current_task[0].keys()]
-                        obj_names += [id2node[int(t.split('_')[2])]['class_name'] for t in current_task[0].keys()]
+                        obj_names2 = [id2node[int(t.split('_')[2])]['class_name'] for t in
+                                      current_task[0].keys()]
+                        ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
+                        self.obj1_affordance[action_id, ids_goal2] = 1
 
-                        # Rooms not allowed
-                        obj_names += self.rooms
-                        ids_goal = [self.object_dict.get_id(obj_name) for obj_name in obj_names]
-                        id_goal = np.array(ids_goal)
-                        self.obj1_affordance[action_id, id_goal] = 1
-
-                
-            if args_per_action(action) == 2:
-                self.obj1_affordance[action_id, id_grab] = 1
-                id2 = id_containers if action == 'putin' else id_surface
-                self.obj2_affordance[action_id, id2] = 1
-
-                if current_task is not None:
-                    self.obj1_affordance[action_id, :] = 0
-                    self.obj2_affordance[action_id, :] = 0
-                    obj_names1 = [t.split('_')[1] for t in current_task[0].keys()]
-                    obj_names2 = [id2node[int(t.split('_')[2])]['class_name'] for t in
-                                  current_task[0].keys()]
-                    ids_goal1 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names1])
-                    ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
-                    self.obj1_affordance[action_id, ids_goal1] = 1
-                    self.obj2_affordance[action_id, ids_goal2] = 1
 
 
 
@@ -229,20 +207,29 @@ class GraphHelper():
         return (all_class_names, all_node_states, 
                 all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict, visible_nodes)
 
-def can_perform_action(action, o1, o2, agent_id, graph):
+def can_perform_action(action, o1, o1_id, agent_id, graph):
     if action == 'no_action':
-        return False
+        return None
     # if action in ['open', 'close', 'grab', 'putback']:
     #     return False
-    num_args = len([None for ob in [o1, o2] if ob is not None])
+    obj2_str = ''
+    id2node = {node['id']: node['class_name'] for node in graph['nodes']}
+    num_args = 0 if o1 is None else 1
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
     if num_args != args_per_action(action):
-        return False
+        return None
     if 'put' in action:
-        if o1 not in grabbed_objects:
-            return False
+        if len(grabbed_objects) == 0:
+            return None
+        else:
+            o2_id = grabbed_objects[0]
+            o2 = id2node[o2_id]
+            obj2_str = f'<{o2}> ({o2_id})'
 
-    return True
+    obj1_str = f'<{o1}> ({o1_id})'
+    action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
+
+    return action_str
 
 def args_per_action(action):
 
@@ -252,8 +239,8 @@ def args_per_action(action):
     'walktowards': 1,
     'open': 1,
     'close': 1,
-    'putback':2,
-    'putin': 2,
+    'putback':1,
+    'putin': 1,
     'grab': 1,
     'no_action': 0,
     'walk': 1}
@@ -266,7 +253,7 @@ class GraphSpace(spaces.Space):
 
         pass
 
-def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_affordance, obj2_affordance):
+def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_affordance):
     """
     :param log_probs: current log probs
     :param i: which action are we currently considering
@@ -298,24 +285,5 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
         log_probs = log_probs * mask + (1.-mask) * -inf_val
         return log_probs
 
-    else:
-        # deciding on object 2
-        log_probs = log_probs * mask_observations + (1. - mask_observations) * -inf_val
-        selected_action = actions[0]
-
-        # batch x object_class
-        mask_object_class = torch.gather(
-                            obj2_affordance, 1,
-                            selected_action.unsqueeze(-1).repeat(
-                                1, 1, obj1_affordance.shape[-1])).squeeze(-1).float().to(log_probs.device).squeeze(1)
-
-        # batch x nodes x object_class
-        one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_().to(object_classes.device)
-        target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
-
-
-        mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
-        mask = mask_nodes.to(log_probs.device).float()
-        log_probs = log_probs * mask + (1.-mask) * -inf_val
 
         return log_probs

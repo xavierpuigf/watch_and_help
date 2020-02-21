@@ -396,7 +396,7 @@ class UnityEnv:
 
         num_actions = len(self.graph_helper.action_dict)
         num_object_classes = len(self.graph_helper.object_dict)
-        self.action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
+        self.action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(self.num_objects)))
 
 
 
@@ -424,7 +424,6 @@ class UnityEnv:
                                shape=(self.num_objects, 2)), # 2D coords of the objects
                     spaces.Box(low=0, high=1, shape=(self.num_objects, )),
 
-                    spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes)),
                     spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
 
                 ))
@@ -439,7 +438,6 @@ class UnityEnv:
                 spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges,)),
                 spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects,)),
                 spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,)),
-                spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes)),
                 spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
             ))
 
@@ -689,30 +687,19 @@ class UnityEnv:
         else:
             current_graph = self.env.state
 
-        objects1, objects2 = self.nodes_visible, self.nodes_visible
+        objects1 = self.nodes_visible
 
 
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
         (o1, o1_id) = objects1[my_agent_action[1][0]]
-        try:
-            (o2, o2_id) = objects2[my_agent_action[2][0]]
-        except:
-            pdb.set_trace()
+
         #action_str = actions[my_agent_action]
         if o1 == 'no_obj':
             o1 = None
-        if o2 == 'no_obj':
-            o2 = None
 
-        obj1_str = '' if o1 is o1 is None or o1 == 'no_obj' else f'<{o1}> ({o1_id})'
-        obj2_str = '' if o2 is o2 is None or o2 == 'no_obj' else f'<{o2}> ({o2_id})'
-        action_str = f'[{action}] {obj1_str} {obj2_str}'.strip()
-        #action_str = '[walktowards] <microwave> (314)'
-        if utils_rl_agent.can_perform_action(action, o1, o2, self.my_agent_id, current_graph):
-            return action_str
-        else:
+        converted_action = utils_rl_agent.can_perform_action(action, o1, o1_id, self.my_agent_id, current_graph)
 
-            return None
+        return converted_action
 
     def step(self, my_agent_action):
         #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
@@ -1031,7 +1018,7 @@ class UnityEnv:
                                                                     character_id=self.my_agent_id, plot_graph=drawing)
 
             graph_inputs = list(graph_inputs)
-            current_obs = graph_inputs + [self.graph_helper.obj1_affordance, self.graph_helper.obj2_affordance]
+            current_obs = graph_inputs + [self.graph_helper.obj1_affordance]
             self.nodes_visible = graph_viz[-1]
 
             return current_obs, (None, graph_viz)
