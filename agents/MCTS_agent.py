@@ -417,8 +417,8 @@ class MCTS_agent:
 
 
         """TODO: do no need this?"""
-        self.env.reset(graph, task_goal)
-        self.env.to_pomdp()
+        # self.env.reset(graph, task_goal)
+        # self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
 
 
@@ -558,7 +558,7 @@ class MCTS_agent:
             # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 306 or edge['to_id'] == 306])
             # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 202 or edge['to_id'] == 202])
             print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id])
-            print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 213 or edge['to_id'] == 213])
+            print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
             ##########
 
 
@@ -574,6 +574,9 @@ class MCTS_agent:
             saved_info['plan'][0].append(system_agent_info['plan'][:3])
             saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
             print('Alice action:', system_agent_action)
+
+            if system_agent_action == '[walk] <cutleryknife> (1010)':
+                ipdb.set_trace()
 
             action_dict = {}
             if system_agent_action is not None:

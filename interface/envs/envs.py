@@ -603,9 +603,13 @@ class UnityEnv:
             }
             init_graph_chars['edges'] = [edge for edge in init_graph_chars['edges'] if edge['relation_type'] != 'CLOSE']
             graph = self.inside_not_trans(init_graph_chars)
+            # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+            # print('unity env graph:', [edge for edge in self.init_graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
             obs_n = self.env.reset(graph, self.task_goal)
             self.env.to_pomdp()
             curr_graph_system_agent = graph
+            # print('unity env graph:', [edge for edge in self.env.state['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+            # ipdb.set_trace()
 
         obs = self.get_observations()[0]
 
@@ -615,7 +619,7 @@ class UnityEnv:
                                                 seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
-        pdb.set_trace()
+        # pdb.set_trace()
         return obs
 
     def reset_2agents_python(self):
@@ -859,6 +863,8 @@ class UnityEnv:
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
+        if action == '[walk] <cutleryknife> (1010)':
+            ipdb.set_trace()
 
         if action is None:
             print("system agent action is None! DONE!")
@@ -897,6 +903,7 @@ class UnityEnv:
     def inside_not_trans(self, graph):
         inside_node = {}
         other_edges = []
+        id2node = {node['id']: node for node in graph['nodes']}
         for edge in graph['edges']:
             if edge['relation_type'] == 'INSIDE':
                 if edge['from_id'] not in inside_node:
@@ -940,7 +947,27 @@ class UnityEnv:
             max_np = max(all_num_parents)
             node_select = [node_inside[i] for i, np in enumerate(all_num_parents) if np == max_np][0]
             edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
+       
         graph['edges'] = edges_inside + other_edges
+
+        edges_inside_aug = []
+        for node in graph['nodes']:
+            connected_edges = [edge for edge in graph['edges'] if edge['from_id'] == node['id']]
+            count = sum([1 for edge in connected_edges if edge['relation_type'] == 'INSIDE'])
+            if count == 0: # no inside node at all
+                for edge in connected_edges:
+                    if edge['relation_type'] == 'ON':
+                        surface_id = edge['to_id']
+                        room_id = None
+                        for tmp_edge in graph['edges']:
+                            if tmp_edge['from_id'] == surface_id and id2node[tmp_edge['to_id']]['category'] == 'Rooms':
+                                room_id = tmp_edge['to_id']
+                                break
+                        if room_id is not None:
+                            edges_inside_aug.append({'from_id': node['id'], 'relation_type': 'INSIDE', 'to_id': room_id})
+                            break
+
+        graph['edges'] += edges_inside_aug
         return graph
    
     def get_observations(self, mode='seg_class', image_width=None, image_height=None, drawing=False):
