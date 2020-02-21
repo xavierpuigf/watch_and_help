@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import os
 
 import torch.nn.functional as F
 import torchvision.models as models
@@ -9,6 +10,11 @@ from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, El
 from a2c_ppo_acktr.utils import init
 from a2c_ppo_acktr.graph_nn import GraphModel
 import pdb
+import  sys
+home_path = os.getcwd()
+home_path = '/'.join(home_path.split('/')[:-2])
+sys.path.append(home_path+'/vh_multiagent_models')
+import utils_rl_agent
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -16,9 +22,8 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_space, action_space, agent_helper=None, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-        self.agent_helper = agent_helper
         action_inst = False
         if base_kwargs is None:
             base_kwargs = {}
@@ -74,6 +79,8 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
+        affordance_obj1, affordance_obj2 = inputs[-2:]
+        inputs = inputs[:-2]
         outputs = self.base(inputs, rnn_hxs, masks)
         if len(inputs) > 6:
             object_classes = inputs[1]
@@ -101,8 +108,7 @@ class Policy(nn.Module):
                 dist = distr(summary_nodes)
             else:
                 dist = distr(summary_nodes, actor_features)
-
-            new_log_probs = self.agent_helper.update_probs(dist.original_logits, i, actions, object_classes, mask_observations)
+            new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1, affordance_obj2)
             dist = distr.update_logs(new_log_probs)
             # Correct probabilities according to previously selected acitons
             if deterministic:
@@ -115,11 +121,12 @@ class Policy(nn.Module):
         return value, actions, actions_log_probs, rnn_hxs
 
     def get_value(self, inputs, rnn_hxs, masks):
-        outputs_model = self.base(inputs, rnn_hxs, masks)
+
+        outputs_model = self.base(inputs[:-2], rnn_hxs, masks)
         return outputs_model[0]
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        outputs_model = self.base(inputs, rnn_hxs, masks)
+        outputs_model = self.base(inputs[:-2], rnn_hxs, masks)
         if len(outputs_model) == 3:
             value, actor_features, rnn_hxs = outputs_model
             summary_nodes = actor_features
@@ -252,7 +259,9 @@ class GraphBase(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        if len(inputs) > 6:
+
+        if inputs[0].ndim > 3:
+            # first element is an image
             x = self.main(inputs[1:7])
         else:
             x = self.main(inputs)

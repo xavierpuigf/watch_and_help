@@ -146,11 +146,13 @@ class GraphModel(nn.Module):
 
             if num_edges > 0:
                 edge_types = all_edge_types[env_id][:num_edges].long()
-                g.add_edges(all_edge_ids[env_id][:num_edges, 0].long(), 
-                            all_edge_ids[env_id][:num_edges, 1].long(), 
-                            {'rel_type': edge_types.long(), 
-                                'norm': torch.ones((num_edges, 1)).to(edge_types.device)})
-
+                try:
+                    g.add_edges(all_edge_ids[env_id][:num_edges, 0].long(),
+                                all_edge_ids[env_id][:num_edges, 1].long(),
+                                {'rel_type': edge_types.long(),
+                                    'norm': torch.ones((num_edges, 1)).to(edge_types.device)})
+                except:
+                    pdb.set_trace()
             if self.features is None:
                 g.ndata['h'] = self.feat_in(ids.long())
             graphs.append(g)

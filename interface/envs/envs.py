@@ -392,7 +392,12 @@ class UnityEnv:
         self.observation_type = observation_type # Image, Coords
         self.viewer = None
         self.num_objects = max_num_objects
-        self.action_space = spaces.Tuple((spaces.Discrete(len(self.graph_helper.action_dict)), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
+
+        num_actions = len(self.graph_helper.action_dict)
+        num_object_classes = len(self.graph_helper.object_dict)
+        self.action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(self.num_objects), spaces.Discrete(self.num_objects)))
+
+
 
         if self.simulator_type == 'unity':
             if self.observation_type == 'coords':
@@ -416,7 +421,13 @@ class UnityEnv:
                     spaces.Box(low=-100, high=100, shape=(2,)),
                     spaces.Box(low=0, high=max(self.image_height, self.image_width),
                                shape=(self.num_objects, 2)), # 2D coords of the objects
-                    spaces.Box(low=0, high=1, shape=(self.num_objects, ))))
+                    spaces.Box(low=0, high=1, shape=(self.num_objects, )),
+
+                    spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes)),
+                    spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
+
+                ))
+
             else:
                 self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
         else:
@@ -426,7 +437,10 @@ class UnityEnv:
                 spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
                 spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges,)),
                 spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects,)),
-                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,))))
+                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,)),
+                spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes)),
+                spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
+            ))
 
 
         self.reward_range = (-10, 50.)
@@ -565,6 +579,9 @@ class UnityEnv:
         self.task_goal = env_task['task_goal']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
+
+
+        self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
@@ -668,10 +685,13 @@ class UnityEnv:
 
         objects1, objects2 = self.nodes_visible, self.nodes_visible
 
+
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
         (o1, o1_id) = objects1[my_agent_action[1][0]]
-        (o2, o2_id) = objects2[my_agent_action[2][0]]
-        
+        try:
+            (o2, o2_id) = objects2[my_agent_action[2][0]]
+        except:
+            pdb.set_trace()
         #action_str = actions[my_agent_action]
         if o1 == 'no_obj':
             o1 = None
@@ -977,14 +997,16 @@ class UnityEnv:
             self.nodes_visible = graph_viz[-1]
             graph_inputs = list(graph_inputs)
             #rel_coords = torch.Tensor(position_objects)[None, :]
-            current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask]
+            current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask] + []
             return current_obs, (images[0], graph_viz)
 
         else:
             obs = self.env.get_observations(char_index=1)
             graph_inputs, graph_viz = self.graph_helper.build_graph(obs,
                                                                     character_id=self.my_agent_id, plot_graph=drawing)
-            current_obs = graph_inputs
+
+            graph_inputs = list(graph_inputs)
+            current_obs = graph_inputs + [self.graph_helper.obj1_affordance, self.graph_helper.obj2_affordance]
             self.nodes_visible = graph_viz[-1]
             return current_obs, (None, graph_viz)
 

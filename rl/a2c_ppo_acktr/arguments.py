@@ -81,8 +81,8 @@ def get_args():
     parser.add_argument(
         '--simulator-type',
         default='python',
-        options=['unity', 'python'],
-        help='environment to train on (default: PongNoFrameskip-v4)')
+        choices=['unity', 'python'],
+        help='whether to use unity or python sim')
     
     parser.add_argument(
         '--num-processes',

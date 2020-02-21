@@ -89,7 +89,6 @@ def main():
     actor_critic = Policy(
         envs.observation_space,
         envs.action_space,
-        agent_helper=utils_rl_agent.GraphHelper(simulator_type=simulator_type),
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 

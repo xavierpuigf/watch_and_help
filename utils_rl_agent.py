@@ -14,7 +14,7 @@ class GraphHelper():
         self.relations = ['inside', 'close', 'facing', 'on']
         self.simulaor_type = simulator_type
         self.objects = self.get_objects()
-        rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
+        self.rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
 
         if simulator_type == 'unity':
             self.actions = [
@@ -39,7 +39,7 @@ class GraphHelper():
                 'grab',
                 'no_action'
             ]
-        self.object_dict = DictObjId(self.objects + ['character'] + rooms + ['no_obj'])
+        self.object_dict = DictObjId(self.objects + ['character'] + self.rooms + ['no_obj'])
         self.relation_dict = DictObjId(self.relations)
         self.state_dict = DictObjId(self.states)
         self.action_dict = DictObjId(self.actions, include_other=False)
@@ -56,48 +56,10 @@ class GraphHelper():
         self.obj2_affordance = None
         self.get_action_affordance_map()
 
-    def update_probs(self, log_probs, i, actions, object_classes, mask_observations):
-        """
-        :param log_probs: current log probs
-        :param i: which action are we currently considering
-        :param actions: actions already selected
-        :param mask_observations: bs x max_nodes with the valid nodes
-        :return:
-        """
-        inf_val = 1e9
-        if i == 1:
-            # Deciding on the object
-            log_probs =  log_probs * mask_observations + (1.-mask_observations) * -inf_val
-            return log_probs
-        elif i == 0:
-            # Deciding on the action
-            selected_obj1 = object_classes[range(object_classes.shape[0]), actions[1]].long()
-            mask = torch.Tensor(self.obj1_affordance[None, :][:, :, selected_obj1] == 1).to(log_probs.device)
-            log_probs = log_probs * mask + (1.-mask) * -inf_val
-            return log_probs
-
-        else:
-            # deciding on object 2
-            log_probs = log_probs * mask_observations + (1. - mask_observations) * -inf_val
-            selected_action = actions[0]
-
-            # batch x object_class
-            mask_object_class = torch.Tensor(self.obj2_affordance[None, :][:, selected_action, :] == 1).unsqueeze(1).to(object_classes.device)
-
-            # batch x nodes x object_class
-            one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_().to(object_classes.device)
-            target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
-
-            # the first node is the character
-            mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
-            mask = mask_nodes.to(log_probs.device).float()
-            log_probs = log_probs * mask + (1.-mask) * -inf_val
 
 
-            return log_probs
 
-
-    def get_action_affordance_map(self):
+    def get_action_affordance_map(self, current_task=None, id2node=None):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(f'{dir_path}/dataset/object_info.json', 'r') as f:
             content = json.load(f)
@@ -112,27 +74,66 @@ class GraphHelper():
         id_surface = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_surface']])
         id_containers = np.array([self.object_dict.get_id(obj_name) for obj_name in content['objects_inside']])
         for action in self.actions:
+            action_id = self.action_dict.get_id(action)
             if args_per_action(action) == 0:
-                action_id = self.action_dict.get_id(action)
+
                 self.obj1_affordance[action_id, id_no_obj] = 1
                 self.obj2_affordance[action_id, id_no_obj] = 1
 
             if args_per_action(action) == 1:
 
-                action_id = self.action_dict.get_id(action)
                 self.obj2_affordance[action_id, id_no_obj] = 1
                 if action in ['open', 'close']:
                     self.obj1_affordance[action_id, id_containers] = 1
+                    if current_task is not None:
+                        self.obj1_affordance[action_id, :] = 0
+                        obj_names = [t.split('_')[1] for t in current_task[0].keys()]
+                        ids_goal = [self.object_dict.get_id(obj_name) for obj_name in obj_names]
+                        id_goal = np.array(ids_goal)
+                        self.obj1_affordance[action_id, id_goal] = 1
+
                 if action in ['grab']:
                     self.obj1_affordance[action_id, id_grab] = 1
+
+                    if current_task is not None:
+                        self.obj1_affordance[action_id, :] = 0
+                        obj_names = [t.split('_')[1] for t in current_task[0].keys()]
+                        ids_goal = [self.object_dict.get_id(obj_name) for obj_name in obj_names]
+                        id_goal = np.array(ids_goal)
+                        self.obj1_affordance[action_id, id_goal] = 1
+
+
                 if action in ['walktowards', 'walk']:
                     self.obj1_affordance[action_id, :] = 1
-                    self.obj1_affordance[action_id,id_no_obj] = 0
+                    self.obj1_affordance[action_id, id_no_obj] = 0
+
+                    if current_task is not None:
+                        self.obj1_affordance[action_id, :] = 0
+                        obj_names = [t.split('_')[1] for t in current_task[0].keys()]
+                        obj_names += [id2node[int(t.split('_')[2])]['class_name'] for t in current_task[0].keys()]
+
+                        # Rooms not allowed
+                        obj_names += self.rooms
+                        ids_goal = [self.object_dict.get_id(obj_name) for obj_name in obj_names]
+                        id_goal = np.array(ids_goal)
+                        self.obj1_affordance[action_id, id_goal] = 1
+
                 
             if args_per_action(action) == 2:
                 self.obj1_affordance[action_id, id_grab] = 1
                 id2 = id_containers if action == 'putin' else id_surface
                 self.obj2_affordance[action_id, id2] = 1
+
+                if current_task is not None:
+                    self.obj1_affordance[action_id, :] = 0
+                    self.obj2_affordance[action_id, :] = 0
+                    obj_names1 = [t.split('_')[1] for t in current_task[0].keys()]
+                    obj_names2 = [id2node[int(t.split('_')[2])]['class_name'] for t in
+                                  current_task[0].keys()]
+                    ids_goal1 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names1])
+                    ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
+                    self.obj1_affordance[action_id, ids_goal1] = 1
+                    self.obj2_affordance[action_id, ids_goal2] = 1
 
 
 
@@ -161,6 +162,10 @@ class GraphHelper():
     def build_graph(self, graph, character_id, ids=None, plot_graph=False):
         if ids is None:
             ids = [node['id'] for node in graph['nodes']]
+
+        for node in graph['nodes']:
+            if node['category'] == 'Rooms':
+                assert(node['class_name'] in self.rooms)
 
         ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
         ids = [idi for idi in ids if idi != character_id]
@@ -227,8 +232,8 @@ class GraphHelper():
 def can_perform_action(action, o1, o2, agent_id, graph):
     if action == 'no_action':
         return False
-    if action in ['open', 'close', 'grab', 'putback']:
-        return False
+    # if action in ['open', 'close', 'grab', 'putback']:
+    #     return False
     num_args = len([None for ob in [o1, o2] if ob is not None])
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
     if num_args != args_per_action(action):
@@ -260,3 +265,57 @@ class GraphSpace(spaces.Space):
         self.dtype = "graph"
 
         pass
+
+def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_affordance, obj2_affordance):
+    """
+    :param log_probs: current log probs
+    :param i: which action are we currently considering
+    :param actions: actions already selected
+    :param mask_observations: bs x max_nodes with the valid nodes
+    :return:
+    """
+    inf_val = 1e9
+    if i == 1:
+        # Deciding on the object
+        log_probs =  log_probs * mask_observations + (1.-mask_observations) * -inf_val
+        # check if an object cannot in no class
+
+        # b x num_classes
+        mask_object_class = obj1_affordance.sum(1) > 0
+        # batch x nodes x object_class
+        one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1],
+                                   mask_object_class.shape[-1]).zero_().to(object_classes.device)
+        target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
+        mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
+        mask = mask_nodes.to(log_probs.device).float()
+        log_probs = log_probs * mask + (1. - mask) * -inf_val
+        return log_probs
+
+    elif i == 0:
+        # Deciding on the action
+        selected_obj1 = object_classes[range(object_classes.shape[0]), actions[1]].long()
+        mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1)).squeeze(-1).float().to(log_probs.device)
+        log_probs = log_probs * mask + (1.-mask) * -inf_val
+        return log_probs
+
+    else:
+        # deciding on object 2
+        log_probs = log_probs * mask_observations + (1. - mask_observations) * -inf_val
+        selected_action = actions[0]
+
+        # batch x object_class
+        mask_object_class = torch.gather(
+                            obj2_affordance, 1,
+                            selected_action.unsqueeze(-1).repeat(
+                                1, 1, obj1_affordance.shape[-1])).squeeze(-1).float().to(log_probs.device).squeeze(1)
+
+        # batch x nodes x object_class
+        one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1], mask_object_class.shape[-1]).zero_().to(object_classes.device)
+        target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
+
+
+        mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
+        mask = mask_nodes.to(log_probs.device).float()
+        log_probs = log_probs * mask + (1.-mask) * -inf_val
+
+        return log_probs
