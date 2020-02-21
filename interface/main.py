@@ -170,7 +170,8 @@ if __name__ == '__main__':
                                                              c_init=0.1,
                                                              c_base=1000000,
                                                              num_samples=1,
-                                                             num_processes=1)
+                                                             num_processes=1,
+                                                             logging=True)
 
                 ## ------------------------------------------------------------------------------
                 ## run your agent
