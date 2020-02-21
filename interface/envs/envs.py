@@ -765,9 +765,10 @@ class UnityEnv:
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
             action_str = self.get_action_command(my_agent_action)
-            if my_agent_action is not None:
+            if action_str is not None:
                 print(action_str)
                 action_dict[1] = action_dict
+
             _, obs_n, dict_results = self.env.step(action_dict)
             obs = obs_n[1]
             self.num_steps += 1
