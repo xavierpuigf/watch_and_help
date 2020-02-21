@@ -691,8 +691,10 @@ class UnityEnv:
 
 
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
-        (o1, o1_id) = objects1[my_agent_action[1][0]]
-
+        try:
+            (o1, o1_id) = objects1[my_agent_action[1][0]]
+        except:
+            pdb.set_trace()
         #action_str = actions[my_agent_action]
         if o1 == 'no_obj':
             o1 = None

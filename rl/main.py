@@ -162,12 +162,13 @@ def main():
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
+        # obs = envs.reset()
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step])
+                    rollouts.masks[step], epsilon=0.0)
 
 
             # Obser reward and next obs
@@ -192,6 +193,10 @@ def main():
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
+            print(done)
+            if done[0]: # break out after finishing an episode
+                break
+        print('one episode finished')
         with torch.no_grad():
             next_value = actor_critic.get_value(
                 [ob[-1] for ob in rollouts.obs], rollouts.recurrent_hidden_states[-1],
@@ -237,7 +242,7 @@ def main():
 
         
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
-            pdb.set_trace()
+            # pdb.set_trace()
             total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
             print(
