@@ -767,10 +767,10 @@ class UnityEnv:
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 print(action_str)
-                action_dict[1] = action_dict
+                action_dict[1] = action_str
 
             _, obs_n, dict_results = self.env.step(action_dict)
-            obs = obs_n[1]
+            obs, _ = self.get_observations()
             self.num_steps += 1
             reward, done = self.reward()
             reward = torch.Tensor([reward])
@@ -779,7 +779,6 @@ class UnityEnv:
             done = np.array([done])
 
         self.last_action = action_str
-        pdb.set_trace()
         return obs, reward, done, dict_results
 
     def step_2agents_python(self, action_dict):

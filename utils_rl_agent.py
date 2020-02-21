@@ -16,7 +16,6 @@ class GraphHelper():
         self.objects = self.get_objects()
         self.rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
 
-        pdb.set_trace()
         if simulator_type == 'unity':
             self.actions = [
                 'turnleft',
