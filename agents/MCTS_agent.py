@@ -324,7 +324,9 @@ class MCTS_agent:
                  num_samples=1, num_processes=1, comm=None):
         self.unity_env = unity_env
         self.env = unity_env.env
-        
+
+        self.logging = False
+
         self.agent_id = agent_id
         self.char_index = char_index
         self.sim_env = VhGraphEnv()
@@ -632,9 +634,9 @@ class MCTS_agent:
             #                 last_position[it] = walk_id
             #                 last_walk_room[it] = True
 
-
-            with open('../logs/logs_agent.json', 'w+') as f:
-                f.write(json.dumps(saved_info, indent=4))
+            if self.logging:
+                with open('../logs/logs_agent.json', 'w+') as f:
+                    f.write(json.dumps(saved_info, indent=4))
 
             # obs, reward, done, infos = self.unity_env.step_alice()
             if done[0]: # ended
