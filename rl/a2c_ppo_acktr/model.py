@@ -81,6 +81,8 @@ class Policy(nn.Module):
     def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0):
         affordance_obj1 = inputs[-1]
         inputs = inputs[:-1]
+
+        # value function, history, node_embedding, rnn
         outputs = self.base(inputs, rnn_hxs, masks)
         if len(inputs) > 6:
             object_classes = inputs[1]
@@ -95,6 +97,7 @@ class Policy(nn.Module):
         else:
             value, summary_nodes, actor_features, rnn_hxs = outputs
 
+        # select object1, and mask action accordingly
         if len(self.dist) > 1:
             indices = [1, 0] # object1, action
         else:
@@ -272,6 +275,7 @@ class GraphBase(NNBase):
 
         if inputs[0].ndim > 3:
             # first element is an image
+            # x: [bs, num_objects, dim] (x[:, 0, :] always character)
             x = self.main(inputs[1:7])
         else:
             x = self.main(inputs)

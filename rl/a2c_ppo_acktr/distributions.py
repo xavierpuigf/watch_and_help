@@ -73,6 +73,8 @@ class ElementWiseCategorical(nn.Module):
         return FixedCategorical(logits=logs)
 
     def forward(self, x, y):
+        # x: [batch, 1, dim]
+        # y: [batch, num_nodes (padded), dim]
         # n x dim
         x0 = x.unsqueeze(1)
         if self.method == 'dotprod':
