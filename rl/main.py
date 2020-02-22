@@ -271,12 +271,11 @@ def main():
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
 
-            if tensorboard_writer is not None:
-
-                tensorboard_writer.add_scalar("mean_reward", np.mean(episode_rewards), total_num_steps)
-                tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
-                tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
-                tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
+            if tensorboard_writer is not None
+                tensorboard_writer.add_scalar("sum_reward", np.sum(episode_rewards), total_num_steps)
+                # tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
+                # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
+                # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
                 tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
                 tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
                 tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
