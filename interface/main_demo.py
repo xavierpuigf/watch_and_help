@@ -66,7 +66,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--max-episode-length', type=int, default=100, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
-parser.add_argument('--simulator-type', type=str, default='python', help='Simulator type: python (default), unity')
+parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
 parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10.p', help='Dataset path')
 
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         
-        num_agents = 2
+        num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
         env_task_set = []
         for problem_setup in data:
@@ -98,14 +98,14 @@ if __name__ == '__main__':
 
             env_task_set.append({'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal,
                                 'level': 0, 'init_rooms': [0, 0]})
-        # unity_env.setup(init_graph, task_goal)
 
         unity_env = UnityEnv(num_agents=num_agents, 
                              max_episode_length=args.max_episode_length,
                              simulator_type=args.simulator_type,
-                             env_task_set=env_task_set)
+                             env_task_set=env_task_set,
+                             logging=True)
         for episode_id in range(10):
-            unity_env.reset()
+            unity_env.reset_MCTS()
 
             ## ------------------------------------------------------------------------------
             ## Preparing the goal
