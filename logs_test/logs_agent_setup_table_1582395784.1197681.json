@@ -1,0 +1,72 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 0,
+        "on_glasses_235": 0,
+        "on_wineglass_235": 0,
+        "on_cutleryfork_235": 2,
+        "on_cutleryknife_235": 0,
+        "on_coffeepot_235": 2
+    },
+    "action": {
+        "0": [
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (458)",
+                "[grab] <coffeepot> (458)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (458)",
+                "[grab] <coffeepot> (458)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (458)",
+                "[grab] <coffeepot> (458)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (458)",
+                "[grab] <coffeepot> (458)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_458_235",
+                "put_466_235"
+            ],
+            [
+                "put_458_235"
+            ],
+            [
+                "put_458_235"
+            ],
+            [
+                "put_458_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            0.633203864,
+            0.56812495,
+            -7.26729774
+        ],
+        "1": null
+    }
+}

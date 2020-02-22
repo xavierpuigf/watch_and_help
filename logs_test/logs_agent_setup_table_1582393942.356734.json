@@ -1,0 +1,72 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 0,
+        "on_glasses_235": 0,
+        "on_wineglass_235": 0,
+        "on_cutleryfork_235": 0,
+        "on_cutleryknife_235": 1,
+        "on_coffeepot_235": 2
+    },
+    "action": {
+        "0": [
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_473_235",
+                "put_471_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            -4.97115469,
+            0.565477133,
+            -1.20405126
+        ],
+        "1": null
+    }
+}

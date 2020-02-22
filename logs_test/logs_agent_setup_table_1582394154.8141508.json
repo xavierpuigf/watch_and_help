@@ -1,0 +1,806 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 2,
+        "on_glasses_235": 1,
+        "on_wineglass_235": 1,
+        "on_cutleryfork_235": 0,
+        "on_cutleryknife_235": 0,
+        "on_coffeepot_235": 1
+    },
+    "action": {
+        "0": [
+            "[walk] <wineglass> (455)",
+            "[walk] <wineglass> (455)",
+            "[grab] <wineglass> (455)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchentable> (235)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)",
+            "[grab] <wineglass> (455)",
+            "[putback] <wineglass> (455) <kitchentable> (235)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <wineglass> (455)",
+                "[grab] <wineglass> (455)",
+                "[walk] <bedroom> (76)"
+            ],
+            [
+                "[walk] <wineglass> (455)",
+                "[grab] <wineglass> (455)",
+                "[walk] <bedroom> (76)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <bedroom> (76)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <wineglass> (455)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <wineglass> (455) <kitchentable> (235)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_455_235",
+                "put_463_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ],
+            [
+                "put_455_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            -0.4030362,
+            0.5702678,
+            -6.466227
+        ],
+        "1": null
+    }
+}

@@ -1,0 +1,705 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 2,
+        "on_glasses_235": 0,
+        "on_wineglass_235": 1,
+        "on_cutleryfork_235": 0,
+        "on_cutleryknife_235": 2,
+        "on_coffeepot_235": 1
+    },
+    "action": {
+        "0": [
+            "[walk] <microwave> (314)",
+            "[walk] <microwave> (314)",
+            "[walk] <microwave> (314)",
+            "[walk] <microwave> (314)",
+            "[open] <microwave> (314)",
+            "[walk] <kitchencabinets> (238)",
+            "[open] <kitchencabinets> (238)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <coffeepot> (473)",
+            "[walk] <coffeepot> (473)",
+            "[walk] <coffeepot> (473)",
+            "[grab] <coffeepot> (473)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchentable> (235)",
+            "[putback] <coffeepot> (473) <kitchentable> (235)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <bedroom> (76)",
+            "[walk] <plate> (465)",
+            "[walk] <plate> (465)",
+            "[grab] <plate> (465)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchentable> (235)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)",
+            "[grab] <plate> (465)",
+            "[putback] <plate> (465) <kitchentable> (235)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <microwave> (314)",
+                "[open] <microwave> (314)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[open] <microwave> (314)",
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchencabinets> (238)",
+                "[open] <kitchencabinets> (238)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[open] <kitchencabinets> (238)",
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <cabinet> (416)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <cabinet> (416)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <cabinet> (416)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <cabinet> (416)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <cabinet> (416)",
+                "[grab] <coffeepot> (473)"
+            ],
+            [
+                "[walk] <coffeepot> (473)",
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <coffeepot> (473)",
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <coffeepot> (473)",
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[grab] <coffeepot> (473)",
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchentable> (235)",
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <coffeepot> (473) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)"
+            ],
+            [
+                "[walk] <bedroom> (76)",
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)"
+            ],
+            [
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <plate> (465)",
+                "[grab] <plate> (465)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[grab] <plate> (465)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <plate> (465) <kitchentable> (235)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_473_235",
+                "put_464_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_473_235"
+            ],
+            [
+                "put_465_235",
+                "put_468_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ],
+            [
+                "put_465_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            -0.5635141,
+            0.5701535,
+            -4.46095753
+        ],
+        "1": null
+    }
+}

@@ -1,0 +1,108 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 2,
+        "on_glasses_235": 0,
+        "on_wineglass_235": 1,
+        "on_cutleryfork_235": 0,
+        "on_cutleryknife_235": 2,
+        "on_coffeepot_235": 1
+    },
+    "action": {
+        "0": [
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <livingroom> (336)",
+            "[walk] <kitchen> (210)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <livingroom> (336)",
+                "[walk] <coffeepot> (474)",
+                "[grab] <coffeepot> (474)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <fridge> (306)",
+                "[open] <fridge> (306)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_474_235",
+                "put_470_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ],
+            [
+                "put_474_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            1.89955032,
+            0.5685584,
+            -7.81033134
+        ],
+        "1": null
+    }
+}

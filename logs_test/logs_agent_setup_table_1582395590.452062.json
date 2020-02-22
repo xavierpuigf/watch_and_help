@@ -1,0 +1,206 @@
+{
+    "env_id": 0,
+    "task_name": "setup_table",
+    "goals": {
+        "on_plate_235": 2,
+        "on_glasses_235": 0,
+        "on_wineglass_235": 1,
+        "on_cutleryfork_235": 0,
+        "on_cutleryknife_235": 2,
+        "on_coffeepot_235": 1
+    },
+    "action": {
+        "0": [
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <cutleryknife> (470)",
+            "[walk] <cutleryknife> (470)",
+            "[walk] <cutleryknife> (470)",
+            "[walk] <cutleryknife> (470)",
+            "[grab] <cutleryknife> (470)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[walk] <kitchen> (210)",
+            "[putback] <cutleryknife> (470) <kitchentable> (235)",
+            "[walk] <bathroom> (11)",
+            "[walk] <bathroom> (11)",
+            "[walk] <bathroom> (11)",
+            "[walk] <bathroom> (11)",
+            "[walk] <bathroom> (11)"
+        ],
+        "1": []
+    },
+    "plan": {
+        "0": [
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)"
+            ],
+            [
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[walk] <cutleryknife> (470)",
+                "[grab] <cutleryknife> (470)",
+                "[walk] <kitchen> (210)"
+            ],
+            [
+                "[grab] <cutleryknife> (470)",
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <cutleryknife> (470) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <cutleryknife> (470) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <cutleryknife> (470) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <kitchen> (210)",
+                "[walk] <kitchentable> (235)",
+                "[putback] <cutleryknife> (470) <kitchentable> (235)"
+            ],
+            [
+                "[putback] <cutleryknife> (470) <kitchentable> (235)"
+            ],
+            [
+                "[walk] <bathroom> (11)",
+                "[walk] <coffeepot> (460)",
+                "[grab] <coffeepot> (460)"
+            ],
+            [
+                "[walk] <bathroom> (11)",
+                "[walk] <coffeepot> (460)",
+                "[grab] <coffeepot> (460)"
+            ],
+            [
+                "[walk] <bathroom> (11)",
+                "[walk] <coffeepot> (460)",
+                "[grab] <coffeepot> (460)"
+            ],
+            [
+                "[walk] <bathroom> (11)",
+                "[walk] <coffeepot> (460)",
+                "[grab] <coffeepot> (460)"
+            ],
+            [
+                "[walk] <bathroom> (11)",
+                "[walk] <coffeepot> (460)",
+                "[grab] <coffeepot> (460)"
+            ]
+        ],
+        "1": []
+    },
+    "subgoal": {
+        "0": [
+            [
+                "put_470_235",
+                "put_459_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_470_235"
+            ],
+            [
+                "put_460_235",
+                "put_472_235"
+            ],
+            [
+                "put_460_235"
+            ],
+            [
+                "put_460_235"
+            ],
+            [
+                "put_460_235"
+            ],
+            [
+                "put_460_235"
+            ]
+        ],
+        "1": []
+    },
+    "init_pos": {
+        "0": [
+            -4.474383,
+            0.57016176,
+            -4.575943
+        ],
+        "1": null
+    }
+}
