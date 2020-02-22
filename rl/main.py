@@ -59,7 +59,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     envs = make_vec_envs(args.env_name, simulator_type, args.seed, args.num_processes,
-            args.gamma, args.log_dir, device, True, num_frame_stack=args.num_frame_stack)
+            args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
 
 
 
@@ -137,10 +137,10 @@ def main():
 
     
 
-    # if 'virtualhome' in args.env_name:
-    #     obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
-    # else:
-    #     obs = envs.reset()
+    if 'virtualhome' in args.env_name:
+        obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
+    else:
+        obs = envs.reset()
     
     # for it in range(len(obs)):
     #     # TODO: movidy
@@ -160,13 +160,14 @@ def main():
             utils.update_linear_schedule(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
+            
         rollouts = RolloutStorage(args.num_steps, args.num_processes,
                               tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
                               actor_critic.recurrent_hidden_state_size)
-        if 'virtualhome' in args.env_name:
-            obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
-        else:
-            obs = envs.reset()
+        # if 'virtualhome' in args.env_name:
+        #     obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
+        # else:
+        #     obs = envs.reset()
         
         for it in range(len(obs)):
             # TODO: movidy
@@ -192,13 +193,12 @@ def main():
             # done: array, array([False])   |       array([False, False])
             # infos: [{'ale.lives': 0}]     |       ({'ale.lives': 0}, {'ale.lives': 0})
 
-            for info in infos:
-                if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
-                if 'virtualhome' in args.env_name:
-                    episode_rewards.append(reward) # info['episode']['r'])
-        
-
+            # for info in infos:
+            #     if 'episode' in info.keys():
+            #         episode_rewards.append(info['episode']['r'])
+            #     if 'virtualhome' in args.env_name:
+            #         episode_rewards.append(reward) # info['episode']['r'])
+            episode_rewards.append(reward)
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -212,6 +212,7 @@ def main():
             if done[0]: # break out after finishing an episode
                 break
         print('one episode finished')
+
         with torch.no_grad():
             # print(rollouts.recurrent_hidden_states)
             # print(rollouts.masks)

@@ -830,8 +830,8 @@ class UnityEnv:
             reward, done = self.reward()
             reward = reward# - 0.01
             reward = torch.Tensor([reward])
-            # if self.num_steps >= self.max_episode_length:
-            #     done = True
+            if self.num_steps >= self.max_episode_length:
+                done = True
             done = np.array([done])
 
         self.last_action = action_str
