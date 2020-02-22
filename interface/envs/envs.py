@@ -73,7 +73,7 @@ class UnityEnvWrapper:
 
         self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
         print('Checking connection')
-        self.comm.check_connection()
+        # self.comm.check_connection()
 
         self.num_agents = num_agents
         self.graph = None
