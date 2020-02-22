@@ -53,8 +53,23 @@ def get_args():
     parser.add_argument(
         '--entropy-coef',
         type=float,
+        default=0.0,
+        help='entropy term coefficient (default: 0.0)')
+    parser.add_argument(
+        '--init-epsilon',
+        type=float,
+        default=0.1,
+        help='initial epsilon (default: 0.1)')
+    parser.add_argument(
+        '--final-epsilon',
+        type=float,
         default=0.01,
-        help='entropy term coefficient (default: 0.01)')
+        help='final epsilon (default: 0.01)')
+    parser.add_argument(
+        '--max-exp-episodes',
+        type=int,
+        default=10000,
+        help='Maximum exploration episodes (default: 10000)')
     parser.add_argument(
         '--value-loss-coef',
         type=float,

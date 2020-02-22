@@ -114,11 +114,6 @@ class GraphHelper():
 
 
 
-
-
-
-
-
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -223,11 +218,15 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             return None
         else:
             o2_id = grabbed_objects[0]
+            if o2_id == o1_id:
+                return None
             o2 = id2node[o2_id]['class_name']
             obj2_str = f'<{o2}> ({o2_id})'
 
     obj1_str = f'<{o1}> ({o1_id})'
     if action.startswith('put'):
+        if id2node[o1_id]['class_name'] == 'character':
+                return None
         if 'CONTAINERS' in id2node[o1_id]['properties']:
             action = 'putin'
         elif 'SURFACES' in id2node[o1_id]['properties']:

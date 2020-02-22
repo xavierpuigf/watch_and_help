@@ -118,16 +118,21 @@ class Policy(nn.Module):
             #     print(new_log_probs)
             # Correct probabilities according to previously selected acitons
             u = np.random.random()
-            if False:#u < epsilon:
-                random_policy = torch.distributions.Categorical(logits=torch.ones(dist.probs.shape).to(new_log_probs.device) * mask_observations + (1 - mask_observations) * (-1e9))
-                action = random_policy.sample()
-                random
-            else:
+            if u < epsilon:
+                uniform_logits = torch.ones(dist.probs.shape).to(new_log_probs.device)
+                if i == 1: 
+                    uniform_logits = uniform_logits * mask_observations + (1 - mask_observations) * (-1e9)
+                random_policy = torch.distributions.Categorical(logits=uniform_logits)
+                action = random_policy.sample().unsqueeze(0)
+                # print(uniform_logits.shape, dist.probs.shape, new_log_probs.shape)
+                # print('egreedy:', action)
+            else: 
                 if deterministic:
                     action = dist.mode()
                 else:
                     action = dist.sample()
-                actions[i] = action
+                # print('policy:', action)
+            actions[i] = action
             # print(new_log_probs.shape)
             actions_log_probs[i] = dist.log_probs(action)
             dist_entropy = dist.entropy().mean()

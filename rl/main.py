@@ -147,12 +147,11 @@ def main():
     #     rollouts.obs[it][0].copy_(obs[it])
 
 
-    
-    episode_rewards = deque(maxlen=args.num_steps)
 
     start = time.time()
     num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
     total_num_steps = 0
+    epsilon = args.init_epsilon
     
     for j in range(num_updates):
 
@@ -173,13 +172,15 @@ def main():
             # TODO: movidy
             rollouts.obs[it][0].copy_(obs[it])
         rollouts.to(device)
+
+        episode_rewards = deque(maxlen=args.num_steps)
         
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                     [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step], epsilon=0.01)
+                    rollouts.masks[step], epsilon=epsilon)
 
 
             # Obser reward and next obs
@@ -243,6 +244,10 @@ def main():
 
         rollouts.after_update()
 
+        epsilon = (args.init_epsilon - args.final_epsilon) \
+                    * (1.0 - float(j) / float(args.max_exp_episodes)) \
+                    + args.final_epsilon
+
         # save for every interval-th episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
@@ -271,7 +276,7 @@ def main():
                         np.max(episode_rewards), dist_entropy, value_loss,
                         action_loss))
 
-            if tensorboard_writer is not None
+            if tensorboard_writer is not None:
                 tensorboard_writer.add_scalar("sum_reward", np.sum(episode_rewards), total_num_steps)
                 # tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
                 # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
