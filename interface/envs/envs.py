@@ -351,7 +351,8 @@ class UnityEnv:
                  enable_alice=True,
                  simulator_type='python',
                  env_task_set=[],
-                 max_num_objects=150):
+                 max_num_objects=150,
+                 logging=False):
 
         self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
@@ -363,6 +364,7 @@ class UnityEnv:
         self.init_graph = init_graph
         self.task_goal = None
         self.env_task_set = env_task_set
+        self.logging = logging
 
 
         self.unity_simulator = None # UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)
@@ -632,7 +634,8 @@ class UnityEnv:
 
         self.agents[self.system_agent_id].reset(curr_graph_system_agent,
                                                 self.task_goal,
-                                                seed=self.system_agent_id)
+                                                seed=self.system_agent_id,
+                                                simulator_type=self.simulator_type)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
         # pdb.set_trace()
@@ -658,6 +661,68 @@ class UnityEnv:
         self.prev_dist = self.get_distance()
         self.num_steps = 0
         return obs_n
+
+    def reset_MCTS(self, graph=None, task_goal=None):
+        # reset system agent
+        # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+        # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+        env_task = random.choice(self.env_task_set)
+        self.init_graph = env_task['init_graph']
+        self.init_rooms = env_task['init_rooms']
+        self.task_goal = env_task['task_goal']
+        self.task_name = env_task['task_name']
+        self.env_id = env_task['env_id']
+        self.goal_spec = self.task_goal[self.system_agent_id]
+        self.level = env_task['level']
+
+        self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
+        print('env_id:', self.env_id)
+        print('task_name:', self.task_name)
+        print('goals:', self.task_goal[0])
+
+
+        if self.simulator_type == 'unity':
+            if self.unity_simulator is None:
+                self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
+                                                       init_graph=self.init_graph,
+                                                       num_agents=self.num_agents)
+            # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
+            # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+            # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]           if graph is None:
+            self.unity_simulator.reset(self.env_id, self.init_graph)
+
+            #self.env.reset(self.init_graph, self.task_goal)
+            curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
+
+        else:
+            # room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
+            # random.choices(room_ids, k=2)
+            room_ids = list(self.init_rooms)
+            # ipdb.set_trace()
+            char_positions = [{'from_id': 1,  'to_id': room_ids[0], 'relation_type': 'INSIDE'},
+                              {'from_id': 2,  'to_id': room_ids[1], 'relation_type': 'INSIDE'}]
+            dummybbox = {'center': [0,0,0], 'size': [0,0,0]}
+            char_nodes = [{'id': 1, 'class_name': 'character', 'bounding_box': dummybbox, 'states': [], 'category': 'Characters', 'properties': []},
+                          {'id': 2, 'class_name': 'character', 'bounding_box': dummybbox, 'states': [], 'category': 'Characters', 'properties': []}]
+            init_graph_chars = {
+                'edges': self.init_graph['edges'] + char_positions,
+                'nodes': self.init_graph['nodes'] + char_nodes,
+            }
+            init_graph_chars['edges'] = [edge for edge in init_graph_chars['edges'] if edge['relation_type'] != 'CLOSE']
+            graph = self.inside_not_trans(init_graph_chars)
+            # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+            # print('unity env graph:', [edge for edge in self.init_graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+            obs_n = self.env.reset(graph, self.task_goal)
+            self.env.to_pomdp()
+            curr_graph_system_agent = graph
+            # print('unity env graph:', [edge for edge in self.env.state['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+            # ipdb.set_trace()
+
+        self.agents[self.system_agent_id].reset(curr_graph_system_agent, self.task_goal, seed=self.system_agent_id, simulator_type=self.simulator_type)
+        obs = None
+        self.num_steps = 0
+        # pdb.set_trace()
+        return obs
 
     def reset_alice(self, graph=None, task_goal=None):
         # reset system agent
@@ -821,27 +886,9 @@ class UnityEnv:
         return obs, reward, done, dict_results
 
     def step_alice(self):
-        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
-        # _, current_graph = self.unity_simulator.comm.environment_graph()
-        # actions, objects1, objects2 = self.obtain_actions(current_graph)
-        # if len(actions) < self.num_actions:
-        #     actions = actions + [None] * (self.num_actions - len(actions))
-
-        # if len(objects1) < self.num_objects:
-        #     objects1 = objects1 + [None] * (self.num_objects - len(objects1))
-
-        # if len(objects2) < self.num_objects:
-        #     objects2 = objects2 + [None] * (self.num_objects - len(objects2))
-        # pdb.set_trace()
-        # action = actions[my_agent_action[0][0]]
-        # (o1, o1_id) = objects1[my_agent_action[1][0]]
-        # (o2, o2_id) = objects2[my_agent_action[2][0]]
-        
-        # #action_str = actions[my_agent_action]
-        # obj1_str = '' if o1 is None else '<o1> (o1_id)' 
-        # obj2_str = '' if o1 is None else '<o2> (o2_id)' 
-        # action_str = f'<char0> [{action}] {obj1_str} {obj2_str}'.strip()
-        # self.unity_simulator.comm.render_script([action_str], recording=False, gen_vid=False)
+        if self.simulator_type == 'unity':
+            graph = self.get_graph()
+            self.env.reset(graph, self.task_goal)
         self.num_steps += 1
         # obs, _ = self.get_observations()
         obs = None
@@ -868,7 +915,8 @@ class UnityEnv:
                                c_init=0.1,
                                c_base=1000000,
                                num_samples=1,
-                               num_processes=1)
+                               num_processes=1,
+                               logging=self.logging)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))

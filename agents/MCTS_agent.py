@@ -413,14 +413,15 @@ class MCTS_agent:
         }
         return action, info
 
-    def reset(self, graph, task_goal, seed=0):
+    def reset(self, graph, task_goal, seed=0, simulator_type='python'):
         if self.comm is not None:
             s, graph = self.comm.environment_graph()
 
 
         """TODO: do no need this?"""
-        # self.env.reset(graph, task_goal)
-        # self.env.to_pomdp()
+        if simulator_type == 'unity':
+            self.env.reset(graph, task_goal)
+            self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
 
 
@@ -607,10 +608,10 @@ class MCTS_agent:
                 saved_info['plan'][1].append(my_agent_info['plan'][:3])
                 saved_info['subgoal'][1].append(my_agent_info['subgoals'][:2])
             ## --------------------------------------------------------
-            #self.unity_env.print_action(system_agent_action, my_agent_action)
-            # infos = self.unity_env.unity_simulator.execute(action_dict)
-            obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
-            print('done:', done)
+            # self.unity_env.print_action(system_agent_action, my_agent_action)
+            infos = self.unity_env.unity_simulator.execute(action_dict)
+            # obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
+            # print('done:', done)
             # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
             ## --------------------------------------------------------
 
@@ -638,7 +639,7 @@ class MCTS_agent:
                 with open('../logs/logs_agent.json', 'w+') as f:
                     f.write(json.dumps(saved_info, indent=4))
 
-            # obs, reward, done, infos = self.unity_env.step_alice()
+            obs, reward, done, infos = self.unity_env.step_alice()
             if done[0]: # ended
                 break
 
