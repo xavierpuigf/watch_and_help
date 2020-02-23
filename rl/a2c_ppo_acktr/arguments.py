@@ -8,6 +8,9 @@ def get_args():
     parser.add_argument(
             '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
+        '--task_type', default='find', help='algorithm to use: find | complex')
+
+    parser.add_argument(
         '--gail',
         action='store_true',
         default=False,
@@ -185,6 +188,14 @@ def get_args():
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+
+    parser.add_argument(
+        '--use-linear-lr-decay',
+        action='store_true',
+        default=False,
+        help='use a linear schedule on the learning rate')
+
+
 
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')

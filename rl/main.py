@@ -46,22 +46,8 @@ def main():
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-    experiment_name = 'env.{}/algo{}-gamma{}-sim{}'.format(
-            args.env_name, args.algo, args.gamma, args.simulator_type)
-    log_dir = os.path.expanduser('{}/{}'.format(args.log_dir, experiment_name))
-    eval_log_dir = log_dir + "_eval"
-    utils.cleanup_log_dir(log_dir)
-    utils.cleanup_log_dir(eval_log_dir)
-    # tensorboard_writer = None
 
-
-    if args.tensorboard_logdir is not None:
-        from torch.utils.tensorboard import SummaryWriter
-        import datetime
-        ts_str = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d_%H-%M-%S')
-        
-        tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, experiment_name, ts_str))
-
+    logger = utils.Logger(args)
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
@@ -259,39 +245,26 @@ def main():
         # save for every interval-th episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
-            save_path = os.path.join(args.save_dir, experiment_name)
-            try:
-                os.makedirs(save_path)
-            except OSError:
-                pass
 
-            torch.save([
-                actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
-            ], os.path.join(save_path, "{}_{}.pt".format(args.env_name, j)))
+            logger.save_model(actor_critic, envs)
+
 
         
         if j % args.log_interval == 0 and len(episode_rewards) > 1:
             # pdb.set_trace()
             # total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()
-            print(
-                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
-                .format(j, total_num_steps,
-                        int(total_num_steps / (end - start)),
-                        len(episode_rewards), np.mean(episode_rewards),
-                        np.median(episode_rewards), np.min(episode_rewards),
-                        np.max(episode_rewards), dist_entropy, value_loss,
-                        action_loss))
-
-            if tensorboard_writer is not None:
-                tensorboard_writer.add_scalar("sum_reward", np.sum(episode_rewards), total_num_steps)
-                # tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
-                # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
-                # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
-                tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
-                tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
-                tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
+            data_log = {
+                'j': j,
+                'total_num_steps': total_num_steps,
+                'start': start,
+                'end': end,
+                'episode_rewards': episode_rewards,
+                'dist_entropy': dist_entropy,
+                'value_loss': value_loss,
+                'action_loss': action_loss
+            }
+            logger.log_data(**data_log)
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
