@@ -46,7 +46,6 @@ import utils
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 import pickle
-sys.argv = ['-f']
 
 from agents import MCTS_agent
 from interface.envs.envs import UnityEnv

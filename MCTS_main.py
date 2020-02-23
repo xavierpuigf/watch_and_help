@@ -16,8 +16,6 @@ from simulation.evolving_graph.utils import load_graph_dict
 from simulation.unity_simulator import comm_unity as comm_unity
 from profilehooks import profile
 import pickle
-sys.argv = ['-f']
-
 from agents import MCTS_agent, PG_agent
 
 import timeit
