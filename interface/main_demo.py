@@ -64,10 +64,11 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
-parser.add_argument('--max-episode-length', type=int, default=100, help='Maximum episode length')
+parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
 parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10.p', help='Dataset path')
+parser.add_argument('--record-dir', type=str, default='../record', help='Record directory')
 
 
 if __name__ == '__main__':
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
         env_task_set = []
-        for problem_setup in data[1:]:
+        for task_id, problem_setup in enumerate(data):
             env_id = problem_setup['apartment'] - 1
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
@@ -96,18 +97,20 @@ if __name__ == '__main__':
             for i in range(2):
                 task_goal[i] = goals
 
-            env_task_set.append({'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal,
+            env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal,
                                 'level': 0, 'init_rooms': [0, 0]})
 
         unity_env = UnityEnv(num_agents=num_agents, 
                              max_episode_length=args.max_episode_length,
                              simulator_type=args.simulator_type,
                              env_task_set=env_task_set,
-                             logging=True)
+                             logging=True,
+                             recording=True,
+                             record_dir=args.record_dir)
         
-
-        for episode_id in range(100):
-            unity_env.reset_MCTS()
+        steps_list, failed_tasks = [], []
+        for episode_id in range(len(env_task_set)):
+            unity_env.reset_MCTS(task_id=episode_id)
 
             ## ------------------------------------------------------------------------------
             ## Preparing the goal
@@ -157,8 +160,11 @@ if __name__ == '__main__':
 
 
             if num_agents==1:
-                unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
-                
+                steps, finished = unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
+                if not finished:
+                    failed_tasks.append(episode_id)
+                else:
+                    steps_list.append(steps)
 
             else:
                 ## ------------------------------------------------------------------------------
@@ -181,3 +187,5 @@ if __name__ == '__main__':
                 ## run your agent
                 ## ------------------------------------------------------------------------------
                 my_agent.run()
+        print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
+        print('failed_tasks:', failed_tasks)

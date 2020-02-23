@@ -8,6 +8,7 @@ import importlib
 import json
 import multiprocessing
 import ipdb
+import pickle
 from profilehooks import profile
 
 
@@ -517,13 +518,16 @@ class MCTS_agent:
         num_steps = 0
 
 
-        saved_info = {'env_id': self.unity_env.env_id,
+        saved_info = {'task_id': self.unity_env.task_id,
+                      'env_id': self.unity_env.env_id,
                       'task_name': self.unity_env.task_name,
                       'goals': task_goal[0],
                       'action': {0: [], 1: []}, 
                       'plan': {0: [], 1: []},
                       'subgoal': {0: [], 1: []},
-                      'init_pos': {0: None, 1: None}}
+                      'init_pos': {0: None, 1: None},
+                      'finished': None,
+                      'init_unity_graph': None}
 
         last_actions = [None] * 2
         last_subgoals = [None] * 2
@@ -532,6 +536,7 @@ class MCTS_agent:
         succeed = False
         while True:
             graph = self.unity_env.get_graph()
+            saved_info['init_unity_graph'] = self.unity_env.init_unity_graph
             # pdb.set_trace()
             # if num_steps == 0:
             #     graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
@@ -585,9 +590,9 @@ class MCTS_agent:
             saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
             print('Alice action:', system_agent_action)
 
-            if system_agent_action == '[walk] <cutleryknife> (1010)':
-                pass
-                #ipdb.set_trace()
+            # if system_agent_action == '[walk] <cutleryknife> (1010)':
+            #     pass
+            #     #ipdb.set_trace()
 
             action_dict = {}
             if system_agent_action is not None:
@@ -643,12 +648,17 @@ class MCTS_agent:
             #                 last_position[it] = walk_id
             #                 last_walk_room[it] = True
 
-            if self.logging:
-                import time
-                with open('../logs_test/logs_agent_{}_{}.json'.format(self.unity_env.task_name, time.time()), 'w+') as f:
-                    f.write(json.dumps(saved_info, indent=4))
 
             obs, reward, done, infos = self.unity_env.step_alice()
+            saved_info['finished'] = infos['finished']
+
+            if self.logging:
+                Path("../logs_test").mkdir(parents=True, exist_ok=True)
+                with open('../logs_test/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
+                    f.write(json.dumps(saved_info, indent=4))
+                # pickle.dump(saved_info, open('../logs_test/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
+           
             if done[0]: # ended
                 break
-
+            
+            return self.unity_env_num_steps, saved_info['finished']

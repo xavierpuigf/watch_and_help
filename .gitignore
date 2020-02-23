@@ -1,6 +1,8 @@
 .DS_Store
 *.png
 logs/*
+logs_test/*
+record/*
 analysis/*
 *.gv
 *.pdf

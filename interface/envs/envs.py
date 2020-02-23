@@ -1,4 +1,5 @@
 import numpy as np
+from pathlib import Path
 import cv2
 import networkx as nx
 from PIL import ImageFont, ImageDraw, Image
@@ -59,15 +60,25 @@ def check_progress(state, goal_spec):
     return satisfied, unsatisfied
 
 class UnityEnvWrapper:
-    def __init__(self, env_id, env_copy_id, init_graph=None, file_name='../../executables/exec_linux02.10.x86_64', base_port=8080, num_agents=1):
+    def __init__(self, 
+                 env_id,
+                 env_copy_id, 
+                 init_graph=None, 
+                 file_name='../../executables/exec_linux02.10.x86_64', 
+                 base_port=8080, 
+                 num_agents=1,
+                 recording=False,
+                 output_folder=None,
+                 file_name_prefix=None):
         atexit.register(self.close)
         self.port_number = base_port + env_copy_id 
         print(self.port_number)
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
-        #self.launch_env(file_name)
-
+        #self.launch_env(file_name
+        self.output_folder = output_folder
+        self.file_name_prefix = file_name_prefix
 
         # TODO: get rid of this, should be notfiied somehow else
 
@@ -77,7 +88,7 @@ class UnityEnvWrapper:
 
         self.num_agents = num_agents
         self.graph = None
-        self.recording = False
+        self.recording = recording
         self.follow = False
         self.num_camera_per_agent = 6
         self.CAMERA_NUM = 1 # 0 TOP, 1 FRONT, 2 LEFT..
@@ -101,7 +112,13 @@ class UnityEnvWrapper:
         #comm.render_script(['<char1> [walk] <bathroom> (11)'], camera_mode=False, gen_vid=False)  
         if self.follow:
             if self.recording:
-                comm.render_script(['<char0> [walk] <kitchentable> (225)'], recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
+                comm.render_script(['<char0> [walk] <kitchentable> (225)'], 
+                                   recording=self.recording, 
+                                   gen_vid=False, 
+                                   camera_mode='FIRST_PERSON',
+                                   output_folder=output_folder,
+                                   file_name_prefix=file_name_prefix,
+                                   image_synthesis=['normal', 'seg_inst', 'seg_class'])
             else:
                 comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
 
@@ -289,7 +306,12 @@ class UnityEnvWrapper:
     def agent_ids(self):
         return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
 
-    
+    def set_record(self, 
+                   output_folder,
+                   file_name_prefix):
+        self.output_folder = output_folder
+        self.file_name_prefix = file_name_prefix
+
     def execute(self, actions): # dictionary from agent to action
         # Get object to interact with
 
@@ -318,7 +340,13 @@ class UnityEnvWrapper:
         # script_all = script_list
         self.graph = None
         if self.recording:
-            success, message = self.comm.render_script(script_list, recording=True, gen_vid=False, camera_mode='FIRST_PERSON')
+            success, message = self.comm.render_script(script_list,
+                                                       recording=True, 
+                                                       gen_vid=False, 
+                                                       camera_mode='PERSON_TOP',
+                                                       output_folder=self.output_folder,
+                                                       file_name_prefix=self.file_name_prefix,
+                                                       image_synthesis=['normal', 'seg_inst', 'seg_class'])
         else:
             success, message = self.comm.render_script(script_list, recording=False, gen_vid=False)
         if not success:
@@ -352,7 +380,9 @@ class UnityEnv:
                  simulator_type='python',
                  env_task_set=[],
                  max_num_objects=150,
-                 logging=False):
+                 logging=False,
+                 recording=False,
+                 record_dir=None):
 
         self.enable_alice = enable_alice
         self.env_name = 'virtualhome'
@@ -365,7 +395,8 @@ class UnityEnv:
         self.task_goal = None
         self.env_task_set = env_task_set
         self.logging = logging
-
+        self.recording = recording
+        self.record_dir = record_dir
 
         self.unity_simulator = None # UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)
         self.agent_ids =  [1,2] # self.unity_simulator.agent_ids()
@@ -574,6 +605,7 @@ class UnityEnv:
         # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
         env_task = random.choice(self.env_task_set)
+        self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
         self.init_rooms = env_task['init_rooms']
         self.task_goal = env_task['task_goal']
@@ -581,18 +613,28 @@ class UnityEnv:
         self.env_id = env_task['env_id']
         self.goal_spec = self.task_goal[self.system_agent_id]
         self.level = env_task['level']
+        random.seed(self.task_id)
+        np.random.seed(self.task_id)
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
 
-
         if self.simulator_type == 'unity':
+            record_dir = self.record_dir
+            Path(record_dir).mkdir(parents=True, exist_ok=True)
+            file_name_prefix = str(self.task_id) + '_' + self.task_name
+
             if self.unity_simulator is None:
                 self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
-                                                       num_agents=self.num_agents)
+                                                       num_agents=self.num_agents,
+                                                       recording=self.recording,
+                                                       output_folder=record_dir + '/',
+                                                       file_name_prefix=file_name_prefix)
+            else:
+                self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
@@ -604,7 +646,7 @@ class UnityEnv:
 
             #self.env.reset(self.init_graph, self.task_goal)
             curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
-
+            self.init_unity_graph = self.get_unity_graph()
 
         else:
             # room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
@@ -627,6 +669,7 @@ class UnityEnv:
             obs_n = self.env.reset(graph, self.task_goal)
             self.env.to_pomdp()
             curr_graph_system_agent = graph
+            self.init_unity_graph = None
             # print('unity env graph:', [edge for edge in self.env.state['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
             # ipdb.set_trace()
 
@@ -662,11 +705,15 @@ class UnityEnv:
         self.num_steps = 0
         return obs_n
 
-    def reset_MCTS(self, graph=None, task_goal=None):
+    def reset_MCTS(self, graph=None, task_goal=None, task_id=None):
         # reset system agent
         # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
-        env_task = random.choice(self.env_task_set)
+        if task_id is None:
+            env_task = random.choice(self.env_task_set)
+        else:
+            env_task = self.env_task_set[task_id]
+        self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
         self.init_rooms = env_task['init_rooms']
         self.task_goal = env_task['task_goal']
@@ -674,6 +721,8 @@ class UnityEnv:
         self.env_id = env_task['env_id']
         self.goal_spec = self.task_goal[self.system_agent_id]
         self.level = env_task['level']
+        random.seed(self.task_id)
+        np.random.seed(self.task_id)
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
@@ -682,10 +731,19 @@ class UnityEnv:
 
 
         if self.simulator_type == 'unity':
+            record_dir = self.record_dir
+            Path(record_dir).mkdir(parents=True, exist_ok=True)
+            file_name_prefix = str(self.task_id) + '_' + self.task_name
+
             if self.unity_simulator is None:
                 self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
-                                                       num_agents=self.num_agents)
+                                                       num_agents=self.num_agents,
+                                                       recording=self.recording,
+                                                       output_folder=record_dir + '/',
+                                                       file_name_prefix=file_name_prefix)
+            else:
+                self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]           if graph is None:
@@ -693,6 +751,7 @@ class UnityEnv:
 
             #self.env.reset(self.init_graph, self.task_goal)
             curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
+            self.init_unity_graph = self.get_unity_graph()
 
         else:
             # room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
@@ -715,6 +774,7 @@ class UnityEnv:
             obs_n = self.env.reset(graph, self.task_goal)
             self.env.to_pomdp()
             curr_graph_system_agent = graph
+            self.init_unity_graph = None
             # print('unity env graph:', [edge for edge in self.env.state['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
             # ipdb.set_trace()
 
@@ -796,6 +856,7 @@ class UnityEnv:
             obs, _ = self.get_observations()
 
             reward, done = self.reward()
+            dict_results['finished'] = done
             reward = torch.Tensor([reward])
             if self.num_steps >= self.max_episode_length:
                 done = True
@@ -828,6 +889,7 @@ class UnityEnv:
             obs, _ = self.get_observations()
             self.num_steps += 1
             reward, done = self.reward()
+            dict_results['finished'] = done
             reward = reward# - 0.01
             reward = torch.Tensor([reward])
             if self.num_steps >= self.max_episode_length:
@@ -892,14 +954,16 @@ class UnityEnv:
         self.num_steps += 1
         # obs, _ = self.get_observations()
         obs = None
+        infos = {}
         # reward, info = self.compute_toy_reward()  
         reward, done = self.reward()
+        infos = {'finished': done}
         reward = torch.Tensor([reward])
         # done = info['done']
         if self.num_steps >= self.max_episode_length:
             done = True
         done = np.array([done])
-        infos = {}
+        
         #if done:
         #    obs = self.reset()
         return obs, reward, done, infos
@@ -949,6 +1013,9 @@ class UnityEnv:
             graph = self.env.state
         graph = self.inside_not_trans(graph)
         return graph
+
+    def get_unity_graph(self):
+        return self.unity_simulator.get_graph()
 
     def get_system_agent_observations(self, modality=['rgb_image']):
         observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.system_agent_id, modality)
