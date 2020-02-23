@@ -25,7 +25,8 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
     try:
         room_char = [edge['to_id'] for edge in env_graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] == 'INSIDE'][0]
     except:
-        ipdb.set_trace()
+        print('Error')
+        #ipdb.set_trace()
 
     action_list = []
     cost_list = []
@@ -34,7 +35,7 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
             container = containerdict[target]
         except:
             print(id2node[target])
-            ipdb.set_trace()
+            #ipdb.set_trace()
         # If the object is a room, we have to walk to what is insde
         if id2node[container]['category'] == 'Rooms':
             action_list = [('walk', (id2node[target]['class_name'], target), None)] + action_list 
@@ -339,6 +340,7 @@ class MCTS_agent:
         self.c_base = c_base
         self.num_samples = num_samples
         self.num_processes = num_processes
+        
         self.previous_belief_graph = None
 
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
@@ -352,18 +354,21 @@ class MCTS_agent:
 
 
     def sample_belief(self, obs_graph):
-        self.belief.update_from_gt_graph(obs_graph)
+        new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+        self.previous_belief_graph = new_graph
+        return new_graph
 
-        # TODO: probably these 2 cases are not needed
-        if self.previous_belief_graph is None:
-            self.belief.reset_belief()
-            new_graph = self.belief.sample_from_belief()
-            new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-            self.previous_belief_graph = new_graph
-        else:
-            new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-            self.previous_belief_graph = new_graph
+        # # TODO: probably these 2 cases are not needed
+        # if self.previous_belief_graph is None:
+        #     self.belief.reset_belief()
+        #     new_graph = self.belief.sample_from_belief()
+        #     new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+        #     self.previous_belief_graph = new_graph
+        # else:
+        #     new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+        #     self.previous_belief_graph = new_graph
 
+        # return new_graph
 
     def get_relations_char(self, graph):
         # TODO: move this in vh_mdp
@@ -424,10 +429,11 @@ class MCTS_agent:
             self.env.to_pomdp()
         gt_state = self.env.vh_state.to_dict()
 
-
+        self.previous_belief_graph = None
         self.belief = Belief.Belief(gt_state, agent_id=self.agent_id, seed=seed)
-        self.sample_belief(self.env.get_observations(char_index=self.char_index))
-        self.sim_env.reset(self.previous_belief_graph, task_goal)
+        self.belief.sample_from_belief()
+        graph_belief = self.sample_belief(self.env.get_observations(char_index=self.char_index))
+        self.sim_env.reset(graph_belief, task_goal)
         self.sim_env.to_pomdp()
 
 
@@ -478,8 +484,8 @@ class MCTS_agent:
 
 
             obs_graph = self.env.get_observations(char_index=self.char_index)
-            self.sample_belief(self.env.get_observations(char_index=self.char_index))
-            self.sim_env.reset(self.previous_belief_graph, task_goal)
+            graph_belief = self.sample_belief(self.env.get_observations(char_index=self.char_index))
+            self.sim_env.reset(graph_belief, task_goal)
             self.sim_env.to_pomdp()
 
             state = self.env.vh_state.to_dict()
@@ -523,6 +529,7 @@ class MCTS_agent:
         last_subgoals = [None] * 2
 
         print('Starting')
+        succeed = False
         while True:
             graph = self.unity_env.get_graph()
             # pdb.set_trace()
@@ -579,7 +586,8 @@ class MCTS_agent:
             print('Alice action:', system_agent_action)
 
             if system_agent_action == '[walk] <cutleryknife> (1010)':
-                ipdb.set_trace()
+                pass
+                #ipdb.set_trace()
 
             action_dict = {}
             if system_agent_action is not None:
@@ -588,8 +596,8 @@ class MCTS_agent:
                 my_agent_action = None
             else:
                 observations = self.env.get_observations(char_index=1)
-                self.sample_belief(observations)
-                self.sim_env.reset(self.previous_belief_graph, task_goal)
+                graph_belief = self.sample_belief(observations)
+                self.sim_env.reset(graph_belief, task_goal)
                 my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
 
                 last_actions[1] = my_agent_action
@@ -636,7 +644,8 @@ class MCTS_agent:
             #                 last_walk_room[it] = True
 
             if self.logging:
-                with open('../logs/logs_agent.json', 'w+') as f:
+                import time
+                with open('../logs_test/logs_agent_{}_{}.json'.format(self.unity_env.task_name, time.time()), 'w+') as f:
                     f.write(json.dumps(saved_info, indent=4))
 
             obs, reward, done, infos = self.unity_env.step_alice()

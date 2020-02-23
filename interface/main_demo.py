@@ -104,7 +104,9 @@ if __name__ == '__main__':
                              simulator_type=args.simulator_type,
                              env_task_set=env_task_set,
                              logging=True)
-        for episode_id in range(10):
+        
+
+        for episode_id in range(100):
             unity_env.reset_MCTS()
 
             ## ------------------------------------------------------------------------------
@@ -156,6 +158,7 @@ if __name__ == '__main__':
 
             if num_agents==1:
                 unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
+                
 
             else:
                 ## ------------------------------------------------------------------------------
@@ -163,16 +166,16 @@ if __name__ == '__main__':
                 ## ------------------------------------------------------------------------------
                 my_agent_id = unity_env.get_my_agent_id()
                 my_agent = MCTS_agent(unity_env=unity_env,
-                                                             agent_id=my_agent_id,
-                                                             char_index=1,
-                                                             max_episode_length=5,
-                                                             num_simulation=100,
-                                                             max_rollout_steps=3,
-                                                             c_init=0.1,
-                                                             c_base=1000000,
-                                                             num_samples=1,
-                                                             num_processes=1,
-                                                             logging=True)
+                                     agent_id=my_agent_id,
+                                     char_index=1,
+                                     max_episode_length=5,
+                                     num_simulation=100,
+                                     max_rollout_steps=3,
+                                     c_init=0.1,
+                                     c_base=1000000,
+                                     num_samples=1,
+                                     num_processes=1,
+                                     logging=True)
 
                 ## ------------------------------------------------------------------------------
                 ## run your agent
