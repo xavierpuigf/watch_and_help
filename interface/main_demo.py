@@ -79,7 +79,7 @@ if __name__ == '__main__':
         num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
         env_task_set = []
-        for problem_setup in data:
+        for problem_setup in data[1:]:
             env_id = problem_setup['apartment'] - 1
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
