@@ -6,7 +6,7 @@ import pdb
 import ipdb
 import sys
 from collections import deque
-
+#
 import gym
 import numpy as np
 import torch
@@ -14,22 +14,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
+#
+#
 from a2c_ppo_acktr.envs import make_vec_envs
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
-
+#
 from a2c_ppo_acktr.arguments import get_args
+
+
+
 home_path = os.getcwd()
 home_path = '/'.join(home_path.split('/')[:-2])
 
 sys.path.append(home_path+'/vh_multiagent_models')
-import utils_rl_agent as utils_rl_agent
+
 
 def main():
     args = get_args()
+    pdb.set_trace()
     simulator_type = args.simulator_type
 
     torch.manual_seed(args.seed)

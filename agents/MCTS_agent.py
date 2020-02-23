@@ -1,5 +1,4 @@
 import numpy as np
-from pathlib import Path
 import random
 import time
 import math
@@ -13,7 +12,7 @@ from profilehooks import profile
 
 from vh_graph.envs import belief as Belief
 from vh_graph.envs.vh_env import VhGraphEnv
-
+#
 from MCTS import *
 
 def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
@@ -379,7 +378,6 @@ class MCTS_agent:
         print('---')
 
 
-    @profile
     def get_action(self, task_goal, last_action, last_subgoal, opponent_subgoal):
 
 
