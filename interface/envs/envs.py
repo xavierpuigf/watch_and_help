@@ -53,8 +53,8 @@ def check_progress(state, goal_spec):
                 if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
-            elif elements[1] == 'offIn':
-                if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+            elif elements[1] == 'offInisde':
+                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
     return satisfied, unsatisfied
@@ -983,6 +983,11 @@ class UnityEnv:
                                logging=self.logging)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
+        if last_subgoal is not None:
+            elements = last_subgoal.split('_')
+            print(elements)
+            print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
+            ipdb.set_trace()
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
