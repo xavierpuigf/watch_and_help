@@ -8,6 +8,7 @@ import json
 import multiprocessing
 import ipdb
 import pickle
+from pathlib import Path
 from profilehooks import profile
 
 
@@ -652,11 +653,11 @@ class MCTS_agent:
 
             if self.logging:
                 Path("../logs_test").mkdir(parents=True, exist_ok=True)
-                with open('../logs_test/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
+                with open(self.unity_env.record_dir + '/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
                     f.write(json.dumps(saved_info, indent=4))
                 # pickle.dump(saved_info, open('../logs_test/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
            
             if done[0]: # ended
                 break
             
-            return self.unity_env_num_steps, saved_info['finished']
+        return self.unity_env.num_steps, saved_info['finished']

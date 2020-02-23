@@ -986,12 +986,12 @@ class UnityEnv:
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
-        if action == '[walk] <cutleryknife> (1010)':
-            ipdb.set_trace()
+        # if action == '[walk] <cutleryknife> (1010)':
+        #     ipdb.set_trace()
 
         if action is None:
             print("system agent action is None! DONE!")
-            pdb.set_trace()
+            # pdb.set_trace()
         # else:
         #     print(action, info['plan'])
 
