@@ -76,6 +76,8 @@ class UnityEnvWrapper:
         self.proc = None
         self.timeout_wait = 60
         self.file_name = file_name
+
+
         #self.launch_env(file_name
         self.output_folder = output_folder
         self.file_name_prefix = file_name_prefix
@@ -379,12 +381,14 @@ class UnityEnv:
                  enable_alice=True,
                  simulator_type='python',
                  env_task_set=[],
+                 task_type='complex',
                  max_num_objects=150,
                  logging=False,
                  recording=False,
                  record_dir=None):
 
         self.enable_alice = enable_alice
+        self.task_type = task_type
         self.env_name = 'virtualhome'
         self.num_agents = num_agents
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
@@ -417,7 +421,8 @@ class UnityEnv:
         self.actions['my_agent'] = []
         self.image_width = 224
         self.image_height = 224
-        self.graph_helper = utils_rl_agent.GraphHelper(max_num_objects=max_num_objects, simulator_type=simulator_type)
+        self.graph_helper = utils_rl_agent.GraphHelper(max_num_objects=max_num_objects,
+                                                       simulator_type=simulator_type)
 
 
         ## ------------------------------------------------------------------------------------        
@@ -433,44 +438,42 @@ class UnityEnv:
 
         if self.simulator_type == 'unity':
             if self.observation_type == 'coords':
-
                 # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges,
                 #           rel_coords, position_objects, mask]
-                self.observation_space = spaces.Tuple((
+                self.observation_space = spaces.Dict({
                     # Image
-                    spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)),
+                    'image': spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)),
                     # Graph
                     #utils_rl_agent.GraphSpace(),
 
-                    spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
-                    spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
-                    spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
-                    spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
-                    spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )),
-                    spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )),
+                    'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
+                    'states_objects': spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
+                    'edge_tuples': spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
+                    'edge_classes': spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
+                    'mask_object': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )),
+                    'mask_edge': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )),
 
                     # Target object
-                    spaces.Box(low=-100, high=100, shape=(2,)),
-                    spaces.Box(low=0, high=max(self.image_height, self.image_width),
+                    'object_dist': spaces.Box(low=-100, high=100, shape=(2,)),
+                    'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
                                shape=(self.num_objects, 2)), # 2D coords of the objects
-                    spaces.Box(low=0, high=1, shape=(self.num_objects, )),
+                    'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
 
-                    spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
-
-                ))
+                    'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
+                })
 
             else:
                 self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
         else:
-            self.observation_space = spaces.Tuple((
-                spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects,)),
-                spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
-                spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
-                spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges,)),
-                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects,)),
-                spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,)),
-                spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
-            ))
+            self.observation_space = spaces.Dict({
+                'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects,)),
+                'states_objects': spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
+                'edge_tuples': spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
+                'edge_classes': spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges,)),
+                'mask_object': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects,)),
+                'mask_edge': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges,)),
+                'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
+            })
 
 
         self.reward_range = (-10, 50.)
@@ -497,18 +500,18 @@ class UnityEnv:
     def close(self):
         self.unity_simulator.close()
 
-    def compute_toy_reward(self):
+    def distance_reward(self):
         dist = self.get_distance()
 
 
-        reward = -dist/5. # self.prev_dist - dist - 0.02
+        reward = self.prev_dist - dist - 0.02
         #print(self.prev_dist, dist, reward)
         self.prev_dist = dist
         is_done = dist < 1.0
         if is_done:
             reward += 50
         info = {'dist': dist, 'done': is_done, 'reward': reward}
-        return reward, info
+        return reward, is_done, info
 
 
     def reward(self):
@@ -519,6 +522,10 @@ class UnityEnv:
             on_objclass_id
             inside_objclass_id 
         '''
+
+        # Low level policy reward
+        if self.task_type == 'find':
+            return self.distance_reward()
 
         if self.simulator_type == 'unity':
             satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
@@ -536,25 +543,29 @@ class UnityEnv:
             count += min(len(value), self.goal_spec[key])
             if unsatisfied[key] > 0:
                 done = False
-        return count, done
+        return count, done, {}
     
 
-    def get_distance(self, norm=None):
+    def get_distance(self, target_id=None, target_class='microwave', norm=None):
         if self.simulator_type == 'unity':
             gr = self.unity_simulator.get_graph()
-            char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
-            micro_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-            micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-            self.micro_id = micro_node_id
+            if target_id is None:
+                char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
+                target_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == target_class][0]
+                target_id = target_node_id
+
+            target_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['id'] == target_id][0]
             if norm == 'no':
-                return np.array(char_node) - np.array(micro_node)
-            dist = (np.linalg.norm(np.array(char_node) - np.array(micro_node), norm))
+                return np.array(char_node) - np.array(target_node)
+            dist = (np.linalg.norm(np.array(char_node) - np.array(target_node), norm))
             #print([node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'])
             # print(dist, char_node, micro_node)
         else:
             gr = self.env.state
-            micro_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'][0]
-            if len([edge for edge in gr['edges'] if edge['from_id'] == micro_node_id and edge['to_id'] == self.my_agent_id]) > 0:
+            if target_id is None:
+                target_id = [node['id'] for node in gr['nodes'] if node['class_name'] == target_class][0]
+
+            if len([edge for edge in gr['edges'] if edge['from_id'] == target_id and edge['to_id'] == self.my_agent_id]) > 0:
                 dist = 0
             else:
                 dist = 5.
@@ -623,9 +634,13 @@ class UnityEnv:
 
         if self.simulator_type == 'unity':
             record_dir = self.record_dir
-            Path(record_dir).mkdir(parents=True, exist_ok=True)
-            file_name_prefix = str(self.task_id) + '_' + self.task_name
 
+            if self.recording:
+                Path(record_dir).mkdir(parents=True, exist_ok=True)
+                file_name_prefix = str(self.task_id) + '_' + self.task_name
+            else:
+                record_dir = 'Output'
+                file_name_prefix = None
             if self.unity_simulator is None:
                 self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
@@ -855,7 +870,7 @@ class UnityEnv:
             self.num_steps += 1
             obs, _ = self.get_observations()
 
-            reward, done = self.reward()
+            reward, done, info = self.reward()
             dict_results['finished'] = done
             reward = torch.Tensor([reward])
             if self.num_steps >= self.max_episode_length:
@@ -888,7 +903,7 @@ class UnityEnv:
             _, obs_n, dict_results = self.env.step(action_dict)
             obs, _ = self.get_observations()
             self.num_steps += 1
-            reward, done = self.reward()
+            reward, done, info = self.reward()
             dict_results['finished'] = done
             reward = reward# - 0.01
             reward = torch.Tensor([reward])
@@ -902,7 +917,7 @@ class UnityEnv:
     def step_2agents_python(self, action_dict):
         _, obs_n, info_n = self.env.step(action_dict)
         self.num_steps += 1
-        reward, done = self.reward()
+        reward, done, info = self.reward()
         reward = torch.Tensor([reward])
         if self.num_steps >= self.max_episode_length:
             done = True
@@ -937,7 +952,7 @@ class UnityEnv:
         dict_results = self.unity_simulator.execute(action_dict)
         self.num_steps += 1
         obs = None
-        reward, done = self.reward()
+        reward, done, info = self.reward()
         reward = torch.Tensor([reward])
         if self.num_steps >= self.max_episode_length:
             done = True
@@ -955,11 +970,9 @@ class UnityEnv:
         # obs, _ = self.get_observations()
         obs = None
         infos = {}
-        # reward, info = self.compute_toy_reward()  
-        reward, done = self.reward()
+        reward, done, infos = self.reward()
         infos = {'finished': done}
         reward = torch.Tensor([reward])
-        # done = info['done']
         if self.num_steps >= self.max_episode_length:
             done = True
         done = np.array([done])
@@ -1123,12 +1136,20 @@ class UnityEnv:
 
             position_objects = torch.Tensor(position_objects_tensor)[None, :]
             mask = torch.Tensor(mask)[None, :]
-
-            graph_inputs, graph_viz = self.graph_helper.build_graph(graph, visible_objects, character_id=self.my_agent_id, plot_graph=drawing)
+            graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects, character_id=self.my_agent_id, plot_graph=drawing)
             self.nodes_visible = graph_viz[-1]
             graph_inputs = list(graph_inputs)
-            #rel_coords = torch.Tensor(position_objects)[None, :]
-            current_obs = [current_obs] + graph_inputs + [rel_coords, position_objects, mask] + []
+
+            current_obs = {'image': image}
+            current_obs.update(graph_inputs)
+            current_obs.update(
+                {
+                    'affordance_matrix': self.graph_helper.obj1_affordance,
+                    'object_dist': position_objects,
+                    'object_coords': rel_coords,
+                    'mask_position_objects': mask
+                }
+            )
             return current_obs, (images[0], graph_viz)
 
         else:
@@ -1160,8 +1181,9 @@ class UnityEnv:
             graph_inputs, graph_viz = self.graph_helper.build_graph(filtered_obs,
                                                                     character_id=self.my_agent_id, plot_graph=drawing)
 
-            graph_inputs = list(graph_inputs)
-            current_obs = graph_inputs + [self.graph_helper.obj1_affordance]
+
+            current_obs = graph_inputs
+            current_obs['affordance_matrix'] = self.graph_helper.obj1_affordance
             self.nodes_visible = graph_viz[-1]
 
             return current_obs, (None, graph_viz)
