@@ -2,7 +2,7 @@
     "setup_table": 
     {   
         "plate": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "glasses": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
@@ -12,7 +12,7 @@
     "clean_table":
     {
         "plate": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "glasses": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
@@ -22,7 +22,7 @@
     "put_dishwasher":
     {
         "plate": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "glasses": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
@@ -32,7 +32,7 @@
     "unload_dishwasher":
     {
         "plate": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "glasses": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
@@ -105,7 +105,8 @@
 
     "watch_tv":
     {
-        "television": {"min_num":1, "max_num":1, "env_max_num": 1}
+        "television": {"min_num":1, "max_num":1, "env_max_num": 1},
+        "remotecontrol": {"min_num":1, "max_num":1, "env_max_num": 1}
     }
 }
 

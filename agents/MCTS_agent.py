@@ -230,6 +230,25 @@ def clean_graph(state, goal_spec, last_opened):
         if obj_id not in ids_interaction:
             ids_interaction.append(obj_id)
 
+    # for clean up tasks, add places to put objects to
+    augmented_class_names = []
+    for key in goal_spec:
+        elements = key.split('_')
+        if elements[0] == 'off':
+            if id2node[int(elements[2])]['class_name'] in ['dishwasher', 'kitchentable']:
+                augmented_class_names += ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']
+                break
+    for key in goal_spec:
+        elements = key.split('_')
+        if elements[0] == 'off':
+            if id2node[int(elements[2])]['class_name'] in ['sofa', 'chair']:
+                augmented_class_names += ['coffeetable']
+                break
+    containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in augmented_class_names]
+    for obj_id in containers:
+        if obj_id not in ids_interaction:
+            ids_interaction.append(obj_id)
+
     print(ids_interaction)
 
     new_graph = {
@@ -260,8 +279,8 @@ def check_progress(state, goal_spec):
                 if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and  (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
-            elif elements[1] == 'offIn':
-                if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and  (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+            elif elements[1] == 'offInside':
+                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and  (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
     return satisfied, unsatisfied
