@@ -42,8 +42,8 @@ class MCTS:
                 elif elements[0] == 'offOn':
                     if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                         count -= 1
-                elif elements[1] == 'offIn':
-                    if edge['relation_type'].lower() == 'in' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                elif elements[1] == 'offInside':
+                    if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                         count -= 1
         return count
         
@@ -386,6 +386,8 @@ class MCTS:
         #     print('inhand_objects:', inhand_objects)
         #     print(state['edges'])
 
+        id2node = {node['id']: node for node in state['nodes']}
+
         opponent_predciate_1 = None
         opponent_predciate_2 = None
         if opponent_subgoal is not None:
@@ -430,6 +432,26 @@ class MCTS:
                                 subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
                                 if node['id'] in inhand_objects:
                                     return [subgoal_space[-1]]
+                elif elements[0] == 'offOn':
+                    if id2node[elements[2]]['class_name'] in ['dishwasher', 'kitchentable']:
+                        containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]
+                    else:
+                        containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] == 'coffetable']
+                    for edge in state['edges']:
+                        if edge['relation_type'] == 'ON' and edge['to_id'] == int(elements[2]) and id2node[edge['from_id']]['class_name'] == elements[1]:
+                            container = random.choice(containers)
+                            predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
+                            goals[predicate] = 1
+                elif elements[0] == 'offInside':
+                    if id2node[elements[2]]['class_name'] in ['dishwasher', 'kitchentable']:
+                        containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]
+                    else:
+                        containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] == 'coffetable']
+                    for edge in state['edges']:
+                        if edge['relation_type'] == 'INSIDE' and edge['to_id'] == int(elements[2]) and id2node[edge['from_id']]['class_name'] == elements[1]:
+                            container = random.choice(containers)
+                            predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
+                            goals[predicate] = 1
         return subgoal_space
 
 
