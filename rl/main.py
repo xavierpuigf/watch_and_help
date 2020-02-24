@@ -95,7 +95,7 @@ def main():
         envs.action_space,
         base=base,
         action_inst=True,
-        base_kwargs={'recurrent': args.recurrent_policy})
+        base_kwargs={'recurrent': args.recurrent_policy, 'num_classes': 150})
     actor_critic.to(device)
 
     if args.algo == 'a2c':

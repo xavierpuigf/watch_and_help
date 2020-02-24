@@ -22,7 +22,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_space, action_space, action_inst=False, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, action_inst=True, base=None, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
@@ -53,7 +53,7 @@ class Policy(nn.Module):
             if action_space_type.__class__.__name__ == "Discrete":
                 num_outputs = action_space_type.n
                 if action_inst and it > 0:
-                    dist.append(ElementWiseCategorical(self.base.output_size, method='fc'))
+                    dist.append(ElementWiseCategorical(self.base.output_size+self.base.context_size, method='fc'))
                 else:
                     dist.append(Categorical(self.base.output_size, num_outputs))
             elif action_space_type.__class__.__name__ == "Box":
@@ -248,12 +248,12 @@ class NNBase(nn.Module):
         return x, hxs
 
 class GraphEncoder(nn.Module):
-    def __init__(self, hidden_size=512, num_nodes=100, num_rels=5):
+    def __init__(self, hidden_size=512, num_nodes=100, num_rels=5, num_classes=150):
 
         super(GraphEncoder, self).__init__()
         self.hidden_size=hidden_size
         self.graph_encoder = GraphModel(
-                num_classes=150,
+                num_classes=num_classes,
                 num_nodes=num_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, max_nodes=num_nodes)
 
     def forward(self, inputs):
@@ -316,7 +316,7 @@ class CNNBaseResnetDist(NNBase):
         return self.critic_linear(x), x, rnn_hxs
 
 class CNNBaseResnet(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=128, num_classes=150):
         super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
@@ -325,12 +325,14 @@ class CNNBaseResnet(NNBase):
                 *(list(models.resnet50(pretrained=True).children())[:-1]),
                 nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
                 Flatten())
-                
 
+        self.context_size = 10
+        self.class_embedding = nn.Embedding(num_classes, self.context_size)
 
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
+
 
     def forward(self, inputs, rnn_hxs, masks):
 
@@ -339,7 +341,8 @@ class CNNBaseResnet(NNBase):
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
-        return self.critic_linear(x), x, rnn_hxs
+        context = self.class_embedding(inputs['class_objects'].long())
+        return self.critic_linear(x), x, context, rnn_hxs
 
 class CNNBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=512):

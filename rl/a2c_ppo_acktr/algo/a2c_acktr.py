@@ -31,12 +31,12 @@ class A2C_ACKTR():
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
 
     def update(self, rollouts):
-        obs_shape = [ob.size()[2:] for ob in rollouts.obs]
+        obs_shape = {kob: ob.size()[2:] for kob, ob in rollouts.obs.items()}
         action_shape = [action.size()[-1] for action in rollouts.actions]
         num_steps, num_processes, _ = rollouts.rewards.size()
 
         values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
-                [rollouts.obs[it_ob_id][:-1].view(-1, *obs_shape[it_ob_id]) for it_ob_id in range(len(rollouts.obs))],
+                {kob: rollouts.obs[kob][:-1].view(-1, *obs_shape[kob]) for kob in rollouts.obs.keys()},
             rollouts.recurrent_hidden_states[0].view(
                 -1, self.actor_critic.recurrent_hidden_state_size),
             rollouts.masks[:-1].view(-1, 1),

@@ -67,7 +67,7 @@ class ElementWiseCategorical(nn.Module):
         super(ElementWiseCategorical, self).__init__()
         self.method = method
         if self.method == 'fc':
-            self.layer = nn.Linear(2*num_inputs, 1)
+            self.layer = nn.Linear(num_inputs, 1)
 
     def update_logs(self, logs):
         return FixedCategorical(logits=logs)
@@ -76,7 +76,6 @@ class ElementWiseCategorical(nn.Module):
         # x: [batch, dim]
         # y: [batch, num_nodes (padded), dim]
         # n x dim
-        pdb.set_trace()
         x0 = x.unsqueeze(1)
         if self.method == 'dotprod':
             logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]

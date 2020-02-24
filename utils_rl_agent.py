@@ -233,7 +233,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     obj1_str = f'<{o1}> ({o1_id})'
     if action.startswith('put'):
         if id2node[o1_id]['class_name'] == 'character':
-                return None
+            return None
         if 'CONTAINERS' in id2node[o1_id]['properties']:
             action = 'putin'
         elif 'SURFACES' in id2node[o1_id]['properties']:
