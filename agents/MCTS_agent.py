@@ -31,6 +31,8 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
 
     action_list = []
     cost_list = []
+    # if target == 478:
+    #     ipdb.set_trace()
     while target not in observation_ids:
         try:
             container = containerdict[target]
@@ -38,6 +40,7 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
             print(id2node[target])
             #ipdb.set_trace()
         # If the object is a room, we have to walk to what is insde
+
         if id2node[container]['category'] == 'Rooms':
             action_list = [('walk', (id2node[target]['class_name'], target), None)] + action_list 
             cost_list = [0.5] + cost_list

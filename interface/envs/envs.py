@@ -999,7 +999,7 @@ class UnityEnv:
         if last_subgoal is not None:
             elements = last_subgoal.split('_')
             print(elements)
-            print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
+            # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
             ipdb.set_trace()
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
@@ -1043,82 +1043,141 @@ class UnityEnv:
         observation = self.agents[self.system_agent_id].num_cameras = self.unity_simulator.camera_image(self.my_agent_id, modality)
         return observation
 
-
     def inside_not_trans(self, graph):
-        inside_node = {}
-        other_edges = []
         id2node = {node['id']: node for node in graph['nodes']}
+        parents = {}
+        grabbed_objs = []
         for edge in graph['edges']:
             if edge['relation_type'] == 'INSIDE':
-                if edge['from_id'] not in inside_node:
-                    inside_node[edge['from_id']] = []
-                inside_node[edge['from_id']].append(edge['to_id'])
+
+                if edge['from_id'] not in parents:
+                    parents[edge['from_id']] = [edge['to_id']]
+                else:
+                    parents[edge['from_id']] += [edge['to_id']]
+            elif edge['relation_type'].startswith('HOLDS'):
+                grabbed_objs.append(edge['to_id'])
+
+        edges = []
+        for edge in graph['edges']:
+            if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['category'] == 'Rooms':
+                if len(parents[edge['from_id']]) == 1:
+                    edges.append(edge)
             else:
-                other_edges.append(edge)
+                edges.append(edge)
+        graph['edges'] = edges
+        parent_for_node = {}
 
-
-        # Make sure we make trasnsitive first
-        inside_trans = {}
-        def inside_recursive(curr_node_id):
-            if curr_node_id in inside_trans:
-                return inside_trans[node_id]
-            if curr_node_id not in inside_node.keys():
-                return []
-            else:
-                all_parents = []
-                for node_id_parent in inside_node[curr_node_id]:
-                    curr_parents = inside_recursive(node_id_parent)
-                    all_parents += curr_parents
-
-                if len(all_parents) > 0:
-                    inside_trans[curr_node_id] = list(set(all_parents))
-                return all_parents
-
-        for node_id in inside_node.keys():
-            if len(inside_node[node_id]) > 1:
-                inside_recursive(node_id)
-            else:
-                other_edges.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': inside_node[node_id][0]})
-
-
-
-        ## Make not transitive
-        num_parents = {}
-        for node in graph['nodes']:
-            if node['id'] not in inside_trans.keys():
-                num_parents[node['id']] = 0
-            else:
-                num_parents[node['id']] = len(inside_trans[node['id']])
-
-        edges_inside = []
-        for node_id, nodes_inside in inside_trans.items():
-            all_num_parents = [num_parents[id_n] for id_n in nodes_inside]
-            max_np = max(all_num_parents)
-            node_select = [node_inside[i] for i, np in enumerate(all_num_parents) if np == max_np][0]
-            edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
-       
-        graph['edges'] = edges_inside + other_edges
-
-        edges_inside_aug = []
-        for node in graph['nodes']:
-            connected_edges = [edge for edge in graph['edges'] if edge['from_id'] == node['id']]
-            count = sum([1 for edge in connected_edges if edge['relation_type'] == 'INSIDE'])
-            if count == 0: # no inside node at all
-                for edge in connected_edges:
-                    if edge['relation_type'] == 'ON':
-                        surface_id = edge['to_id']
-                        room_id = None
-                        for tmp_edge in graph['edges']:
-                            if tmp_edge['from_id'] == surface_id and id2node[tmp_edge['to_id']]['category'] == 'Rooms':
-                                room_id = tmp_edge['to_id']
-                                break
-                        if room_id is not None:
-                            edges_inside_aug.append({'from_id': node['id'], 'relation_type': 'INSIDE', 'to_id': room_id})
-                            break
-
-        graph['edges'] += edges_inside_aug
-
+        ## Check that each node has at most one parent
+        for edge in graph['edges']:
+            if edge['relation_type'] == 'INSIDE':
+                if edge['from_id'] in parent_for_node and not id2node[edge['from_id']]['class_name'].startswith('closet'):
+                    print('{} has > 1 parent'.format(edge['from_id']))
+                    pdb.set_trace()
+                    raise Exception
+                parent_for_node[edge['from_id']] = edge['to_id']
+        
+        ## Check that all nodes except rooms have one parent
+        nodes_not_rooms = [node['id'] for node in graph['nodes'] if node['category'] not in ['Rooms', 'Doors']]
+        nodes_without_parent = list(set(nodes_not_rooms) - set(parent_for_node.keys()))
+        nodes_without_parent = [node for node in nodes_without_parent if node not in grabbed_objs]
+        if len(nodes_without_parent) > 0:
+            for nd in nodes_without_parent:
+                print(id2node[nd])
+            pdb.set_trace()
+            raise Exception
         return graph
+
+    # def inside_not_trans(self, graph):
+    #     inside_node = {}
+    #     other_edges = []
+    #     id2node = {node['id']: node for node in graph['nodes']}
+    #     for edge in graph['edges']:
+    #         if edge['relation_type'] == 'INSIDE':
+    #             if edge['from_id'] not in inside_node:
+    #                 inside_node[edge['from_id']] = []
+    #             inside_node[edge['from_id']].append(edge['to_id'])
+    #         else:
+    #             other_edges.append(edge)
+    #     # Make sure we make trasnsitive first
+    #     inside_trans = {}
+    #     def inside_recursive(curr_node_id):
+    #         if curr_node_id in inside_trans:
+    #             return inside_trans[node_id]
+    #         if curr_node_id not in inside_node.keys():
+    #             return []
+    #         else:
+    #             all_parents = []
+    #             for node_id_parent in inside_node[curr_node_id]:
+    #                 curr_parents = inside_recursive(node_id_parent)
+    #                 all_parents += curr_parents
+
+    #             if len(all_parents) > 0:
+    #                 inside_trans[curr_node_id] = list(set(all_parents))
+    #             return all_parents
+
+    #     for node_id in inside_node.keys():
+    #         if len(inside_node[node_id]) > 1:
+    #             inside_recursive(node_id)
+    #         else:
+    #             other_edges.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': inside_node[node_id][0]})
+
+    #     num_parents = {}
+    #     for node in graph['nodes']:
+    #         if node['id'] not in inside_trans.keys():
+    #             num_parents[node['id']] = 0
+    #         else:
+    #             num_parents[node['id']] = len(inside_trans[node['id']])
+
+    #     edges_inside = []
+    #     for node_id, nodes_inside in inside_trans.items():
+    #         # all_num_parents = [num_parents[id_n] for id_n in nodes_inside]
+    #         if len(nodes_inside) < 2:
+    #             node_select = nodes_inside[0]
+    #         else:
+    #             node_select = [id_n for id_n in nodes_inside if id2node[id_n]['category'] != 'Rooms'][0]
+    #         # max_np = max(all_num_parents)
+    #         # node_select = [node_inside[i] for i, np in enumerate(all_num_parents) if np == max_np][0]
+    #         edges_inside.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': node_select})
+       
+    #     graph['edges'] = edges_inside + other_edges
+
+    #     edges_inside_aug = []
+    #     for node in graph['nodes']:
+    #         connected_edges = [edge for edge in graph['edges'] if edge['from_id'] == node['id']]
+    #         count = sum([1 for edge in connected_edges if edge['relation_type'] == 'INSIDE'])
+    #         if count == 0: # no inside node at all
+    #             for edge in connected_edges:
+    #                 if edge['relation_type'] == 'ON':
+    #                     surface_id = edge['to_id']
+    #                     room_id = None
+    #                     for tmp_edge in graph['edges']:
+    #                         if tmp_edge['from_id'] == surface_id and id2node[tmp_edge['to_id']]['category'] == 'Rooms':
+    #                             room_id = tmp_edge['to_id']
+    #                             break
+    #                     if room_id is not None:
+    #                         edges_inside_aug.append({'from_id': node['id'], 'relation_type': 'INSIDE', 'to_id': room_id})
+    #                         break
+
+    #     graph['edges'] += edges_inside_aug
+    #     parent_for_node = {}
+
+    #     ## Check that each node has at most one parent
+    #     for edge in graph['edges']:
+    #         if edge['relation_type'] == 'INSIDE':
+    #             if edge['from_id'] in parent_for_node:
+    #                 print('{} has > 1 parent'.format(edge['from_id']))
+    #                 raise Exception
+    #             parent_for_node[edge['from_id']] = edge['to_id']
+        
+    #     ## Check that all nodes except rooms have one parent
+    #     nodes_not_rooms = [node['id'] for node in graph['nodes'] if node['category'] not in ['Rooms', 'Doors']]
+    #     nodes_without_parent = list(set(nodes_not_rooms) - set(parent_for_node.keys()))
+    #     if len(nodes_without_parent) > 0:
+    #         for nd in nodes_without_parent:
+    #             print(id2node[nd])
+    #         pdb.set_trace()
+    #         raise Exception
+    #     return graph
    
     def get_observations(self, mode='seg_class', image_width=None, image_height=None, drawing=False):
         if self.simulator_type == 'unity':
