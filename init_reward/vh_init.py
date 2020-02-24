@@ -955,7 +955,8 @@ if __name__ == "__main__":
                         #             ith_old_plate += 1
                         comm.expand_scene(init_graph)
                         _, init_graph = comm.environment_graph()
-                        success_init_graph.append({'apartment': (apartment+1),
+                        success_init_graph.append({'id': count_success,
+                                                    'apartment': (apartment+1),
                                                     'task_name': task_name,
                                                     'init_graph': init_graph,
                                                     'goal': env_goal})

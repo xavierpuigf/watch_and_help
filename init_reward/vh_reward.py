@@ -218,7 +218,7 @@ if __name__ == "__main__":
     s, graph = comm.environment_graph()
 
 
-    success_init_graph = pickle.load( open( "result/init7_20.p", "rb" ) )
+    success_init_graph = pickle.load( open( "result/init1_10_same_room.p", "rb" ) )
     
     for data in success_init_graph:
         apartment = data['apartment']
@@ -231,6 +231,7 @@ if __name__ == "__main__":
         
         comm.reset(apartment-1)
         s, graph = comm.environment_graph()
+        
         success, message = comm.expand_scene(init_graph)
         print(success, message)
 
@@ -239,6 +240,7 @@ if __name__ == "__main__":
         ## debug check if there are objects on table
         if task_name=='setup_table':
             table_id = int(list(goal['setup_table'][0].keys())[0].split('_')[-1])
+            
             
             nodes = [node['class_name'] for node in graph['nodes'] if node['id'] ==table_id ]
             obj_ids = [edge['from_id'] for edge in graph['edges'] if table_id == edge['to_id']]
