@@ -5,7 +5,6 @@
         "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
         "coffeepot": {"min_num":0, "max_num":2, "env_max_num": 3}
     },
 
@@ -15,7 +14,6 @@
         "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
         "coffeepot": {"min_num":0, "max_num":2, "env_max_num": 3}
     },
 
@@ -25,7 +23,6 @@
         "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
         "coffeepot": {"min_num":0, "max_num":2, "env_max_num": 3}
     },
 
@@ -35,7 +32,6 @@
         "waterglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wineglass": {"min_num":0, "max_num":2, "env_max_num": 3},
         "cutleryfork": {"min_num":0, "max_num":2, "env_max_num": 3},
-        "cutleryknife": {"min_num":0, "max_num":2, "env_max_num": 3},
         "coffeepot": {"min_num":0, "max_num":2, "env_max_num": 3}
     },
 
