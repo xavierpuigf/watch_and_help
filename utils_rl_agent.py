@@ -9,7 +9,7 @@ import pdb
 
 
 class GraphHelper():
-    def __init__(self, max_num_objects=100, max_num_edges=200, simulator_type='unity'):
+    def __init__(self, max_num_objects=100, max_num_edges=200, current_task=None, simulator_type='unity'):
         self.states = ['on', 'open', 'off', 'closed']
         self.relations = ['inside', 'close', 'facing', 'on']
         self.simulaor_type = simulator_type
@@ -53,7 +53,7 @@ class GraphHelper():
 
         
         self.obj1_affordance = None
-        self.get_action_affordance_map()
+        self.get_action_affordance_map(current_task=current_task)
 
 
 
@@ -199,8 +199,15 @@ class GraphHelper():
             labeldict = None
             graph_viz = None
 
-        return (all_class_names, all_node_states, 
-                all_edge_ids, all_edge_types, mask_nodes, mask_edges), (graph_viz, labeldict, visible_nodes)
+        output = {
+            'class_objects': all_class_names,
+            'states_objects': all_node_states,
+            'edge_tuples': all_edge_ids,
+            'edge_classes': all_edge_types,
+            'mask_object': mask_nodes,
+            'mask_edge': mask_edges
+        }
+        return output, (graph_viz, labeldict, visible_nodes)
 
 def can_perform_action(action, o1, o1_id, agent_id, graph):
     if action == 'no_action':

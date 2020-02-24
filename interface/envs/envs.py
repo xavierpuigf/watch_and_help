@@ -1055,6 +1055,8 @@ class UnityEnv:
                 inside_node[edge['from_id']].append(edge['to_id'])
             else:
                 other_edges.append(edge)
+
+
         # Make sure we make trasnsitive first
         inside_trans = {}
         def inside_recursive(curr_node_id):
@@ -1078,6 +1080,9 @@ class UnityEnv:
             else:
                 other_edges.append({'from_id':node_id, 'relation_type': 'INSIDE', 'to_id': inside_node[node_id][0]})
 
+
+
+        ## Make not transitive
         num_parents = {}
         for node in graph['nodes']:
             if node['id'] not in inside_trans.keys():
@@ -1112,6 +1117,7 @@ class UnityEnv:
                             break
 
         graph['edges'] += edges_inside_aug
+
         return graph
    
     def get_observations(self, mode='seg_class', image_width=None, image_height=None, drawing=False):
@@ -1121,8 +1127,8 @@ class UnityEnv:
             if image_width is None:
                 image_width = self.image_width
             images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
-            current_obs = images[0]
-            current_obs = torchvision.transforms.functional.to_tensor(current_obs)[None, :]
+            current_obs_img = images[0]
+            current_obs_img = torchvision.transforms.functional.to_tensor(current_obs_img)[None, :]
             graph = self.unity_simulator.get_graph()
 
             distance = self.get_distance(norm='no')
@@ -1143,15 +1149,14 @@ class UnityEnv:
             mask = torch.Tensor(mask)[None, :]
             graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects, character_id=self.my_agent_id, plot_graph=drawing)
             self.nodes_visible = graph_viz[-1]
-            graph_inputs = list(graph_inputs)
 
-            current_obs = {'image': image}
+            current_obs = {'image': current_obs_img}
             current_obs.update(graph_inputs)
             current_obs.update(
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,
-                    'object_dist': position_objects,
-                    'object_coords': rel_coords,
+                    'object_dist': rel_coords,
+                    'object_coords': position_objects,
                     'mask_position_objects': mask
                 }
             )
