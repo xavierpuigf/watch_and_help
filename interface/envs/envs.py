@@ -996,11 +996,11 @@ class UnityEnv:
                                logging=self.logging)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
-        if last_subgoal is not None:
-            elements = last_subgoal.split('_')
-            print(elements)
-            # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
-            ipdb.set_trace()
+        # if last_subgoal is not None:
+        #     elements = last_subgoal.split('_')
+        #     print(elements)
+        #     # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
+        #     ipdb.set_trace()
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
@@ -1085,6 +1085,23 @@ class UnityEnv:
                 print(id2node[nd])
             pdb.set_trace()
             raise Exception
+
+        # close_chars = {1: [], 2: []}
+        # for edge in graph['edges']:
+        #     if edge['relation_type'] == 'CLOSE' and edge['from_id'] in [1, 2]:
+        #         close_chars[edge['from_id']].append(edge['to_id'])
+        # new_edges = []
+        # for edge in graph['edges']:
+        #     if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['category'] != 'Rooms':
+        #         for char_id, close_objs in close_chars.items():
+        #             if edge['to_id'] in close_objs and edge['from_id'] not in close_objs:
+        #                 new_edges.append({
+        #                     'from_id': edge['from_id'],
+        #                     'relation_type': 'CLOSE',
+        #                     'to_id': char_id
+        #                     })
+        # graph['edges'] += new_edges
+
         return graph
 
     # def inside_not_trans(self, graph):
