@@ -69,11 +69,6 @@
         "wine": {"min_num":0, "max_num":1, "env_max_num": 3}
     },
 
-    "read_book": 
-    {
-        "book": {"min_num":1, "max_num":1, "env_max_num": 10}
-    },
-
     "prepare_food":
     {
         "apple": {"min_num":0, "max_num":2, "env_max_num": 3},
@@ -101,6 +96,11 @@
         "sundae": {"min_num":0, "max_num":2, "env_max_num": 3},
         "whippedcream": {"min_num":0, "max_num":2, "env_max_num": 3},
         "wine": {"min_num":0, "max_num":1, "env_max_num": 3}
+    },
+
+    "read_book": 
+    {
+        "book": {"min_num":1, "max_num":1, "env_max_num": 10}
     },
 
     "watch_tv":
