@@ -190,11 +190,10 @@ def get_args():
         help='use a linear schedule on the learning rate')
 
     parser.add_argument(
-        '--use-linear-lr-decay',
-        action='store_true',
-        default=False,
+        '--model_type',
+        default='CNN',
+        choices=['GNN', 'CNN'],
         help='use a linear schedule on the learning rate')
-
 
 
     parser.add_argument('--add-timestep', action='store_true', default=False,

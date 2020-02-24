@@ -22,9 +22,8 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_space, action_space, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, action_inst=False, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-        action_inst = False
         if base_kwargs is None:
             base_kwargs = {}
         if base is None:
@@ -37,14 +36,15 @@ class Policy(nn.Module):
                 else:
                     raise NotImplementedError
             else:
-                if len(obs_space) < 5:
+                if 'image' < 5:
                     if len(obs_shape) == 3:
                         base = CNNBaseResnetDist
                 else:
                     base = GraphBase
-                    action_inst = True
 
-        self.base = base(obs_shape[0], **base_kwargs)
+
+
+        self.base = base(None, **base_kwargs)
         if action_space.__class__.__name__ != "Tuple":
             action_space = [action_space]
         
@@ -79,17 +79,13 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0):
-        affordance_obj1 = inputs[-1]
-        inputs = inputs[:-1]
+        affordance_obj1 = inputs['affordance_matrix']
+
 
         # value function, history, node_embedding, rnn
         outputs = self.base(inputs, rnn_hxs, masks)
-        if len(inputs) > 6:
-            object_classes = inputs[1]
-            mask_observations = inputs[-5]
-        else:
-            object_classes = inputs[0]
-            mask_observations = inputs[-2]
+        object_classes = inputs['class_objects']
+        mask_observations = inputs['mask_object']
 
         if len(outputs) == 3:
             value, actor_features, rnn_hxs = outputs
@@ -140,11 +136,11 @@ class Policy(nn.Module):
 
     def get_value(self, inputs, rnn_hxs, masks):
 
-        outputs_model = self.base(inputs[:-1], rnn_hxs, masks)
+        outputs_model = self.base(inputs, rnn_hxs, masks)
         return outputs_model[0]
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        outputs_model = self.base(inputs[:-1], rnn_hxs, masks)
+        outputs_model = self.base(inputs, rnn_hxs, masks)
         if len(outputs_model) == 3:
             value, actor_features, rnn_hxs = outputs_model
             summary_nodes = actor_features
@@ -281,7 +277,7 @@ class GraphBase(NNBase):
         if inputs[0].ndim > 3:
             # first element is an image
             # x: [bs, num_objects, dim] (x[:, 0, :] always character)
-            x = self.main(inputs[1:7])
+            x = self.main(inputs)
         else:
             x = self.main(inputs)
 
@@ -312,8 +308,8 @@ class CNNBaseResnetDist(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs[0])
-        y = self.base_dist(inputs[1])
+        x = self.main(inputs['image'])
+        y = self.base_dist(inputs['rel_dist'])
         x = self.combine(torch.cat([x, y], dim=1))
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
@@ -337,7 +333,8 @@ class CNNBaseResnet(NNBase):
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs)
+
+        x = self.main(inputs['image'])
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)

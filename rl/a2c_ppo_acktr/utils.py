@@ -69,27 +69,32 @@ def cleanup_log_dir(log_dir):
 
 class Logger():
     def __init__(self, args):
-        self.get_experiment_name = self.get_experiment_name()
+        self.args = args
+        self.experiment_name = self.get_experiment_name()
         self.tensorboard_writer = None
-        if args.tensorboard_logdir is not None:
-            self.tensorboard_writer = self.set_tensorbard()
         self.save_dir = args.save_dir
+        self.first_log = True
 
 
     def set_tensorboard(self, args):
         ts_str = datetime.datetime.fromtimestamp(datetime.time()).strftime('%Y-%m-%d_%H-%M-%S')
         self.tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, self.experiment_name, ts_str))
 
-    def get_experiment_name(self, args):
+    def get_experiment_name(self):
+        args = self.args
         experiment_name = 'env.{}/task.{}/algo.{}-gamma.{}-sim.{}'.format(
             args.env_name,
-            args.task_name,
+            args.task_type,
             args.algo,
             args.gamma,
             args.simulator_type)
         return experiment_name
 
     def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss):
+        if self.first_log == True:
+            self.first_log = False
+            if args.tensorboard_logdir is not None:
+                self.tensorboard_writer = self.set_tensorbard()
         print(
             "Updates {}, num timesteps {}, FPS {} "
             "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
@@ -110,7 +115,7 @@ class Logger():
             self.tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
 
 
-    def save_model(self, actor_critic, envs):
+    def save_model(self, j, actor_critic, envs):
         save_path = os.path.join(self.save_dir, self.experiment_name)
         try:
             os.makedirs(save_path)
@@ -119,4 +124,4 @@ class Logger():
         torch.save([
             actor_critic,
             getattr(get_vec_normalize(envs), 'ob_rms', None)
-        ], os.path.join(save_path, "{}_{}.pt".format(j)))
+        ], os.path.join(save_path, "{}.pt".format(j)))

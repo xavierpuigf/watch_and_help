@@ -20,6 +20,7 @@ from a2c_ppo_acktr.algo import gail
 #
 #
 from a2c_ppo_acktr.envs import make_vec_envs
+import a2c_ppo_acktr.model as model
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import evaluate
@@ -36,7 +37,6 @@ sys.path.append(home_path+'/vh_multiagent_models')
 
 def main():
     args = get_args()
-    pdb.set_trace()
     simulator_type = args.simulator_type
 
     torch.manual_seed(args.seed)
@@ -51,7 +51,12 @@ def main():
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
-    envs = make_vec_envs(args.env_name, simulator_type, args.seed, args.num_processes,
+    env_info = {
+            'env_name': args.env_name,
+            'simulator_type': args.simulator_type,
+            'task': args.task_type,
+    }
+    envs = make_vec_envs(env_info, simulator_type, args.seed, args.num_processes,
             args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
 
 
@@ -79,10 +84,17 @@ def main():
     ## ------------------------------------------------------------------------------
     ## Model
     ## ------------------------------------------------------------------------------
+    if args.model_type == 'GNN':
+        base = model.GraphBase
+    if args.model_type == 'CNN':
+        base = model.CNNBaseResnet
+
 
     actor_critic = Policy(
         envs.observation_space,
         envs.action_space,
+        base=base,
+        action_inst=True,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -155,14 +167,13 @@ def main():
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
             
         rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                              tuple([obs_sp.shape for obs_sp in envs.observation_space]), envs.action_space,
+                              {kob: obs_sp.shape for kob, obs_sp in envs.observation_space.spaces.items()}, envs.action_space,
                               actor_critic.recurrent_hidden_state_size)
         # if 'virtualhome' in args.env_name:
         #     obs = envs.reset() # (graph, task_goal) # torch.Size([1, 4, 84, 84])
         # else:
         #     obs = envs.reset()
-        
-        for it in range(len(obs)):
+        for it in obs.keys():
             # TODO: movidy
             rollouts.obs[it][0].copy_(obs[it])
         rollouts.to(device)
@@ -173,7 +184,7 @@ def main():
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
-                    [ob[step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[step],
+                    {kob: ob[step] for kob, ob in rollouts.obs.items()}, rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step], epsilon=epsilon)
 
 
@@ -211,7 +222,7 @@ def main():
             # print(rollouts.masks)
             # ipdb.set_trace()
             next_value = actor_critic.get_value(
-                [ob[rollouts.step] for ob in rollouts.obs], rollouts.recurrent_hidden_states[rollouts.step],
+                {kob: ob[rollouts.step] for kob, ob in rollouts.obs.items()}, rollouts.recurrent_hidden_states[rollouts.step],
                 rollouts.masks[rollouts.step]).detach()
 
         if args.gail:
@@ -246,7 +257,7 @@ def main():
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
 
-            logger.save_model(actor_critic, envs)
+            logger.save_model(j, actor_critic, envs)
 
 
         
