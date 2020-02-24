@@ -73,9 +73,10 @@ class ElementWiseCategorical(nn.Module):
         return FixedCategorical(logits=logs)
 
     def forward(self, x, y):
-        # x: [batch, 1, dim]
+        # x: [batch, dim]
         # y: [batch, num_nodes (padded), dim]
         # n x dim
+        pdb.set_trace()
         x0 = x.unsqueeze(1)
         if self.method == 'dotprod':
             logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]

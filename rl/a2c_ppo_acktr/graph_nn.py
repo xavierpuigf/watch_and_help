@@ -129,10 +129,10 @@ class GraphModel(nn.Module):
                          activation=partial(F.softmax, dim=1))
 
     def forward(self, inputs):
-        inputs = [torch.unbind(inp) for inp in inputs]
-        (all_class_names, node_states, 
+        keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes', 'mask_object', 'mask_edge']
+        [all_class_names, node_states,
          all_edge_ids, all_edge_types, 
-         mask_nodes, mask_edges) = inputs
+         mask_nodes, mask_edges] = [torch.unbind(inputs[key]) for key in keys]
         num_envs = len(all_class_names)
         hs = []
         graphs = []
