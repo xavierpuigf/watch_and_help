@@ -83,8 +83,8 @@ parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
-parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10_same_room.p', help='Dataset path')
-parser.add_argument('--record-dir', type=str, default='../record/init1_10_same_room', help='Record directory')
+parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init1_10_same_room_simple.p', help='Dataset path')
+parser.add_argument('--record-dir', type=str, default='../record/init1_10_same_room_simple', help='Record directory')
 
 
 if __name__ == '__main__':
