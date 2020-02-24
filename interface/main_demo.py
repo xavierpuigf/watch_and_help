@@ -106,7 +106,7 @@ if __name__ == '__main__':
             # if task_name != 'setup_table':
             #     continue
             goals = convert_goal_spec(task_name, goal, init_graph, 
-                                  exclude=[])
+                                  exclude=['cutleryknife'])
             # print('env_id:', env_id)
             # print('task_name:', task_name)
             # print('goals:', goals)
