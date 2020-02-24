@@ -60,7 +60,7 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
-            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10.p', 'rb'))
+            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
             init_graph = data[0]['init_graph']
 
             # id2node = {node['id']: node for node in init_graph['nodes']}
@@ -240,7 +240,7 @@ class VecPyTorch(VecEnvWrapper):
 
     def step_wait(self):
         obs, reward, done, info = self.venv.step_wait()
-        obs = {obj_id: torch.from_numpy(obs[ob_id]).float().to(self.device) for ob_id in obs.keys()}
+        obs = {ob_id: torch.from_numpy(obs[ob_id]).float().to(self.device) for ob_id in obs.keys()}
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
@@ -299,7 +299,7 @@ class VecPyTorchFrameStack(VecEnvWrapper):
     def step_wait(self):
         obs, rews, news, infos = self.venv.step_wait()
 
-        for kob in sefl.stacked_obs.keys():
+        for kob in self.stacked_obs.keys():
             tem = self.stacked_obs[kob][:, self.shape_dim0[kob]:].clone()
             self.stacked_obs[kob][:, :-self.shape_dim0[kob]] = tem
 

@@ -8,7 +8,7 @@ def get_args():
     parser.add_argument(
             '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
-        '--task_type', default='find', help='algorithm to use: find | complex')
+        '--task_type', default='find', choices=['find', 'complex'], help='algorithm to use: find | complex')
 
     parser.add_argument(
         '--gail',
