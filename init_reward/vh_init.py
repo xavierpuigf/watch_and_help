@@ -29,8 +29,8 @@ class SetInitialGoal:
         self.surface_used_size = {}
         self.max_num_place = 50
 
-        self.min_num_other_object = 15
-        self.max_num_other_object = 45
+        self.min_num_other_object = 0#15
+        self.max_num_other_object = 0#45
         
         self.add_goal_obj_success = True
         self.set_goal()
@@ -189,7 +189,7 @@ class SetInitialGoal:
 
         candidates = [(obj_rel_name[0], obj_rel_name[1]) for obj_rel_name in self.obj_position[obj_name] if obj_rel_name[1] in ids_class.keys()]
 
-
+        id2node = {node['id']: node for node in graph['nodes']}
         success_add = 0
         for i in range(num_obj):
             # TODO: we need to check the properties and states, probably the easiest is to get them from the original set of graphs
@@ -260,9 +260,10 @@ class SetInitialGoal:
                 ## check if it is possible to put object in this surface
                 placeable = self.check_placeable(graph, target_id, obj_name)
 
-                
+                print(obj_name, id2node[target_id]['class_name'], placeable)
                 # print('placing %s: %dth (total %d), success: %d' % (obj_name, i+1, num_obj, placeable))
                 
+
 
 
                 if placeable:
@@ -843,12 +844,20 @@ if __name__ == "__main__":
 
     success_init_graph = []
 
-    for apartment in range(1):
+    for apartment in range(7):
         # apartment = 3
 
         with open('data/object_info%s.json'%(apartment+1), 'r') as file:
             obj_position = json.load(file)
 
+        # pdb.set_trace()bathroomcounter
+
+        # filtering out certain locations
+        for obj, pos_list in obj_position.items():
+            positions = [pos for pos in pos_list if pos[1] in \
+                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'chair', 'kitchencabinets']]
+            obj_position[obj] = positions
+        print(obj_position['wineglass'])
 
         num_test = 100000
         count_success = 0
@@ -867,8 +876,13 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## choose tasks
             ## -------------------------------------------------------------
-            task_name = random.choice(task_names[apartment+1])
-            task_name = 'setup_table'
+            while True:
+                task_name = random.choice(task_names[apartment+1])
+                if task_name in ['read_book', 'watch_tv']:
+                    continue
+                else:
+                    break
+            # task_name = 'setup_table'
 
 
             print('------------------------------------------------------------------------------')
@@ -922,6 +936,9 @@ if __name__ == "__main__":
                     count_success += success
 
                     if success:
+                        comm.reset(apartment)
+                        comm.expand_scene(init_graph)
+                        _, init_graph = comm.environment_graph()
                         success_init_graph.append({'id': count_success,
                                                     'apartment': (apartment+1),
                                                     'task_name': task_name,
@@ -936,7 +953,7 @@ if __name__ == "__main__":
                 break
     
     pdb.set_trace()
-    pickle.dump( success_init_graph, open( "result/init1_10_same_room.p", "wb" ) )
+    pickle.dump( success_init_graph, open( "result/init1_10_same_room_simple.p", "wb" ) )
     # pickle.dump( success_init_graph, open( "result/init1_10.p", "wb" ) )
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 
