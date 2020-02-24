@@ -128,7 +128,7 @@ if __name__ == '__main__':
         
         steps_list, failed_tasks = [], []
         for episode_id in range(len(env_task_set)):
-            # try:
+            try:
                 unity_env.reset_MCTS(task_id=episode_id)
 
                 ## ------------------------------------------------------------------------------
