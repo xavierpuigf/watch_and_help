@@ -922,7 +922,8 @@ if __name__ == "__main__":
                     count_success += success
 
                     if success:
-                        success_init_graph.append({'apartment': (apartment+1),
+                        success_init_graph.append({'id': count_success,
+                                                    'apartment': (apartment+1),
                                                     'task_name': task_name,
                                                     'init_graph': init_graph,
                                                     'goal': env_goal})
