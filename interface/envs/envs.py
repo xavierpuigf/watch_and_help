@@ -352,7 +352,7 @@ class UnityEnvWrapper:
         else:
             success, message = self.comm.render_script(script_list, recording=False, gen_vid=False)
         if not success:
-            ipdb.set_trace()
+            print('Failed action', script_list)
         result = {}
         for agent_id in agent_do:
             result[agent_id] = (success, message) 
@@ -447,6 +447,9 @@ class UnityEnv:
                     #utils_rl_agent.GraphSpace(),
 
                     'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
+                    'node_ids': spaces.Box(low=0, high=500,
+                                                shape=(self.graph_helper.num_objects,)),
+
                     'states_objects': spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
                     'edge_tuples': spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
                     'edge_classes': spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
@@ -456,8 +459,8 @@ class UnityEnv:
                     # Target object
                     'object_dist': spaces.Box(low=-100, high=100, shape=(2,)),
                     'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
-                               shape=(self.num_objects, 2)), # 2D coords of the objects
-                    'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
+                               shape=(self.num_objects, 3)), # 3D coords of the objects
+                    # 'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
 
                     'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
                 })
@@ -485,12 +488,12 @@ class UnityEnv:
         self.len_hist = 4
         self.num_steps = 0
         self.prev_dist = None
+        self.visible_nodes = None
 
         self.micro_id = -1
         self.last_action = ''
 
         # The observed nodes
-        self.nodes_visible = None
 
         self.info = {'dist': 0, 'reward': 0}
 
@@ -828,10 +831,10 @@ class UnityEnv:
         else:
             current_graph = self.env.state
 
-        objects1 = self.nodes_visible
 
-
+        objects1 = self.visible_nodes
         action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
+
         try:
             (o1, o1_id) = objects1[my_agent_action[1][0]]
         except:
@@ -1199,18 +1202,11 @@ class UnityEnv:
             id2node = {node['id']: node for node in graph['nodes']}
             visible_objects = [object for object in visible_objects if self.graph_helper.object_dict.get_id(id2node[object]['class_name']) != 0]
 
-            position_objects_tensor = np.zeros((self.num_objects, 2))
-            mask = np.zeros((self.num_objects))
-
-            if position_objects is not None:
-                position_objects = position_objects.transpose()
-                mask[:position_objects.shape[0]] = 1
-                position_objects_tensor[:position_objects.shape[0], :] = position_objects
-
-            position_objects = torch.Tensor(position_objects_tensor)[None, :]
-            mask = torch.Tensor(mask)[None, :]
-            graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects, character_id=self.my_agent_id, plot_graph=drawing)
-            self.nodes_visible = graph_viz[-1]
+            graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects,
+                                                                    character_id=self.my_agent_id, plot_graph=drawing)
+            self.visible_nodes = graph_viz[-1]
+            print(self.visible_nodes)
+            # mask = torch.Tensor(mask)[None, :]
 
             current_obs = {'image': current_obs_img}
             current_obs.update(graph_inputs)
@@ -1218,8 +1214,8 @@ class UnityEnv:
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,
                     'object_dist': rel_coords,
-                    'object_coords': position_objects,
-                    'mask_position_objects': mask
+                    # 'object_coords': position_objects,
+                    # 'mask_position_objects': mask
                 }
             )
             return current_obs, (images[0], graph_viz)
@@ -1256,8 +1252,7 @@ class UnityEnv:
 
             current_obs = graph_inputs
             current_obs['affordance_matrix'] = self.graph_helper.obj1_affordance
-            self.nodes_visible = graph_viz[-1]
-
+            self.visible_nodes = graph_viz[-1]
             return current_obs, (None, graph_viz)
 
     def print_action(self, system_agent_action, my_agent_action):
