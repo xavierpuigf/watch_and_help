@@ -8,6 +8,8 @@ import dgl
 import dgl.function as fn
 from functools import partial
 
+
+
 class RGCNLayer(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, num_bases=-1, bias=None,
                  activation=None, is_input_layer=False):
@@ -204,6 +206,6 @@ class Transformer(nn.Module):
         inputs = self.class_embedding(all_class_names.long())
         inputs_and_coords = torch.cat((inputs, coords), dim=2)
         inputs_and_coords = inputs_and_coords.transpose(0,1)
-        outputs = self.transformer(inputs_and_coords, src_key_padding_mask=mask_nodes.byte())
+        outputs = self.transformer(inputs_and_coords, src_key_padding_mask=mask_nodes.bool())
         outputs = outputs.squeeze(0).transpose(0,1)
         return outputs
