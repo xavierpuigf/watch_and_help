@@ -826,6 +826,18 @@ if __name__ == "__main__":
     s, graph = comm.environment_graph()
     
 
+    
+    
+    # ## show images
+    # indices = [-6]
+    # _, ncameras = comm.camera_count()
+    # cameras_select = list(range(ncameras))
+    # cameras_select = [cameras_select[x] for x in indices]
+    # (ok_img, imgs) = comm.camera_image(cameras_select, mode='seg_class')
+    # import cv2
+    # cv2.imwrite('test.png', imgs[0])
+    # pdb.set_trace()
+
     ## -------------------------------------------------------------
     ## get object sizes
     ## -------------------------------------------------------------
