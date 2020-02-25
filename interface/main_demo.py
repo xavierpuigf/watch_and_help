@@ -46,7 +46,7 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
             predicate = 'on_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         elif task_name in ['put_dishwasher', 'put_fridge']:
-            predicate = 'in_{}_{}'.format(elements[1], elements[3])
+            predicate = 'inside_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         elif task_name == 'clean_table':
             predicate = 'offOn'
@@ -58,7 +58,7 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
             #         predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
             #         goals[predicate] = 1
         elif task_name == 'unload_dishwahser':
-            predicate = 'offIn'
+            predicate = 'offInside'
             predicate = 'offOn_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         elif task_name == 'read_book':
@@ -83,8 +83,8 @@ parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
-parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_150_simple.p', help='Dataset path')
-parser.add_argument('--record-dir', type=str, default='../record/init7_150_simple', help='Record directory')
+parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_100_simple.p', help='Dataset path')
+parser.add_argument('--record-dir', type=str, default='../record/init67_100_same_room_simple', help='Record directory')
 
 
 if __name__ == '__main__':
@@ -107,9 +107,9 @@ if __name__ == '__main__':
             #     continue
             goals = convert_goal_spec(task_name, goal, init_graph, 
                                   exclude=['cutleryknife'])
-            # print('env_id:', env_id)
-            # print('task_name:', task_name)
-            # print('goals:', goals)
+            print('env_id:', env_id)
+            print('task_name:', task_name)
+            print('goals:', goals)
 
             task_goal = {}
             for i in range(2):
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                              record_dir=args.record_dir)
         
         steps_list, failed_tasks = [], []
-        for episode_id in range(len(env_task_set)):
+        for episode_id in range(len(env_task_set[:0])):
             try:
                 unity_env.reset_MCTS(task_id=episode_id)
 
