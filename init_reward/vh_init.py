@@ -51,7 +51,7 @@ class SetInitialGoal:
             self.init_pool.update(self.init_pool_tasks["read_book"])
         
         elif self.task_name=='setup_table_watch_tv':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.ifnit_pool = self.init_pool_tasks["setup_table"]
             self.init_pool.update(self.init_pool_tasks["watch_tv"])
 
         elif self.task_name=='setup_table_put_fridge':
@@ -113,10 +113,24 @@ class SetInitialGoal:
                     objs_in_room = None
 
                 obj_ids = [node['id'] for node in graph_copy['nodes'] if obj == node['class_name']]
+                if len(obj_ids) < num_obj:
+                    print(subgoal_name, num_obj, obj_ids)
+                    pdb.set_trace()
+                    return 0
                 graph_copy = self.remove_obj(graph_copy, obj_ids)
 
                 self.object_id_count, graph = self.add_obj(graph_copy, obj, num_obj, self.object_id_count, objs_in_room=objs_in_room, only_position=target_id)
             success, message = comm.expand_scene(graph_copy)
+            id2node = {node['id']: node for node in graph_copy['nodes']}
+            if not success:
+                if 'unaligned_ids' in message:
+                    for id in message['unaligned_ids']:
+                        print(id2node[id])
+                elif 'unplaced' in message:
+                    for string in message['unplaced']:
+                        elements = string.split('.')
+                        obj_id = int(elements[1])
+                        print([edge for edge in graph_copy['edges'] if edge['from_id'] == obj_id])
         else:
             success = 1
             message = self.task_name
@@ -282,6 +296,7 @@ class SetInitialGoal:
         graph['edges'] += edges
 
         if goal_obj:
+            # print(success_add, num_obj)
             if success_add!=num_obj:
                 self.add_goal_obj_success = False
 
@@ -330,8 +345,16 @@ class SetInitialGoal:
         table_id = random.choice(table_ids)
 
         ## remove objects on table
-        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        id2node = {node['id']: node for node in graph['nodes']}
+        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON') and \
+                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
         graph = self.remove_obj(graph, objs_on_table)
+
+        # ## remove objects on kitchen counter
+        # kitchencounter_ids = [node['id'] for node in graph['nodes'] if (node['class_name'] == 'kichencounter')]
+        # for kichencounter_id in kitchencounter_ids:
+        #     objs_on_kichencounter = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==kitchencounter_id) and (edge['relation_type']=='ON')]
+        #     graph = self.remove_obj(graph, objs_on_kichencounter)
 
         # tem = [node for node in graph['nodes'] if node['id']==table_id]
         # pdb.set_trace()
@@ -803,6 +826,18 @@ if __name__ == "__main__":
     s, graph = comm.environment_graph()
     
 
+    
+    
+    # ## show images
+    # indices = [-6]
+    # _, ncameras = comm.camera_count()
+    # cameras_select = list(range(ncameras))
+    # cameras_select = [cameras_select[x] for x in indices]
+    # (ok_img, imgs) = comm.camera_image(cameras_select, mode='seg_class')
+    # import cv2
+    # cv2.imwrite('test.png', imgs[0])
+    # pdb.set_trace()
+
     ## -------------------------------------------------------------
     ## get object sizes
     ## -------------------------------------------------------------
@@ -843,8 +878,11 @@ if __name__ == "__main__":
                     
 
     success_init_graph = []
+    task = 'setup_table'
+    num_per_apartment = 10
 
     for apartment in range(7):
+        # if apartment != 4: continue
         # apartment = 3
 
         with open('data/object_info%s.json'%(apartment+1), 'r') as file:
@@ -854,16 +892,17 @@ if __name__ == "__main__":
 
         # filtering out certain locations
         for obj, pos_list in obj_position.items():
-            positions = [pos for pos in pos_list if pos[1] in \
-                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'chair', 'kitchencabinets']]
+            positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
+                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'desk', 'sofa', 'nightstand', 'bookshelf']]
             obj_position[obj] = positions
-        print(obj_position['wineglass'])
+        print(obj_position['cutleryfork'])
 
         num_test = 100000
         count_success = 0
         for i in range(num_test):
             comm.reset(apartment)
-            s, graph = comm.environment_graph()
+            s, original_graph = comm.environment_graph()
+            graph = copy.deepcopy(original_graph)
 
 
             ## -------------------------------------------------------------
@@ -876,13 +915,13 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## choose tasks
             ## -------------------------------------------------------------
-            while True:
-                task_name = random.choice(task_names[apartment+1])
-                if task_name in ['read_book', 'watch_tv']:
-                    continue
-                else:
-                    break
-            # task_name = 'setup_table'
+            # while True:
+            #     task_name = random.choice(task_names[apartment+1])
+            #     if task_name in ['read_book', 'watch_tv']:
+            #         continue
+            #     else:
+            #         break
+            task_name = task
 
 
             print('------------------------------------------------------------------------------')
@@ -892,7 +931,7 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## setup goal based on currect environment
             ## -------------------------------------------------------------
-            set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=True)
+            set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False)
             init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
 
             
@@ -913,6 +952,9 @@ if __name__ == "__main__":
                     
                     obj_names = [obj.split('.')[0] for obj in message['unplaced']]
                     obj_ids = [int(obj.split('.')[1]) for obj in message['unplaced']]
+                    id2node = {node['id']: node for node in init_graph['nodes']}
+                    for obj_id in obj_ids:
+                        print([id2node[edge['to_id']]['class_name'] for edge in init_graph['edges'] if edge['from_id'] == obj_id])
 
                     if task_name!='read_book' and task_name!='watch_tv':
                         intersection = set(obj_names) & set(goal_names)
@@ -932,13 +974,33 @@ if __name__ == "__main__":
                     
 
                 if success2 and success:
+                    if apartment == 4:
+                        init_graph = set_init_goal.remove_obj(init_graph, [348])
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal)
                     count_success += success
 
                     if success:
                         comm.reset(apartment)
+                        # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
+                        # ith_old_plate = 0
+                        # for ith_node, node in enumerate(init_graph['nodes']):
+                        #     if node['class_name'] == 'plate':
+                        #         if ith_old_plate < len(plate_ids):
+                        #             init_graph['nodes'][ith_node] = plate_ids[ith_old_plate]
+                        #             ith_old_plate += 1
+                        init_graph0 = copy.deepcopy(init_graph)
                         comm.expand_scene(init_graph)
                         _, init_graph = comm.environment_graph()
+
+                        for k, v in env_goal.items():
+                            elements = k.split('_')
+                            if len(elements) == 4:
+                                obj_class_name = k[1]
+                                ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
+                                if len(ids) < v:
+                                    print(obj_class_name, v, ids)
+                                    pdb.set_trace()
+
                         success_init_graph.append({'id': count_success,
                                                     'apartment': (apartment+1),
                                                     'task_name': task_name,
@@ -949,11 +1011,11 @@ if __name__ == "__main__":
 
             print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i+1, num_test) )
 
-            if count_success>=10:
+            if count_success>=num_per_apartment:
                 break
     
-    pdb.set_trace()
-    pickle.dump( success_init_graph, open( "result/init1_10_same_room_simple.p", "wb" ) )
+    # pdb.set_trace()
+    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_simple.p".format(task, num_per_apartment), "wb" ) )
     # pickle.dump( success_init_graph, open( "result/init1_10.p", "wb" ) )
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 
