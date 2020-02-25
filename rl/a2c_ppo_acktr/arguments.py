@@ -192,7 +192,7 @@ def get_args():
     parser.add_argument(
         '--model_type',
         default='CNN',
-        choices=['GNN', 'CNN'],
+        choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
 

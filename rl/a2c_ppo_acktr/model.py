@@ -8,7 +8,7 @@ import torchvision.models as models
 
 from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, ElementWiseCategorical
 from a2c_ppo_acktr.utils import init
-from a2c_ppo_acktr.graph_nn import GraphModel
+from a2c_ppo_acktr.graph_nn import Transformer, GraphModel
 import pdb
 import  sys
 home_path = os.getcwd()
@@ -24,27 +24,11 @@ class Flatten(nn.Module):
 class Policy(nn.Module):
     def __init__(self, obs_space, action_space, action_inst=True, base=None, base_kwargs=None):
         super(Policy, self).__init__()
-        if base_kwargs is None:
-            base_kwargs = {}
-        if base is None:
-            obs_shape = obs_space[0].shape
-            if len(obs_space) == 1:
-                if len(obs_shape) == 3:
-                    base = CNNBaseResnet
-                elif len(obs_shape) == 1:
-                    base = MLPBase
-                else:
-                    raise NotImplementedError
-            else:
-                if 'image' < 5:
-                    if len(obs_shape) == 3:
-                        base = CNNBaseResnetDist
-                else:
-                    base = GraphBase
 
 
 
-        self.base = base(None, **base_kwargs)
+
+        self.base = base(**base_kwargs)
         if action_space.__class__.__name__ != "Tuple":
             action_space = [action_space]
         
@@ -261,13 +245,38 @@ class GraphEncoder(nn.Module):
         hidden_feats = self.graph_encoder(inputs)
         return hidden_feats
 
+
+class TransformerBase(NNBase):
+    def __init__(self, recurrent=False, hidden_size=128, dist_size=10, max_nodes=150, num_classes=100):
+        super(TransformerBase, self).__init__(recurrent, hidden_size, hidden_size)
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+        self.main = Transformer(num_classes=num_classes, num_nodes=max_nodes, in_feat=hidden_size, out_feat=hidden_size)
+        self.context_size = hidden_size
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, rnn_hxs, masks):
+
+
+        x = self.main(inputs)
+
+        char_node = x[:, 0]
+        if self.is_recurrent:
+            char_node, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
+        return self.critic_linear(char_node), char_node, x, rnn_hxs
+
+
+
+
 class GraphBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=128, dist_size=10, max_nodes=150):
+    def __init__(self, recurrent=False, hidden_size=128, max_nodes=150, num_classes=50):
         super(GraphBase, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
 
-        self.main = GraphEncoder(hidden_size, num_nodes=max_nodes)
+        self.main = GraphEncoder(hidden_size, num_nodes=max_nodes, num_classes=num_classes)
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
@@ -288,7 +297,7 @@ class GraphBase(NNBase):
 
 
 class CNNBaseResnetDist(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, dist_size=10):
+    def __init__(self, recurrent=False, hidden_size=512, dist_size=10):
         super(CNNBaseResnetDist, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
@@ -316,7 +325,7 @@ class CNNBaseResnetDist(NNBase):
         return self.critic_linear(x), x, rnn_hxs
 
 class CNNBaseResnet(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=128, num_classes=150):
+    def __init__(self, recurrent=False, hidden_size=128, num_classes=50):
         super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
