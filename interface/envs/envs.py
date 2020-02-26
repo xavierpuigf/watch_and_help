@@ -64,7 +64,7 @@ class UnityEnvWrapper:
                  env_id,
                  env_copy_id, 
                  init_graph=None, 
-                 file_name='../../executables/exec_linux02.10.x86_64', 
+                 file_name=None, 
                  base_port=8080, 
                  num_agents=1,
                  recording=False,
@@ -84,7 +84,10 @@ class UnityEnvWrapper:
 
         # TODO: get rid of this, should be notfiied somehow else
 
-        self.comm = comm_unity.UnityCommunication(port=str(self.port_number), file_name=self.executable_name)
+        if self.executable_name is None:
+            self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
+        else:
+            self.comm = comm_unity.UnityCommunication(port=str(self.port_number), file_name=self.executable_name)
         print('Checking connection')
         # self.comm.check_connection()
 
@@ -105,7 +108,7 @@ class UnityEnvWrapper:
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i], position=[-1, 0, -9])
+            self.comm.add_character(characters[i])#, position=[-1, 0, -9])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -135,7 +138,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
 
-            self.comm.add_character(characters[i], position=[-1, 0, -9])
+            self.comm.add_character(characters[i])#, position=[-1, 0, -9])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -300,7 +303,8 @@ class UnityEnv:
                  max_num_objects=150,
                  logging=False,
                  recording=False,
-                 record_dir=None):
+                 record_dir=None,
+                 file_name=None):
 
         self.enable_alice = enable_alice
         self.task_type = task_type
@@ -316,6 +320,7 @@ class UnityEnv:
         self.logging = logging
         self.recording = recording
         self.record_dir = record_dir
+        self.file_name = file_name
 
         self.unity_simulator = None # UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)
         self.agent_ids =  [1,2] # self.unity_simulator.agent_ids()
@@ -570,7 +575,8 @@ class UnityEnv:
                                                        num_agents=self.num_agents,
                                                        recording=self.recording,
                                                        output_folder=record_dir + '/',
-                                                       file_name_prefix=file_name_prefix)
+                                                       file_name_prefix=file_name_prefix,
+                                                       file_name=self.file_name)
             else:
                 self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
@@ -633,7 +639,8 @@ class UnityEnv:
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
         if self.unity_simulator is None:
-            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents)
+            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents,
+                                                       file_name=self.file_name)
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
 
@@ -680,7 +687,8 @@ class UnityEnv:
                                                        num_agents=self.num_agents,
                                                        recording=self.recording,
                                                        output_folder=record_dir + '/',
-                                                       file_name_prefix=file_name_prefix)
+                                                       file_name_prefix=file_name_prefix,
+                                                       file_name=self.file_name)
             else:
                 self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
@@ -921,11 +929,11 @@ class UnityEnv:
                                logging=self.logging)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
-        if last_subgoal is not None:
-            elements = last_subgoal.split('_')
-            print(elements)
-            # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
-            ipdb.set_trace()
+        # if last_subgoal is not None:
+        #     elements = last_subgoal.split('_')
+        #     print(elements)
+        #     # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
+        #     ipdb.set_trace()
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
