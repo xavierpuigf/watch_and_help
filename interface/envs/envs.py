@@ -266,7 +266,8 @@ class UnityEnvWrapper:
         else:
             success, message = self.comm.render_script(script_list, recording=False, gen_vid=False)
         if not success:
-            print('Failed action', script_list)
+            print('action failed:', message)
+            # ipdb.set_trace()
         result = {}
         for agent_id in agent_do:
             result[agent_id] = (success, message) 
@@ -662,6 +663,7 @@ class UnityEnv:
         np.random.seed(self.task_id)
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
+        print('task_id:', self.task_id)
         print('env_id:', self.env_id)
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])

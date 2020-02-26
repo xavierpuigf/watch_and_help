@@ -80,11 +80,12 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
-parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
+parser.add_argument('--max-episode-length', type=int, default=150, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
 parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_100_simple.p', help='Dataset path')
-parser.add_argument('--record-dir', type=str, default='../record/init67_100_same_room_simple', help='Record directory')
+parser.add_argument('--record-dir', type=str, default='../record/init7_100_same_room_simple', help='Record directory')
+parser.add_argument('--recording', action='store_true', default=False, help='True - recording frames')
 
 
 if __name__ == '__main__':
@@ -123,11 +124,14 @@ if __name__ == '__main__':
                              simulator_type=args.simulator_type,
                              env_task_set=env_task_set,
                              logging=True,
-                             recording=True,
+                             recording=args.recording,
                              record_dir=args.record_dir)
         
         steps_list, failed_tasks = [], []
-        for episode_id in range(len(env_task_set[:0])):
+        episode_ids = list(range(len(env_task_set)))
+        random.shuffle(episode_ids)
+        for episode_id in episode_ids[:35]:
+            # if episode_id != 10: continue
             try:
                 unity_env.reset_MCTS(task_id=episode_id)
 
