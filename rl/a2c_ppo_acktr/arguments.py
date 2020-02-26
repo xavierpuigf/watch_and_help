@@ -195,6 +195,8 @@ def get_args():
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
+    parser.add_argument(
+        '--executable_file', type=str, default='')
 
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')
