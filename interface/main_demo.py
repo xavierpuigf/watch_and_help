@@ -42,7 +42,7 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
         count = key_count[key]
         elements = key.split('_') 
         if elements[1] in exclude: continue
-        if task_name in ['setup_table', 'prepare_meal']:
+        if task_name in ['setup_table', 'prepare_food']:
             predicate = 'on_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         elif task_name in ['put_dishwasher', 'put_fridge']:
@@ -80,12 +80,14 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
-parser.add_argument('--max-episode-length', type=int, default=150, help='Maximum episode length')
+parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
-parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_100_simple.p', help='Dataset path')
-parser.add_argument('--record-dir', type=str, default='../record/init7_100_same_room_simple', help='Record directory')
+# parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_100_simple.p', help='Dataset path')
+# parser.add_argument('--record-dir', type=str, default='../record/init7_100_same_room_simple', help='Record directory')
 parser.add_argument('--recording', action='store_true', default=False, help='True - recording frames')
+parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
+parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 
 
 if __name__ == '__main__':
@@ -93,6 +95,8 @@ if __name__ == '__main__':
         print (' ' * 26 + 'Options')
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
+        args.dataset_path = '../initial_environments/data/init_envs/init7_{}_{}_simple.p'.format(args.task, args.num_per_apartment)
+        args.record_dir = '../record/init7_{}_{}_simple'.format(args.task, args.num_per_apartment)
         
         num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
@@ -129,8 +133,8 @@ if __name__ == '__main__':
         
         steps_list, failed_tasks = [], []
         episode_ids = list(range(len(env_task_set)))
-        random.shuffle(episode_ids)
-        for episode_id in episode_ids[:35]:
+        # random.shuffle(episode_ids)
+        for episode_id in episode_ids:
             # if episode_id != 10: continue
             try:
                 unity_env.reset_MCTS(task_id=episode_id)

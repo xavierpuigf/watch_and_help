@@ -6,6 +6,7 @@ import random
 import json
 import numpy as np
 import copy
+import argparse
 
 random.seed(10)
 
@@ -598,8 +599,12 @@ class SetInitialGoal:
         table_id = random.choice(table_ids)
 
         ## remove objects on table
-        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        id2node = {node['id']: node for node in graph['nodes']}
+        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON') and \
+                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
         graph = self.remove_obj(graph, objs_on_table)
+        # objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        # graph = self.remove_obj(graph, objs_on_table)
 
         if self.same_room:
             objs_in_room = self.get_obj_room(table_id)
@@ -807,10 +812,13 @@ def debug_function(comm):
     # with open('data/object_info%s.json'%apartment, 'w') as file:
     #     json.dump(objs, file)
 
-    
+parser = argparse.ArgumentParser()
+parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
+parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 
 
 if __name__ == "__main__":
+    args = parser.parse_args()
     # Better to not sue UnityEnv here, it is faster and it allows to create an env without agents
 
     ## -------------------------------------------------------------
@@ -878,8 +886,8 @@ if __name__ == "__main__":
                     
 
     success_init_graph = []
-    task = 'put_fridge'
-    num_per_apartment = 10
+    task = args.task
+    num_per_apartment = args.num_per_apartment
 
     for apartment in range(7):
         if task not in task_names[apartment + 1]: continue
@@ -894,7 +902,7 @@ if __name__ == "__main__":
         # filtering out certain locations
         for obj, pos_list in obj_position.items():
             positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
-                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'desk', 'sofa', 'nightstand', 'bookshelf']]
+                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'sofa', 'nightstand']]
             obj_position[obj] = positions
         print(obj_position['cutleryfork'])
 
@@ -977,6 +985,8 @@ if __name__ == "__main__":
                 if success2 and success:
                     if apartment == 4:
                         init_graph = set_init_goal.remove_obj(init_graph, [348])
+                    elif apartment == 6:
+                        init_graph = set_init_goal.remove_obj(init_graph, [173])
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal)
 
                     if success:

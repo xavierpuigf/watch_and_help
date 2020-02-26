@@ -376,9 +376,26 @@ class MCTS_agent:
         self.comm = comm
 
 
+    def filtering_graph(self, graph):
+        new_edges = []
+        edge_dict = {}
+        for edge in graph['edges']:
+            key = (edge['from_id'], edge['to_id'])
+            if key not in edge_dict:
+                edge_dict[key] = [edge['relation_type']]
+                new_edges.append(edge)
+            else:
+                if edge['relation_type'] not in edge_dict[key]:
+                    edge_dict[key] += [edge['relation_type']]
+                    new_edges.append(edge)
+
+        graph['edges'] = new_edges
+        return graph
+
+
     def sample_belief(self, obs_graph):
         new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-        self.previous_belief_graph = new_graph
+        self.previous_belief_graph = self.filtering_graph(new_graph)
         return new_graph
 
         # # TODO: probably these 2 cases are not needed
@@ -631,7 +648,7 @@ class MCTS_agent:
                 last_subgoals[1] = my_agent_info['subgoals'][0] if len(my_agent_info['subgoals']) > 0 else None
 
                 if my_agent_action is None:
-                    print("system my action is None! DONE!")
+                    print("My agent action is None! DONE!")
                     # ipdb.set_trace()
                 else:
                     action_dict[1] = my_agent_action
