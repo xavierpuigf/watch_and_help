@@ -12,3 +12,5 @@ __pycache__/
 logdir/*
 dataset_*
 init_reward/result/*
+initial_environments/data/init_envs/*
+*.p

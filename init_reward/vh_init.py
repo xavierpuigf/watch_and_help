@@ -878,10 +878,11 @@ if __name__ == "__main__":
                     
 
     success_init_graph = []
-    task = 'setup_table'
+    task = 'put_fridge'
     num_per_apartment = 10
 
     for apartment in range(7):
+        if task not in task_names[apartment + 1]: continue
         # if apartment != 4: continue
         # apartment = 3
 
@@ -977,7 +978,6 @@ if __name__ == "__main__":
                     if apartment == 4:
                         init_graph = set_init_goal.remove_obj(init_graph, [348])
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal)
-                    count_success += success
 
                     if success:
                         comm.reset(apartment)
@@ -992,20 +992,26 @@ if __name__ == "__main__":
                         comm.expand_scene(init_graph)
                         _, init_graph = comm.environment_graph()
 
-                        for k, v in env_goal.items():
-                            elements = k.split('_')
-                            if len(elements) == 4:
-                                obj_class_name = k[1]
-                                ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
-                                if len(ids) < v:
+                        for subgoal in env_goal[task_name]:
+                            for k, v in subgoal.items():
+                                elements = k.split('_')
+                                # print(elements)
+                                # pdb.set_trace()
+                                if len(elements) == 4:
+                                    obj_class_name = elements[1]
+                                    ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
                                     print(obj_class_name, v, ids)
-                                    pdb.set_trace()
+                                    # if len(ids) < v:
+                                    #     print(obj_class_name, v, ids)
+                                    #     pdb.set_trace()
 
-                        success_init_graph.append({'id': count_success,
-                                                    'apartment': (apartment+1),
-                                                    'task_name': task_name,
-                                                    'init_graph': init_graph,
-                                                    'goal': env_goal})
+                        count_success += success
+                        if success:
+                            success_init_graph.append({'id': count_success,
+                                                        'apartment': (apartment+1),
+                                                        'task_name': task_name,
+                                                        'init_graph': init_graph,
+                                                        'goal': env_goal})
 
                     
 

@@ -36,22 +36,22 @@
     {
         "cupcake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "juice": {"min_num":0, "max_num":1, "env_max_num": 3},
-        "milk": {"min_num":0, "max_num":1, "env_max_num": 3},
-        "milkshake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "pancake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "poundcake": {"min_num":0, "max_num":1, "env_max_num": 3},
-        "wine": {"min_num":0, "max_num":1, "env_max_num": 3}
+        "wine": {"min_num":0, "max_num":1, "env_max_num": 3},
+        "pudding": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "apple": {"min_num":0, "max_num":2, "env_max_num": 3}   
     },
 
     "prepare_food":
     {
         "cupcake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "juice": {"min_num":0, "max_num":1, "env_max_num": 3},
-        "milk": {"min_num":0, "max_num":1, "env_max_num": 3},
-        "milkshake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "pancake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "poundcake": {"min_num":0, "max_num":1, "env_max_num": 3},
         "wine": {"min_num":0, "max_num":1, "env_max_num": 3},
+        "pudding": {"min_num":0, "max_num":2, "env_max_num": 3},
+        "apple": {"min_num":0, "max_num":2, "env_max_num": 3},
         "coffeepot": {"min_num":0, "max_num":2, "env_max_num": 3}
     },
 
