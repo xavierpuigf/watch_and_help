@@ -14,7 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
 #
@@ -88,7 +87,8 @@ def main():
         base = model.GraphBase
     if args.model_type == 'CNN':
         base = model.CNNBaseResnet
-
+    if args.model_type == 'TF':
+        base = model.TransformerBase
 
     actor_critic = Policy(
         envs.observation_space,
@@ -189,6 +189,10 @@ def main():
 
 
             # Obser reward and next obs
+            #pdb.set_trace()
+            #action_modif = [action[0],
+            #                rollouts.obs['class_objects'][step][action[1]],
+            #                rollouts.obs['node_ids'][step][action[1]]]
             obs, reward, done, infos = envs.step(action)
             if (step + 1) % args.t_max == 0:
                 recurrent_hidden_states = recurrent_hidden_states.detach()

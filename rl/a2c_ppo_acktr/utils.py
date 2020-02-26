@@ -73,12 +73,14 @@ class Logger():
         self.experiment_name = self.get_experiment_name()
         self.tensorboard_writer = None
         self.save_dir = args.save_dir
-        self.first_log = True
+        self.set_tensorboard()
+        self.first_log = False
 
 
-    def set_tensorboard(self, args):
-        ts_str = datetime.datetime.fromtimestamp(datetime.time()).strftime('%Y-%m-%d_%H-%M-%S')
-        self.tensorboard_writer = SummaryWriter(log_dir=os.path.join(args.tensorboard_logdir, self.experiment_name, ts_str))
+    def set_tensorboard(self):
+        now = datetime.datetime.now()
+        ts_str = now.strftime('%Y-%m-%d_%H-%M-%S')
+        self.tensorboard_writer = SummaryWriter(log_dir=os.path.join(self.args.tensorboard_logdir, self.experiment_name, ts_str))
 
     def get_experiment_name(self):
         args = self.args
@@ -93,8 +95,9 @@ class Logger():
     def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss):
         if self.first_log == True:
             self.first_log = False
-            if args.tensorboard_logdir is not None:
-                self.tensorboard_writer = self.set_tensorbard()
+            if self.args.tensorboard_logdir is not None:
+                self.set_tensorboard()
+
         print(
             "Updates {}, num timesteps {}, FPS {} "
             "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
@@ -111,8 +114,8 @@ class Logger():
             # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
             self.tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
-            self.tensorboard_writer.add_scalar("value_loss", value_loss, total_num_steps)
-            self.tensorboard_writer.add_scalar("action_loss", action_loss, total_num_steps)
+            self.tensorboard_writer.add_scalar("losses/value_loss", value_loss, total_num_steps)
+            self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
 
 
     def save_model(self, j, actor_critic, envs):

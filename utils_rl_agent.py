@@ -113,7 +113,6 @@ class GraphHelper():
                         self.obj1_affordance[action_id, ids_goal2] = 1
 
 
-
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -154,10 +153,14 @@ class GraphHelper():
         nodes = [id2node[idi] for idi in ids]
         nodes.append({'id': -1, 'class_name': 'no_obj', 'states': []})
 
+        char_coord = np.array(nodes[0]['bounding_box']['center'])
+        rel_coords = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else (np.array(node['bounding_box']['center']) - char_coord)[None, :] for node in nodes]
+
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
         class_names_str = [node['class_name'] for node in nodes]
         visible_nodes = [(node['class_name'], node['id']) for node in nodes]
+        node_ids = [node['id'] for node in nodes]
 
         class_names = np.array([self.object_dict.get_id(class_name) for class_name in class_names_str])
         node_states = np.array([self.one_hot(node['states']) for node in nodes])
@@ -180,7 +183,8 @@ class GraphHelper():
         mask_nodes = np.zeros((max_nodes))
         all_class_names = np.zeros((max_nodes)).astype(np.int32)
         all_node_states = np.zeros((max_nodes, len(self.state_dict)))
-        
+        all_node_ids = np.zeros((max_nodes)).astype(np.int32)
+
         if len(edges) > 0:
             mask_edges[:len(edges)] = 1.
             all_edge_ids[:len(edges), :] = edge_ids
@@ -189,7 +193,10 @@ class GraphHelper():
         mask_nodes[:len(nodes)] = 1.
         all_class_names[:len(nodes)] = class_names
         all_node_states[:len(nodes)] = node_states
+        all_node_ids[:len(nodes)] = node_ids
 
+        obj_coords = np.zeros((max_nodes, 3))
+        obj_coords[:len(nodes)] = np.concatenate(rel_coords, 0)
         
         if plot_graph:
             graph_viz = DGLGraph()
@@ -198,15 +205,19 @@ class GraphHelper():
         else:
             labeldict = None
             graph_viz = None
-
+        #print("CLASSNAMES") 
+        #print(all_class_names[:5])
         output = {
             'class_objects': all_class_names,
             'states_objects': all_node_states,
             'edge_tuples': all_edge_ids,
             'edge_classes': all_edge_types,
             'mask_object': mask_nodes,
-            'mask_edge': mask_edges
+            'mask_edge': mask_edges,
+            'object_coords': obj_coords,
+            'node_ids': all_node_ids
         }
+        #print(node_ids[:len(nodes)])
         return output, (graph_viz, labeldict, visible_nodes)
 
 def can_perform_action(action, o1, o1_id, agent_id, graph):
@@ -220,6 +231,9 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
     if num_args != args_per_action(action):
         return None
+    
+    if 'walk' not in action and 'turn' not in action:
+        return None
     if 'put' in action:
         if len(grabbed_objects) == 0:
             return None
@@ -231,15 +245,17 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             obj2_str = f'<{o2}> ({o2_id})'
 
     obj1_str = f'<{o1}> ({o1_id})'
-    if action.startswith('put'):
+    if o1_id in id2node.keys():
         if id2node[o1_id]['class_name'] == 'character':
             return None
+    if action.startswith('put'):
+
         if 'CONTAINERS' in id2node[o1_id]['properties']:
             action = 'putin'
         elif 'SURFACES' in id2node[o1_id]['properties']:
             action = 'putback'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
-
+    #print(action_str)
     return action_str
 
 def args_per_action(action):
@@ -279,22 +295,31 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
         # check if an object cannot in no class
 
         # b x num_classes
-        mask_object_class = obj1_affordance.sum(1) > 0
-        # batch x nodes x object_class
-        one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1],
-                                   mask_object_class.shape[-1]).zero_().to(object_classes.device)
-        target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
-        mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
-        mask = mask_nodes.to(log_probs.device).float()
-        log_probs = log_probs * mask + (1. - mask) * -inf_val
+        #mask_object_class = obj1_affordance.sum(1) > 0
+        #if np.sum(mask_object_class) != mask_object_class.shape[0]:
+        #    pdb.set_trace()
+        ## batch x nodes x object_class
+        #one_hot = torch.LongTensor(object_classes.shape[0], object_classes.shape[1],
+        #                           mask_object_class.shape[-1]).zero_().to(object_classes.device)
+        #target_one_hot = one_hot.scatter_(2, object_classes.unsqueeze(-1).long(), 1)
+        #mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
+        #mask = mask_nodes.to(log_probs.device).float()
+        #log_probs = log_probs * mask + (1. - mask) * -inf_val
         return log_probs
 
     elif i == 0:
         # Deciding on the action
         selected_obj1 = object_classes[range(object_classes.shape[0]), actions[1]].long()
+
         mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1)).squeeze(-1).float().to(log_probs.device)
         log_probs = log_probs * mask + (1.-mask) * -inf_val
-        return log_probs
-
+        
+        #print("CLASS OBJ")
+        #print(object_classes[0, :5])
+        #print(actions, 'CLASS', selected_obj1)
+        #print(log_probs)
+        #if log_probs[:, 8] > -inf_val:
+        #    print(log_probs)
+        #   pdb.set_trace()
 
         return log_probs

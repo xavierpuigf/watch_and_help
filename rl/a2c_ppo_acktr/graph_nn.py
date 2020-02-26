@@ -2,10 +2,13 @@ import torch
 import pdb
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.modules as modules
 from dgl import DGLGraph
 import dgl
 import dgl.function as fn
 from functools import partial
+
+
 
 class RGCNLayer(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, num_bases=-1, bias=None,
@@ -171,3 +174,38 @@ class GraphModel(nn.Module):
         hs = torch.cat(hs_list, dim=0)
         return hs
 
+class Transformer(nn.Module):
+    def __init__(self, num_classes, num_nodes, in_feat, out_feat, dropout=0.1, activation='relu', nhead=1):
+        super(Transformer, self).__init__()
+        encoder_layer = nn.modules.TransformerEncoderLayer(d_model=in_feat, nhead=nhead,
+                                                           dim_feedforward=out_feat, dropout=dropout,
+                                                           activation=activation)
+        self.transformer = nn.modules.TransformerEncoder(
+            encoder_layer,
+            num_layers=6,
+            norm=nn.modules.normalization.LayerNorm(in_feat))
+
+        self.class_embedding = nn.Embedding(num_classes, in_feat-3)
+        self._reset_parameters()
+
+    def _reset_parameters(self):
+        r"""Initiate parameters in the transformer model."""
+
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, inputs):
+        keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes',
+                'mask_object', 'mask_edge', 'object_coords']
+        [all_class_names, node_states,
+         all_edge_ids, all_edge_types,
+         mask_nodes, mask_edges, coords] = [inputs[key] for key in keys]
+
+        # inputs, combination of class names and coordinates
+        inputs = self.class_embedding(all_class_names.long())
+        inputs_and_coords = torch.cat((inputs, coords), dim=2)
+        inputs_and_coords = inputs_and_coords.transpose(0,1)
+        outputs = self.transformer(inputs_and_coords, src_key_padding_mask=mask_nodes.bool())
+        outputs = outputs.squeeze(0).transpose(0,1)
+        return outputs
