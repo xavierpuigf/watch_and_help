@@ -131,7 +131,7 @@ class GraphHelper():
             one_hot[self.state_dict.get_id(state)] = 1
         return one_hot
 
-    def build_graph(self, graph, character_id, ids=None, plot_graph=False):
+    def build_graph(self, graph, character_id, ids=None, plot_graph=False, level=1):
         if ids is None:
             ids = [node['id'] for node in graph['nodes']]
 
@@ -139,7 +139,8 @@ class GraphHelper():
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
 
-        ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
+        if level > 0:
+            ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
         ids = [idi for idi in ids if idi != character_id]
         ids = list(set(ids))
         id2node = {node['id']: node for node in graph['nodes']}
@@ -226,6 +227,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     # if action in ['open', 'close', 'grab', 'putback']:
     #     return False
     obj2_str = ''
+    obj1_str = ''
     id2node = {node['id']: node for node in graph['nodes']}
     num_args = 0 if o1 is None else 1
     grabbed_objects = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['relation_type'] in ['HOLDS_RH', 'HOLD_LH']]
@@ -244,7 +246,8 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             o2 = id2node[o2_id]['class_name']
             obj2_str = f'<{o2}> ({o2_id})'
 
-    obj1_str = f'<{o1}> ({o1_id})'
+    if o1 is not None:
+        obj1_str = f'<{o1}> ({o1_id})'
     if o1_id in id2node.keys():
         if id2node[o1_id]['class_name'] == 'character':
             return None
@@ -255,7 +258,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
         elif 'SURFACES' in id2node[o1_id]['properties']:
             action = 'putback'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
-    #print(action_str)
+    print(action_str)
     return action_str
 
 def args_per_action(action):

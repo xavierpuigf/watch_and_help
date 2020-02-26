@@ -277,7 +277,8 @@ def main():
                 'episode_rewards': episode_rewards,
                 'dist_entropy': dist_entropy,
                 'value_loss': value_loss,
-                'action_loss': action_loss
+                'action_loss': action_loss,
+                'epsilon': epsilon,
             }
             logger.log_data(**data_log)
 

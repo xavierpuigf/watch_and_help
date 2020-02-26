@@ -92,7 +92,7 @@ class Logger():
             args.simulator_type)
         return experiment_name
 
-    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss):
+    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss, epsilon):
         if self.first_log == True:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
@@ -116,7 +116,8 @@ class Logger():
             self.tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
             self.tensorboard_writer.add_scalar("losses/value_loss", value_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
-
+            self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
+            self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
 
     def save_model(self, j, actor_critic, envs):
         save_path = os.path.join(self.save_dir, self.experiment_name)

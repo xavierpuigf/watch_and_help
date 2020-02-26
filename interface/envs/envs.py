@@ -70,21 +70,21 @@ class UnityEnvWrapper:
                  recording=False,
                  output_folder=None,
                  file_name_prefix=None):
-        atexit.register(self.close)
+
         self.port_number = base_port + env_copy_id 
-        print(self.port_number)
         self.proc = None
         self.timeout_wait = 60
+
         self.file_name = file_name
 
 
-        #self.launch_env(file_name
+        self.executable_name = file_name
         self.output_folder = output_folder
         self.file_name_prefix = file_name_prefix
 
         # TODO: get rid of this, should be notfiied somehow else
 
-        self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
+        self.comm = comm_unity.UnityCommunication(port=str(self.port_number), file_name=self.executable_name)
         print('Checking connection')
         # self.comm.check_connection()
 
@@ -105,7 +105,7 @@ class UnityEnvWrapper:
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])
+            self.comm.add_character(characters[i], position=[-1, 0, -9])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -134,7 +134,8 @@ class UnityEnvWrapper:
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])
+
+            self.comm.add_character(characters[i], position=[-1, 0, -9])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -153,96 +154,9 @@ class UnityEnvWrapper:
             # Should generally be a ValueError, but catch everything just in case.
             return None
 
-    def close(self):
-        if self.proc is not None:
-            self.proc.kill()
-            self.proc = None
-        return
-        if self.proc is not None:
-            # Wait a bit for the process to shutdown, but kill it if it takes too long
-            try:
-                self.proc.wait(timeout=self.timeout_wait)
-                signal_name = self.returncode_to_signal_name(self.proc.returncode)
-                signal_name = f" ({signal_name})" if signal_name else ""
-                return_info = f"Environment shut down with return code {self.proc.returncode}{signal_name}."
-                logger.info(return_info)
-            except subprocess.TimeoutExpired:
-                logger.info("Environment timed out shutting down. Killing...")
-            # Set to None so we don't try to close multiple times.
-            self.proc = None
 
-    def launch_env(self, file_name, args=''):
-        # based on https://github.com/Unity-Technologies/ml-agents/blob/bf12f063043e5faf4b1df567b978bb18dcb3e716/ml-agents/mlagents/trainers/learn.py
-        cwd = os.getcwd()
-        file_name = (
-            file_name.strip()
-            .replace(".app", "")
-            .replace(".exe", "")
-            .replace(".x86_64", "")
-            .replace(".x86", "")
-        )
-        true_filename = os.path.basename(os.path.normpath(file_name))
-        print(file_name)
-        logger.debug("The true file name is {}".format(true_filename))
-        launch_string = None
-        if platform == "linux" or platform == "linux2":
-            candidates = glob.glob(os.path.join(cwd, file_name) + ".x86_64")
-            if len(candidates) == 0:
-                candidates = glob.glob(os.path.join(cwd, file_name) + ".x86")
-            if len(candidates) == 0:
-                candidates = glob.glob(file_name + ".x86_64")
-            if len(candidates) == 0:
-                candidates = glob.glob(file_name + ".x86")
-            if len(candidates) > 0:
-                launch_string = candidates[0]
 
-        elif platform == "darwin":
-            candidates = glob.glob(
-                os.path.join(
-                    cwd, file_name + ".app", "Contents", "MacOS", true_filename
-                )
-            )
-            if len(candidates) == 0:
-                candidates = glob.glob(
-                    os.path.join(file_name + ".app", "Contents", "MacOS", true_filename)
-                )
-            if len(candidates) == 0:
-                candidates = glob.glob(
-                    os.path.join(cwd, file_name + ".app", "Contents", "MacOS", "*")
-                )
-            if len(candidates) == 0:
-                candidates = glob.glob(
-                    os.path.join(file_name + ".app", "Contents", "MacOS", "*")
-                )
-            if len(candidates) > 0:
-                launch_string = candidates[0]
 
-        if launch_string is None:
-            self.close()
-            raise Exception(
-                "Couldn't launch the {0} environment. "
-                "Provided filename does not match any environments.".format(
-                    true_filename
-                )
-            )
-        else:
-            docker_training = False
-            if not docker_training:
-                subprocess_args = [launch_string]
-                #subprocess_args += ["-batchmode"]
-                #subprocess_args += ["-http-port="+str(self.port_number)]
-                subprocess_args += args
-                try:
-                    self.proc = subprocess.Popen(
-                            subprocess_args, 
-                            start_new_session=True)
-                    ret_val = self.proc.poll()
-                except:
-                    raise Exception('Error, environment was found but could not be launched')
-            else:
-                raise Exception("Docker training is still not implemented")
-
-        pass
 
     def get_graph(self):
         if True:  # self.graph is None:
@@ -437,36 +351,32 @@ class UnityEnv:
 
 
         if self.simulator_type == 'unity':
-            if self.observation_type == 'coords':
-                # current_obs = [current_obs, node_names, node_states, edges, edge_types, mask_nodes, mask_edges,
-                #           rel_coords, position_objects, mask]
-                self.observation_space = spaces.Dict({
-                    # Image
-                    'image': spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)),
-                    # Graph
-                    #utils_rl_agent.GraphSpace(),
 
-                    'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
-                    'node_ids': spaces.Box(low=0, high=500,
-                                                shape=(self.graph_helper.num_objects,)),
+            self.observation_space = spaces.Dict({
+                # Image
+                'image': spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width)),
+                # Graph
+                #utils_rl_agent.GraphSpace(),
 
-                    'states_objects': spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
-                    'edge_tuples': spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
-                    'edge_classes': spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
-                    'mask_object': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )),
-                    'mask_edge': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )),
+                'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects, )),
+                'node_ids': spaces.Box(low=0, high=500,
+                                            shape=(self.graph_helper.num_objects,)),
 
-                    # Target object
-                    'object_dist': spaces.Box(low=-100, high=100, shape=(2,)),
-                    'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
-                               shape=(self.num_objects, 3)), # 3D coords of the objects
-                    # 'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
+                'states_objects': spaces.Box(low=0, high=1., shape=(self.graph_helper.num_objects, self.graph_helper.num_states)),
+                'edge_tuples': spaces.Box(low=0, high=self.graph_helper.num_objects, shape=(self.graph_helper.num_edges, 2)),
+                'edge_classes': spaces.Box(low=0, high=self.graph_helper.num_edge_types, shape=(self.graph_helper.num_edges, )),
+                'mask_object': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_objects, )),
+                'mask_edge': spaces.Box(low=0, high=1, shape=(self.graph_helper.num_edges, )),
 
-                    'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
-                })
+                # Target object
+                'object_dist': spaces.Box(low=-100, high=100, shape=(2,)),
+                'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
+                           shape=(self.num_objects, 3)), # 3D coords of the objects
+                # 'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
 
-            else:
-                self.observation_space = spaces.Box(low=0, high=255., shape=(3, self.image_height, self.image_width))
+                'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
+            })
+
         else:
             self.observation_space = spaces.Dict({
                 'class_objects': spaces.Box(low=0, high=self.graph_helper.num_classes, shape=(self.graph_helper.num_objects,)),
@@ -503,8 +413,8 @@ class UnityEnv:
     def close(self):
         self.unity_simulator.close()
 
-    def distance_reward(self):
-        dist = self.get_distance()
+    def distance_reward(self, graph):
+        dist = self.get_distance(graph)
 
 
         reward = self.prev_dist - dist - 0.02
@@ -517,7 +427,7 @@ class UnityEnv:
         return reward, is_done, info
 
 
-    def reward(self):
+    def reward(self, visible_ids=None, graph=None):
         '''
         goal format:
         {predicate: number}
@@ -528,7 +438,12 @@ class UnityEnv:
 
         # Low level policy reward
         if self.task_type == 'find':
-            return self.distance_reward()
+            reward, done, info = self.distance_reward(graph)
+            if visible_ids is not None:
+                if 'microwave' in [node[0] for node in visible_ids]:
+                    reward += 2
+                    print('seen')
+            return reward, done, info
 
         if self.simulator_type == 'unity':
             satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
@@ -549,9 +464,13 @@ class UnityEnv:
         return count, done, {}
     
 
-    def get_distance(self, target_id=None, target_class='microwave', norm=None):
+    def get_distance(self, graph=None, target_id=None, target_class='microwave', norm=None):
         if self.simulator_type == 'unity':
-            gr = self.unity_simulator.get_graph()
+            if graph is None:
+                gr = self.unity_simulator.get_graph()
+            else:
+                gr = graph
+
             if target_id is None:
                 char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
                 target_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == target_class][0]
@@ -717,7 +636,7 @@ class UnityEnv:
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
 
-        pdb.set_trace()
+        # pdb.set_trace()
         self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
@@ -871,9 +790,10 @@ class UnityEnv:
                 action_dict[1] = action_str
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
-            obs, _ = self.get_observations()
+            obs, info = self.get_observations()
 
-            reward, done, info = self.reward()
+            # pdb.set_trace()
+            reward, done, info = self.reward(visible_ids=info[-1][2], graph=info[1])
             dict_results['finished'] = done
             reward = torch.Tensor([reward])
             if self.num_steps >= self.max_episode_length:
@@ -999,11 +919,11 @@ class UnityEnv:
                                logging=self.logging)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
-        # if last_subgoal is not None:
-        #     elements = last_subgoal.split('_')
-        #     print(elements)
-        #     # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
-        #     ipdb.set_trace()
+        if last_subgoal is not None:
+            elements = last_subgoal.split('_')
+            print(elements)
+            # print(self.agents[self.system_agent_id].belief.edge_belief) #[int(elements[1])]['INSIDE']
+            ipdb.set_trace()
         self.agents[self.system_agent_id].sample_belief(self.env.get_observations(char_index=0))
         self.agents[self.system_agent_id].sim_env.reset(self.agents[self.system_agent_id].previous_belief_graph, task_goal)
         action, info = self.agents[self.system_agent_id].get_action(task_goal[0], last_action, last_subgoal, opponent_subgoal)
@@ -1091,23 +1011,6 @@ class UnityEnv:
                 print(id2node[nd])
             pdb.set_trace()
             raise Exception
-
-        # close_chars = {1: [], 2: []}
-        # for edge in graph['edges']:
-        #     if edge['relation_type'] == 'CLOSE' and edge['from_id'] in [1, 2]:
-        #         close_chars[edge['from_id']].append(edge['to_id'])
-        # new_edges = []
-        # for edge in graph['edges']:
-        #     if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['category'] != 'Rooms':
-        #         for char_id, close_objs in close_chars.items():
-        #             if edge['to_id'] in close_objs and edge['from_id'] not in close_objs:
-        #                 new_edges.append({
-        #                     'from_id': edge['from_id'],
-        #                     'relation_type': 'CLOSE',
-        #                     'to_id': char_id
-        #                     })
-        # graph['edges'] += new_edges
-
         return graph
 
     # def inside_not_trans(self, graph):
@@ -1208,7 +1111,12 @@ class UnityEnv:
                 image_height = self.image_height
             if image_width is None:
                 image_width = self.image_width
-            images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
+
+            if self.observation_type != 'coords':
+                images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
+            else:
+                # For this mode we don't need images
+                images = [np.zeros((image_width, image_height, 3))]
             current_obs_img = images[0]
             current_obs_img = torchvision.transforms.functional.to_tensor(current_obs_img)[None, :]
             graph = self.unity_simulator.get_graph()
@@ -1217,10 +1125,12 @@ class UnityEnv:
             rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
             visible_objects, position_objects = self.unity_simulator.get_visible_objects()
             id2node = {node['id']: node for node in graph['nodes']}
-            visible_objects = [object for object in visible_objects if self.graph_helper.object_dict.get_id(id2node[object]['class_name']) != 0]
-
+            visible_objects = [object_id for object_id in visible_objects if self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]
+            if self.level == 0:
+                visible_objects = [object for object in visible_objects if id2node[object]['category'] != 'Rooms']
             graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects,
-                                                                    character_id=self.my_agent_id, plot_graph=drawing)
+                                                                    character_id=self.my_agent_id, plot_graph=drawing,
+                                                                    level=self.level)
             self.visible_nodes = graph_viz[-1]
             print(self.visible_nodes)
             # mask = torch.Tensor(mask)[None, :]
@@ -1235,7 +1145,7 @@ class UnityEnv:
                     # 'mask_position_objects': mask
                 }
             )
-            return current_obs, (images[0], graph_viz)
+            return current_obs, (images[0], graph, graph_viz)
 
         else:
             obs = self.env.get_observations(char_index=1)

@@ -100,7 +100,7 @@ class Policy(nn.Module):
             u = np.random.random()
             if u < epsilon:
                 uniform_logits = torch.ones(dist.probs.shape).to(new_log_probs.device)
-                updated_uniform_logits = utils_rl_agent.update_probs(updated_uniform_logits, i, actions, object_classes,
+                updated_uniform_logits = utils_rl_agent.update_probs(uniform_logits, i, actions, object_classes,
                                                                      mask_observations, affordance_obj1)
 
 
