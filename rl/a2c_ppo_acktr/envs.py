@@ -247,6 +247,8 @@ class VecPyTorch(VecEnvWrapper):
                 action = action.squeeze(1)
             action = action.numpy()
             new_action_list.append(action)
+
+        new_action_list = np.concatenate([ac[:, None] for ac in new_action_list], 1)
         self.venv.step_async(new_action_list)
 
     def step_wait(self):

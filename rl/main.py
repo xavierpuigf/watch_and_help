@@ -190,7 +190,6 @@ def main():
                     {kob: ob[step] for kob, ob in rollouts.obs.items()}, rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step], epsilon=epsilon)
 
-
             # Obser reward and next obs
             #pdb.set_trace()
             #action_modif = [action[0],
@@ -209,7 +208,8 @@ def main():
             #         episode_rewards.append(info['episode']['r'])
             #     if 'virtualhome' in args.env_name:
             #         episode_rewards.append(reward) # info['episode']['r'])
-            episode_rewards.append(reward)
+
+            episode_rewards.append(reward.mean())
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -218,7 +218,7 @@ def main():
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
-            print(step, reward[0], done[0])
+            print(step, reward[0].item(), done[0].item())
             total_num_steps += 1
             if done[0]: # break out after finishing an episode
                 break
