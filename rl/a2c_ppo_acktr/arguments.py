@@ -98,7 +98,7 @@ def get_args():
 
     parser.add_argument(
         '--simulator-type',
-        default='python',
+        default='unity',
         choices=['unity', 'python'],
         help='whether to use unity or python sim')
     
@@ -191,12 +191,15 @@ def get_args():
 
     parser.add_argument(
         '--model_type',
-        default='CNN',
+        default='TF',
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
     parser.add_argument(
-        '--executable_file', type=str, default='')
+        '--executable_file', type=str, default='../../executables/linux02.25.2/exec_linux02.25.2.x86_64')
+
+    parser.add_argument(
+        '--base_port', type=int, default=8080)
 
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')

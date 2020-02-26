@@ -95,6 +95,7 @@ class Policy(nn.Module):
             new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
             dist = distr.update_logs(new_log_probs)
             # if i == 1:
+            # if i == 1:
             #     print(new_log_probs)
             # Correct probabilities according to previously selected acitons
             u = np.random.random()
@@ -107,13 +108,15 @@ class Policy(nn.Module):
                 random_policy = torch.distributions.Categorical(logits=new_log_probs)
                 action = random_policy.sample().unsqueeze(0)
                 # print(uniform_logits.shape, dist.probs.shape, new_log_probs.shape)
-                # print('egreedy:', action)
+                print('egreedy:', action.shape)
+
             else: 
                 if deterministic:
                     action = dist.mode()
                 else:
                     action = dist.sample()
                 # print('policy:', action)
+                print('NOGR', action.shape)
             actions[i] = action
             # print(new_log_probs.shape)
             actions_log_probs[i] = dist.log_probs(action)

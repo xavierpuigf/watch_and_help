@@ -1,3 +1,4 @@
+import scipy.signal
 import copy
 import glob
 import os
@@ -54,6 +55,8 @@ def main():
             'env_name': args.env_name,
             'simulator_type': args.simulator_type,
             'task': args.task_type,
+            'base_port': args.base_port,
+            'executable_file': args.executable_file
     }
     envs = make_vec_envs(env_info, simulator_type, args.seed, args.num_processes,
             args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
