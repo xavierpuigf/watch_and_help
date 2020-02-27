@@ -45,6 +45,15 @@ class MCTS:
                 elif elements[1] == 'offInside':
                     if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                         count -= 1
+                elif elements[0] == 'holds':
+                    if edge['relation_type'].lower().startswith('holds') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                        count += 1
+                elif elements[0] == 'sit':
+                    if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
+                        count += 1
+            if elements[0] == 'turnOn':
+                if 'ON' in id2node[int(elements[1])]['states']:
+                    count += 1
         return count
         
     def run(self, curr_root, t, heuristic_dict, last_subgoal, opponent_subgoal):
@@ -95,7 +104,7 @@ class MCTS:
         """TODO: what if the predicte has been fulfilled but still grabbing the object?"""
         for edge in curr_state_tmp['edges']:
             if edge['relation_type'].startswith('HOLDS') \
-                and self.agent_id in [edge['from_id'], edge['to_id']]:
+                and self.agent_id in [edge['from_id'], edge['to_id']] and last_subgoal.split('_')[0] != 'grab':
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]
                 actions, costs = heuristic(self.agent_id, self.char_index, curr_state_tmp, self.env, last_subgoal)
                 plan = [self.get_action_str(action) for action in actions] 
@@ -452,6 +461,55 @@ class MCTS:
                             container = random.choice(containers)
                             predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
                             goals[predicate] = 1
+        if len(subgoal_space) == 0:
+            for predicate, count in unsatisfied.items():
+                if count == 1:
+                    elements = predicate.split('_')
+                    # print(elements)
+                    if elements[0] == 'turnOn':
+                        subgoal_type = 'turnOn'
+                        obj = elements[1]
+                        for node in state['nodes']:
+                            if node['class_name'] == obj or str(node['id']) == obj:
+                                # print(node)
+                                # if verbose:
+                                #     print(node)
+                                tmp_predicate = 'turnOn{}_{}'.format(node['id'], 1) 
+                                if tmp_predicate not in satisified[predicate]:
+                                    subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
+        if len(subgoal_space) == 0:
+            for predicate, count in unsatisfied.items():
+                if count == 1:
+                    elements = predicate.split('_')
+                    # print(elements)
+                    if elements[0] == 'holds' and int(elements[2]) == self.agent_id:
+                        subgoal_type = 'grab'
+                        obj = elements[1]
+                        for node in state['nodes']:
+                            if node['class_name'] == obj or str(node['id']) == obj:
+                                # print(node)
+                                # if verbose:
+                                #     print(node)
+                                tmp_predicate = 'holds_{}_{}'.format(node['id'], 1) 
+                                if tmp_predicate not in satisified[predicate]:
+                                    subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
+        if len(subgoal_space) == 0:
+            for predicate, count in unsatisfied.items():
+                if count == 1:
+                    elements = predicate.split('_')
+                    # print(elements)
+                    if elements[0] == 'sit' and int(elements[1]) == self.agent_id:
+                        subgoal_type = 'sit'
+                        obj = elements[2]
+                        for node in state['nodes']:
+                            if node['class_name'] == obj or str(node['id']) == obj:
+                                # print(node)
+                                # if verbose:
+                                #     print(node)
+                                tmp_predicate = 'sit_{}_{}'.format(1, node['id']) 
+                                if tmp_predicate not in satisified[predicate]:
+                                    subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
+
         return subgoal_space
 
 

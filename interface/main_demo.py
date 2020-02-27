@@ -41,6 +41,7 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
         key = list(key_count.keys())[0]
         count = key_count[key]
         elements = key.split('_') 
+        print(elements)
         if elements[1] in exclude: continue
         if task_name in ['setup_table', 'prepare_food']:
             predicate = 'on_{}_{}'.format(elements[1], elements[3])
@@ -62,14 +63,23 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
             predicate = 'offOn_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         elif task_name == 'read_book':
-            if elements[0] == 'book':
+            if elements[0] == 'holds':
                 predicate = 'holds_{}_{}'.format('book', 1)
+            elif elements[0] == 'sit':
+                predicate = 'sit_{}_{}'.format(1, elements[1])
+            else:
+                predicate = 'on_{}_{}'.format(elements[1], elements[3])
+                # count = 0
             goals[predicate] = count
         elif task_name == 'watch_tv':
-            if elements[0] == 'remote':
-                predicate = 'holds_{}_{}'.format('remote', 1)
-            elif elements[0] == 'tv':
-                predicate = key
+            if elements[0] == 'holds':
+                predicate = 'holds_{}_{}'.format('remotecontrol', 1)
+            elif elements[0] == 'turnOn':
+                predicate = 'turnOn_{}_{}'.format(elements[1], 1)
+            elif elements[0] == 'sit':
+                predicate = 'sit_{}_{}'.format(1, elements[1])
+            else:
+                predicate = 'on_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
         else:
             predicate = key 
@@ -106,8 +116,8 @@ if __name__ == '__main__':
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
             goal = problem_setup['goal'][task_name]
-            if task_name in ['read_book', 'watch_tv']:
-                continue
+            # if task_name in ['read_book', 'watch_tv']:
+            #     continue
             # if task_name != 'setup_table':
             #     continue
             goals = convert_goal_spec(task_name, goal, init_graph, 
@@ -133,88 +143,44 @@ if __name__ == '__main__':
         
         steps_list, failed_tasks = [], []
         episode_ids = list(range(len(env_task_set)))
-        # random.shuffle(episode_ids)
+        random.shuffle(episode_ids)
         for episode_id in episode_ids:
+            print('episode:', episode_id)
             # if episode_id != 10: continue
-            try:
-                unity_env.reset_MCTS(task_id=episode_id)
+            # try:
+            unity_env.reset_MCTS(task_id=episode_id)
 
-                ## ------------------------------------------------------------------------------
-                ## Preparing the goal
-                ## ------------------------------------------------------------------------------
-                graph = unity_env.get_graph()
-                # # glasses_id = [node['id'] for node in graph['nodes'] if 'wineglass' in node['class_name']]
-                # # print(glasses_id)
-                # # # # print([edge for edge in graph['edges'] if edge['from_id'] in glasses_id])
-                # table_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'kitchentable'][0]
-                # print(table_id)
-                # # # goals = ['put_{}_{}'.format(glass_id, table_id) for glass_id in glasses_id][:2]
-                # # goals = {'on_{}_{}'.format('wineglass', table_id): 2}
-                # # task_name = 'clean_table'
-                # task_name = 'setup_table'
-                # # goal = {task_name: [{'take_plate_off_{}'.format(table_id): 2}]}
-                # goal = {task_name: [{'put_wineglass_on_{}'.format(table_id): 2}]}
-                # goals = convert_goal_spec(task_name, goal[task_name], graph)
+            graph = unity_env.get_graph()
 
-                # # # put dishes into the dish washer
-                # # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'dishwasher'][0]
-                # # obj_class_names = ['plate', 'dishbowl']
-                # # # goals = {}
-                # # for obj_class_name in obj_class_names:
-                # #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
-                # #     if count == 0:
-                # #         continue
-                # #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
-                # # print('goals:', goals)
-
-                # # put food into the fridge
-                # fridge_id = [node['id'] for node in graph['nodes'] if node['class_name'] == 'fridge'][0]
-                # obj_class_names = ['cupcake']
-                # # goals = {}
-                # for obj_class_name in obj_class_names:
-                #     count = len([node['id'] for node in graph['nodes'] if obj_class_name in node['class_name']])
-                #     if count == 0:
-                #         continue
-                #     goals['inside_{}_{}'.format(obj_class_name, fridge_id)] = count
-                # print('goals:', goals)
-
-                
-
-                ## reset unity environment based on the goal
-                # unity_env.reset_alice(graph, task_goal)
-                # unity_env.setup(graph, task_goal)
-                # unity_env.reset()
-
-
-                if num_agents==1:
-                    steps, finished = unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
-                    if not finished:
-                        failed_tasks.append(episode_id)
-                    else:
-                        steps_list.append(steps)
-
+            if num_agents==1:
+                steps, finished = unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
+                if not finished:
+                    failed_tasks.append(episode_id)
                 else:
-                    ## ------------------------------------------------------------------------------
-                    ## your agent, add your code here
-                    ## ------------------------------------------------------------------------------
-                    my_agent_id = unity_env.get_my_agent_id()
-                    my_agent = MCTS_agent(unity_env=unity_env,
-                                         agent_id=my_agent_id,
-                                         char_index=1,
-                                         max_episode_length=5,
-                                         num_simulation=100,
-                                         max_rollout_steps=3,
-                                         c_init=0.1,
-                                         c_base=1000000,
-                                         num_samples=1,
-                                         num_processes=1,
-                                         logging=True)
+                    steps_list.append(steps)
 
-                    ## ------------------------------------------------------------------------------
-                    ## run your agent
-                    ## ------------------------------------------------------------------------------
-                    my_agent.run()
-            except:
-                pass
+            else:
+                ## ------------------------------------------------------------------------------
+                ## your agent, add your code here
+                ## ------------------------------------------------------------------------------
+                my_agent_id = unity_env.get_my_agent_id()
+                my_agent = MCTS_agent(unity_env=unity_env,
+                                     agent_id=my_agent_id,
+                                     char_index=1,
+                                     max_episode_length=5,
+                                     num_simulation=100,
+                                     max_rollout_steps=3,
+                                     c_init=0.1,
+                                     c_base=1000000,
+                                     num_samples=1,
+                                     num_processes=1,
+                                     logging=True)
+
+                ## ------------------------------------------------------------------------------
+                ## run your agent
+                ## ------------------------------------------------------------------------------
+                my_agent.run()
+            # except:
+            #     pass
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)

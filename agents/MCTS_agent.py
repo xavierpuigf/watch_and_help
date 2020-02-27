@@ -87,6 +87,52 @@ def grab_heuristic(agent_id, char_index, env_graph, simulator, object_target):
         find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
         return find_actions + target_action, find_costs + cost
 
+def turnOn_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph, char_index=char_index)
+    target_id = int(object_target.split('_')[-1])
+
+    observed_ids = [node['id'] for node in observations['nodes']]
+    agent_close = [edge for edge in env_graph['edges'] if ((edge['from_id'] == agent_id and edge['to_id'] == target_id) or (edge['from_id'] == target_id and edge['to_id'] == agent_id) and edge['relation_type'] == 'CLOSE')]
+    grabbed_obj_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and 'HOLDS' in edge['relation_type'])]
+
+    target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
+
+    if target_id not in grabbed_obj_ids:
+        target_action = [('switchon', (target_node['class_name'], target_id), None)]
+        cost = [0.05]
+    else:
+        target_action = []
+        cost = []
+
+    if len(agent_close) > 0 and target_id in observed_ids:
+        return target_action, cost
+    else:
+        find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
+        return find_actions + target_action, find_costs + cost
+
+def sit_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+    observations = simulator.get_observations(env_graph, char_index=char_index)
+    target_id = int(object_target.split('_')[-1])
+
+    observed_ids = [node['id'] for node in observations['nodes']]
+    agent_close = [edge for edge in env_graph['edges'] if ((edge['from_id'] == agent_id and edge['to_id'] == target_id) or (edge['from_id'] == target_id and edge['to_id'] == agent_id) and edge['relation_type'] == 'CLOSE')]
+    on_ids = [edge['to_id'] for edge in env_graph['edges'] if (edge['from_id'] == agent_id and 'ON' in edge['relation_type'])]
+
+    target_node = [node for node in env_graph['nodes'] if node['id'] == target_id][0]
+
+    if target_id not in on_ids:
+        target_action = [('sit', (target_node['class_name'], target_id), None)]
+        cost = [0.05]
+    else:
+        target_action = []
+        cost = []
+
+    if len(agent_close) > 0 and target_id in observed_ids:
+        return target_action, cost
+    else:
+        find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
+        return find_actions + target_action, find_costs + cost
+
 def put_heuristic(agent_id, char_index, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
 
@@ -268,7 +314,7 @@ def check_progress(state, goal_spec):
     id2node = {node['id']: node for node in state['nodes']}
     for key, value in goal_spec.items():
         elements = key.split('_')
-        unsatisfied[key] = value if elements[0] in ['on', 'inside'] else 0 
+        unsatisfied[key] = value if elements[0] not in ['offOn', 'offInside'] else 0 
         satisfied[key] = [None] * 2
         satisfied[key]
         satisfied[key] = []
@@ -279,13 +325,28 @@ def check_progress(state, goal_spec):
                     satisfied[key].append(predicate)
                     unsatisfied[key] -= 1
             elif elements[0] == 'offOn':
-                if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and  (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
-            elif elements[1] == 'offInside':
-                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and  (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+            elif elements[0] == 'offInside':
+                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
+            elif elements[0] == 'holds':
+                if edge['relation_type'].lower().startswith('holds') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+            elif elements[0] == 'sit':
+                if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+        if elements[0] == 'turnOn':
+            if 'ON' in id2node[int(elements[1])]['states']:
+                predicate = '{}_{}_{}'.format(elements[0], elements[1], 1)
+                satisfied[key].append(predicate)
+                unsatisfied[key] -= 1
     return satisfied, unsatisfied
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, opponent_subgoal=None):
@@ -324,7 +385,9 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
         'find': find_heuristic,
         'grab': grab_heuristic,
         'put': put_heuristic,
-        'putIn': putIn_heuristic
+        'putIn': putIn_heuristic,
+        'sit': sit_heuristic,
+        'turnOn': turnOn_heuristic
     }
     next_root, plan, subgoals = mcts.run(curr_node,
                                nb_steps,
@@ -457,7 +520,7 @@ class MCTS_agent:
         }
         return action, info
 
-    def reset(self, graph, task_goal, seed=0, simulator_type='python'):
+    def reset(self, graph, task_goal, seed=0, simulator_type='python', is_alice=False):
         if self.comm is not None:
             s, graph = self.comm.environment_graph()
 
@@ -628,10 +691,6 @@ class MCTS_agent:
             saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
             print('Alice action:', system_agent_action)
 
-            # if system_agent_action == '[walk] <cutleryknife> (1010)':
-            #     pass
-            #     #ipdb.set_trace()
-
             action_dict = {}
             if system_agent_action is not None:
                 action_dict[0] = system_agent_action
@@ -688,7 +747,11 @@ class MCTS_agent:
 
 
             obs, reward, done, infos = self.unity_env.step_alice()
-            saved_info['finished'] = infos['finished']
+            if system_agent_action.startswith('[sit]'):
+                done[0] = True
+                saved_info['finished'] = True
+            if system_agent_action.startswith('[switchon]'):
+                ipdb.set_trace()
 
             if self.logging:
                 Path("../logs_test").mkdir(parents=True, exist_ok=True)

@@ -100,15 +100,14 @@ class GraphHelper():
 
 
                 # putin, put
-                else:
+                elif action.startswith('put'):
                     id2 = id_containers if action == 'putin' else id_surface
                     self.obj1_affordance[action_id, id2] = 1
-
 
                     if current_task is not None:
                         self.obj1_affordance[action_id, :] = 0
                         obj_names2 = [id2node[int(t.split('_')[2])]['class_name'] for t in
-                                      current_task[0].keys()]
+                                      current_task[0].keys() if t.split('_')[0] not in ['holds', 'sit', 'turnOn']]
                         ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
                         self.obj1_affordance[action_id, ids_goal2] = 1
 

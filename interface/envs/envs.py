@@ -39,7 +39,7 @@ def check_progress(state, goal_spec):
     id2node = {node['id']: node for node in state['nodes']}
     for key, value in goal_spec.items():
         elements = key.split('_')
-        unsatisfied[key] = value if elements[0] in ['on', 'inside'] else 0
+        unsatisfied[key] = value if elements[0] not in ['offOn', 'offInside'] else 0
         satisfied[key] = [None] * 2
         satisfied[key]
         satisfied[key] = []
@@ -57,6 +57,18 @@ def check_progress(state, goal_spec):
                 if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
                     unsatisfied[key] += 1
+            elif elements[0] == 'holds':
+                if edge['relation_type'].lower().startswith('holds') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+        if elements == 'sit':
+            if 'SITTING' in id2node[1]['states']:
+            # elif elements[0] == 'sit':
+            #     if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
+                predicate = '{}_{}_{}'.format(elements[0], 1, elements[2])
+                satisfied[key].append(predicate)
+                unsatisfied[key] -= 1
     return satisfied, unsatisfied
 
 class UnityEnvWrapper:
@@ -622,7 +634,8 @@ class UnityEnv:
         self.agents[self.system_agent_id].reset(curr_graph_system_agent,
                                                 self.task_goal,
                                                 seed=self.system_agent_id,
-                                                simulator_type=self.simulator_type)
+                                                simulator_type=self.simulator_type,
+                                                is_alice=True)
         self.prev_dist = self.get_distance()
         self.num_steps = 0
         # pdb.set_trace()
@@ -725,7 +738,7 @@ class UnityEnv:
             # print('unity env graph:', [edge for edge in self.env.state['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
             # ipdb.set_trace()
 
-        self.agents[self.system_agent_id].reset(curr_graph_system_agent, self.task_goal, seed=self.system_agent_id, simulator_type=self.simulator_type)
+        self.agents[self.system_agent_id].reset(curr_graph_system_agent, self.task_goal, seed=self.system_agent_id, simulator_type=self.simulator_type, is_alice=True)
         obs = None
         self.num_steps = 0
         # pdb.set_trace()

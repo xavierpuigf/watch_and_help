@@ -74,10 +74,10 @@ class SetInitialGoal:
             for k,v in self.goal.items(): 
                 count+=v
 
-            if (self.task_name=='read_book' or self.task_name=='watch_tv') and (count!=0):
+            if self.task_name=='read_book' and 2<=count<=4 or self.task_name=='watch_tv' and 2<=count<=4:
                 break
 
-            if 2<=count<=6:
+            if 2<=count<=6 and self.task_name not in ['clean_table', 'unload_dishwasher'] or 3<=count<=6:
                 break
             
         ## example setup table
@@ -183,7 +183,6 @@ class SetInitialGoal:
 
 
     def add_obj(self, graph, obj_name, num_obj, object_id, objs_in_room=None, only_position=None, except_position=None, goal_obj=False):
-        
         if isinstance(except_position, int):
             except_position = [except_position]
         if isinstance(only_position, int):
@@ -410,7 +409,9 @@ class SetInitialGoal:
         table_id = random.choice(table_ids)
 
         ## remove objects on table
-        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        id2node = {node['id']: node for node in graph['nodes']}
+        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]# and \
+                        # id2node[edge['from_id']]['class_name'] not in ['rug']]
         graph = self.remove_obj(graph, objs_on_table)
 
 
@@ -633,70 +634,181 @@ class SetInitialGoal:
 
 
     def read_book(self, graph, start=True):
-        max_num_objs = self.init_pool['book']['env_max_num']
-        num_obj = random.randint(self.goal['book'], max_num_objs+1)
+        id2node = {node['id']: node for node in graph['nodes']}
+        # table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
+        table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name'])]
+        for table_id in table_ids:
+            for edge in graph['edges']:
+                if edge['from_id'] == table_id and id2node[edge['to_id']]['class_name'] == 'livingroom':
+                    break
 
-        target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
-        graph = self.remove_obj(graph, target_ids)
-        self.object_id_count, graph = self.add_obj(graph, 'book', num_obj, self.object_id_count, objs_in_room=objs_in_room, goal_obj=True)
+        sofa_ids = [node['id'] for node in graph['nodes'] if ('sofa' in node['class_name'])]
+        for sofa_id in sofa_ids:
+            for edge in graph['edges']:
+                if edge['from_id'] == sofa_id and id2node[edge['to_id']]['class_name'] == 'livingroom':
+                    break
+
+        ## remove objects on table
+        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]# and \
+                        # id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+        graph = self.remove_obj(graph, objs_on_table)
+        objs_on_sofa = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==sofa_id) and (edge['relation_type']=='ON')]# and \
+                        # id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+        graph = self.remove_obj(graph, objs_on_sofa)
+        # objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        # graph = self.remove_obj(graph, objs_on_table)
+
+        if self.same_room:
+            objs_in_room = self.get_obj_room(table_id)
+        else:
+            objs_in_room = None
         
         except_position_ids = [node['id'] for node in graph['nodes'] if ('floor' in node['class_name'])]
+        except_position_ids.append(table_id)
 
-        target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            graph = self.remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]['env_max_num']+1) # random select objects >= goal
+            self.object_id_count, graph = self.add_obj(graph, k, num_obj, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids, goal_obj=True)
+        
+        if start:
+            self.object_id_count, graph = self.setup_other_objs(graph, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids)
 
 
-        if len(target_ids)!=0:
-            target_id = random.choice(target_ids)
-
-            if self.same_room:
-                objs_in_room = self.get_obj_room(target_id)
-            else:
-                objs_in_room = None
-
-            if start:
-                self.object_id_count, graph = self.setup_other_objs(graph, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids)
-
-            ## get goal
-            env_goal = {'read_book': [{'read_{}'.format(target_id)}]}
-        else:
-            env_goal = None
-            # print(self.add_goal_obj_success)
-
+        ## get goal
+        env_goal = {'read_book': []}
+        for k,v in self.goal.items():
+            if k == 'book': continue
+            env_goal['read_book'].append( {'put_{}_on_{}'.format(k, table_id): v} )
+        env_goal['read_book'].append({'holds_book': 1})
+        env_goal['read_book'].append({'sit_{}'.format(sofa_id): 1})
         return graph, env_goal
+
+        # max_num_objs = self.init_pool['book']['env_max_num']
+        # num_obj = random.randint(self.goal['book'], max_num_objs+1)
+
+        # target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
+        # graph = self.remove_obj(graph, target_ids)
+        # self.object_id_count, graph = self.add_obj(graph, 'book', num_obj, self.object_id_count, objs_in_room=objs_in_room, goal_obj=True)
+        
+        # except_position_ids = [node['id'] for node in graph['nodes'] if ('floor' in node['class_name'])]
+
+        # target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
+
+
+        # if len(target_ids)!=0:
+        #     target_id = random.choice(target_ids)
+
+        #     if self.same_room:
+        #         objs_in_room = self.get_obj_room(target_id)
+        #     else:
+        #         objs_in_room = None
+
+        #     if start:
+        #         self.object_id_count, graph = self.setup_other_objs(graph, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids)
+
+        #     ## get goal
+        #     env_goal = {'read_book': [{'read_{}'.format(target_id)}]}
+        # else:
+        #     env_goal = None
+        #     # print(self.add_goal_obj_success)
+
+        # return graph, env_goal
 
 
     def watch_tv(self, graph, start=True):
         ## add remotecontrol
-        max_num_objs = self.init_pool['remotecontrol']['env_max_num']
-        num_obj = random.randint(self.goal['remotecontrol'], max_num_objs+1)
+        id2node = {node['id']: node for node in graph['nodes']}
+        # table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
+        table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name'])]
+        for table_id in table_ids:
+            for edge in graph['edges']:
+                if edge['from_id'] == table_id and id2node[edge['to_id']]['class_name'] == 'livingroom':
+                    break
 
-        target_ids = [node['id'] for node in graph['nodes'] if 'remotecontrol' in node['class_name']]
-        if len(target_ids)==0:
-            self.object_id_count, graph = self.add_obj(graph, 'remotecontrol', num_obj, self.object_id_count, objs_in_room=objs_in_room, goal_obj=True)
-            target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
+        sofa_ids = [node['id'] for node in graph['nodes'] if ('sofa' in node['class_name'])]
+        for sofa_id in sofa_ids:
+            for edge in graph['edges']:
+                if edge['from_id'] == sofa_id and id2node[edge['to_id']]['class_name'] == 'livingroom':
+                    break
 
-        assert len(target_ids)!=0
-        target_id = random.choice(target_ids)
+        tv_ids = [node['id'] for node in graph['nodes'] if ('tv' in node['class_name'])]
+        for tv_id in tv_ids:
+            for edge in graph['edges']:
+                if edge['from_id'] == tv_id and id2node[edge['to_id']]['class_name'] == 'livingroom':
+                    break
+
+        ## remove objects on table
+        objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]# and \
+                        # id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+        graph = self.remove_obj(graph, objs_on_table)
+        objs_on_sofa = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==sofa_id) and (edge['relation_type']=='ON')]# and \
+                        # id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+        graph = self.remove_obj(graph, objs_on_sofa)
+        # objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
+        # graph = self.remove_obj(graph, objs_on_table)
 
         if self.same_room:
-            objs_in_room = self.get_obj_room(target_id)
+            objs_in_room = self.get_obj_room(table_id)
         else:
             objs_in_room = None
-
-
-        ## set TV off
-        tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
-        tv_id = random.choice(tv_ids)
-        graph = self.set_tv_off(graph, tv_id)
-
-        ## set other objects
+        
         except_position_ids = [node['id'] for node in graph['nodes'] if ('floor' in node['class_name'])]
+        except_position_ids.append(table_id)
+
+        for k,v in self.goal.items():
+            obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
+            graph = self.remove_obj(graph, obj_ids)
+
+            num_obj = random.randint(v, self.init_pool[k]['env_max_num']+1) # random select objects >= goal
+            self.object_id_count, graph = self.add_obj(graph, k, num_obj, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids, goal_obj=True)
+        
         if start:
             self.object_id_count, graph = self.setup_other_objs(graph, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids)
 
+
         ## get goal
-        env_goal = {'watch_tv': [ {'on_{}'.format(tv_id)}, {'grab_{}'.format(target_id)} ]}
+        env_goal = {'watch_tv': []}
+        for k,v in self.goal.items():
+            if k in ['tv', 'remotecontrol']: continue
+            env_goal['watch_tv'].append( {'put_{}_on_{}'.format(k, table_id): v} )
+        env_goal['watch_tv'].append({'turnOn_{}'.format(tv_id): 1})
+        env_goal['watch_tv'].append({'holds_remotecontrol': 1})
+        env_goal['watch_tv'].append({'sit_{}'.format(sofa_id): 1})
         return graph, env_goal
+
+        # max_num_objs = self.init_pool['remotecontrol']['env_max_num']
+        # num_obj = random.randint(self.goal['remotecontrol'], max_num_objs+1)
+
+        # target_ids = [node['id'] for node in graph['nodes'] if 'remotecontrol' in node['class_name']]
+        # if len(target_ids)==0:
+        #     self.object_id_count, graph = self.add_obj(graph, 'remotecontrol', num_obj, self.object_id_count, objs_in_room=objs_in_room, goal_obj=True)
+        #     target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
+
+        # assert len(target_ids)!=0
+        # target_id = random.choice(target_ids)
+
+        # if self.same_room:
+        #     objs_in_room = self.get_obj_room(target_id)
+        # else:
+        #     objs_in_room = None
+
+
+        # ## set TV off
+        # tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
+        # tv_id = random.choice(tv_ids)
+        # graph = self.set_tv_off(graph, tv_id)
+
+        # ## set other objects
+        # except_position_ids = [node['id'] for node in graph['nodes'] if ('floor' in node['class_name'])]
+        # if start:
+        #     self.object_id_count, graph = self.setup_other_objs(graph, self.object_id_count, objs_in_room=objs_in_room, except_position=except_position_ids)
+
+        # ## get goal
+        # env_goal = {'watch_tv': [ {'on_{}'.format(tv_id)}, {'grab_{}'.format(target_id)} ]}
+        # return graph, env_goal
 
 
     def setup_table_prepare_food(self, graph):
@@ -880,7 +992,7 @@ if __name__ == "__main__":
                     2: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food", "read_book", "watch_tv"],
                     3: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food", "read_book", "watch_tv"],
                     4: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food", "read_book", "watch_tv"],
-                    5: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food", "read_book", "watch_tv"],
+                    5: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food"],
                     6: ["setup_table", "clean_table", "put_fridge", "prepare_food", "read_book", "watch_tv"],
                     7: ["setup_table", "clean_table", "put_dishwasher", "unload_dishwasher", "put_fridge", "prepare_food", "read_book", "watch_tv"]}
                     
@@ -901,8 +1013,15 @@ if __name__ == "__main__":
 
         # filtering out certain locations
         for obj, pos_list in obj_position.items():
-            positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
-                ['kitchentable', 'cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'sofa', 'nightstand']]
+            if obj in ['book', 'remotecontrol']:
+                positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
+                (['cabinet', 'bench', 'kitchencounterdrawer', 'nightstand'] + ([] if apartment == 2 else ['kitchentable']))]
+            elif obj == 'remotecontrol':
+                 positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
+                ['tvstand']]
+            else:
+                positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
+                    (['cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'sofa', 'nightstand']+ ([] if apartment == 2 else ['kitchentable']))]
             obj_position[obj] = positions
         print(obj_position['cutleryfork'])
 
@@ -956,7 +1075,7 @@ if __name__ == "__main__":
                     goal_objs = []
                     goal_names = []
                     for k,goals in env_goal.items():
-                        goal_objs += [int(list(goal.keys())[0].split('_')[-1]) for goal in goals]
+                        goal_objs += [int(list(goal.keys())[0].split('_')[-1]) for goal in goals if list(goal.keys())[0].split('_')[-1] not in ['book', 'remotecontrol']]
                         goal_names += [list(goal.keys())[0].split('_')[1] for goal in goals]
                     
                     obj_names = [obj.split('.')[0] for obj in message['unplaced']]
