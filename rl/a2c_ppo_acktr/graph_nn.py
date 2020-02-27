@@ -198,6 +198,7 @@ class Transformer(nn.Module):
     def forward(self, inputs):
         keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes',
                 'mask_object', 'mask_edge', 'object_coords']
+        # pdb.set_trace()
         [all_class_names, node_states,
          all_edge_ids, all_edge_types,
          mask_nodes, mask_edges, coords] = [inputs[key] for key in keys]

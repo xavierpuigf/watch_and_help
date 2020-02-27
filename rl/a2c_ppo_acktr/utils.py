@@ -84,9 +84,10 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}/algo.{}-gamma.{}-sim.{}'.format(
+        experiment_name = 'env.{}/task.{}-numenvs.{}/algo.{}-gamma.{}-sim.{}'.format(
             args.env_name,
             args.task_type,
+            args.num_processes,
             args.algo,
             args.gamma,
             args.simulator_type)
