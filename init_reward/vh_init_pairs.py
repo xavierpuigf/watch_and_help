@@ -20,7 +20,7 @@ from profilehooks import profile
 
 
 class SetInitialGoal:
-    def __init__(self, obj_position, class_name_size, init_pool_tasks, task_name, same_room=True):
+    def __init__(self, obj_position, class_name_size, init_pool_tasks, task_name, same_room=True, goal_template=None):
         self.task_name = task_name
         self.init_pool_tasks = init_pool_tasks
         self.obj_position = obj_position
@@ -29,6 +29,7 @@ class SetInitialGoal:
         self.surface_size = {}
         self.surface_used_size = {}
         self.max_num_place = 50
+        self.goal_template = goal_template
 
         self.min_num_other_object = 0#15
         self.max_num_other_object = 0#45
@@ -38,7 +39,7 @@ class SetInitialGoal:
 
         self.same_room = same_room
 
-    def set_goal(self, goal_template=None):
+    def set_goal(self):
         
         if self.task_name in ['setup_table', 'clean_table', 'put_dishwasher', 'unload_dishwasher', 'put_fridge', 'read_book', 'prepare_food', 'watch_tv']:
             self.init_pool = self.init_pool_tasks[self.task_name]
@@ -65,8 +66,17 @@ class SetInitialGoal:
 
         
         ## make sure the goal is not empty
-        if goal_template is not None:
-            self.goal = copy.deepcopy(goal_template)
+        if self.goal_template is not None:
+            self.goal = {}
+            for g in self.goal_template[self.task_name]:
+                predicate = list(g.keys())[0]
+                count = list(g.values())[0]
+                elements = predicate.split('_')
+                for e in elements:
+                    if e in self.init_pool:
+                        self.goal[e] = count
+            print(self.goal_template)
+            print(self.goal)
         else:
             while 1:
                 self.goal = {}
@@ -924,9 +934,10 @@ def debug_function(comm):
     #     json.dump(objs, file)
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--num-per-demo', type=int, default=10, help='Maximum #episodes/demo')
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
-
+parser.add_argument('--demo-id', type=int, default=0, help='demo index')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -937,8 +948,6 @@ if __name__ == "__main__":
     ## -------------------------------------------------------------
     with open('data/init_pool.json') as file:
         init_pool = json.load(file)
-
-
 
     comm = comm_unity.UnityCommunication()
     comm.reset()
@@ -998,12 +1007,21 @@ if __name__ == "__main__":
 
     success_init_graph = []
     task = args.task
+    num_per_demo = args.num_per_demo
     num_per_apartment = args.num_per_apartment
+    apartment_list = [apartment for apartment in [5, 6] if task in task_names[apartment + 1]]
 
-    for apartment in range(7):
-        if task not in task_names[apartment + 1]: continue
-        # if apartment != 4: continue
-        # apartment = 3
+    demo_defs = pickle.load(open( "../initial_environments/data/init_envs/init7_{}_{}_full.pik".format(task, num_per_apartment), "rb" ))
+    demo_def = demo_defs[args.demo_id]
+    
+    num_test = 100000
+    count_success = 0
+    
+    for i in range(num_test):
+        apartment = random.choice(apartment_list)
+        comm.reset(apartment)
+        s, original_graph = comm.environment_graph()
+        graph = copy.deepcopy(original_graph)
 
         with open('data/object_info%s.json'%(apartment+1), 'r') as file:
             obj_position = json.load(file)
@@ -1028,133 +1046,125 @@ if __name__ == "__main__":
             obj_position[obj] = positions
         print(obj_position['cutleryfork'])
 
-        num_test = 100000
-        count_success = 0
-        for i in range(num_test):
-            comm.reset(apartment)
-            s, original_graph = comm.environment_graph()
-            graph = copy.deepcopy(original_graph)
+        ## -------------------------------------------------------------
+        ## debug
+        ## -------------------------------------------------------------
+        # debug_function(comm)
+        
 
 
-            ## -------------------------------------------------------------
-            ## debug
-            ## -------------------------------------------------------------
-            # debug_function(comm)
+        ## -------------------------------------------------------------
+        ## choose tasks
+        ## -------------------------------------------------------------
+        # while True:
+        #     task_name = random.choice(task_names[apartment+1])
+        #     if task_name in ['read_book', 'watch_tv']:
+        #         continue
+        #     else:
+        #         break
+        task_name = task
+
+
+        print('------------------------------------------------------------------------------')
+        print('testing %d: %s' % (i, task_name))
+        print('------------------------------------------------------------------------------')
+        
+        ## -------------------------------------------------------------
+        ## setup goal based on currect environment
+        ## -------------------------------------------------------------
+        set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_def['goal'])
+        init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
+
+        
+        if set_init_goal.add_goal_obj_success:
             
-
-
-            ## -------------------------------------------------------------
-            ## choose tasks
-            ## -------------------------------------------------------------
-            # while True:
-            #     task_name = random.choice(task_names[apartment+1])
-            #     if task_name in ['read_book', 'watch_tv']:
-            #         continue
-            #     else:
-            #         break
-            task_name = task
-
-
-            print('------------------------------------------------------------------------------')
-            print('testing %d: %s' % (i, task_name))
-            print('------------------------------------------------------------------------------')
-            
-            ## -------------------------------------------------------------
-            ## setup goal based on currect environment
-            ## -------------------------------------------------------------
-            set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False)
-            init_graph, env_goal = getattr(set_init_goal, task_name)(graph)
+            success, message = comm.expand_scene(init_graph)
+            print('----------------------------------------------------------------------')
+            print(task_name, success, message, set_init_goal.num_other_obj)
+            # print(env_goal)
 
             
-            if set_init_goal.add_goal_obj_success:
+            if not success:
+                goal_objs = []
+                goal_names = []
+                for k,goals in env_goal.items():
+                    goal_objs += [int(list(goal.keys())[0].split('_')[-1]) for goal in goals if list(goal.keys())[0].split('_')[-1] not in ['book', 'remotecontrol']]
+                    goal_names += [list(goal.keys())[0].split('_')[1] for goal in goals]
                 
-                success, message = comm.expand_scene(init_graph)
-                print('----------------------------------------------------------------------')
-                print(task_name, success, message, set_init_goal.num_other_obj)
-                # print(env_goal)
+                obj_names = [obj.split('.')[0] for obj in message['unplaced']]
+                obj_ids = [int(obj.split('.')[1]) for obj in message['unplaced']]
+                id2node = {node['id']: node for node in init_graph['nodes']}
+                for obj_id in obj_ids:
+                    print([id2node[edge['to_id']]['class_name'] for edge in init_graph['edges'] if edge['from_id'] == obj_id])
 
-                
-                if not success:
-                    goal_objs = []
-                    goal_names = []
-                    for k,goals in env_goal.items():
-                        goal_objs += [int(list(goal.keys())[0].split('_')[-1]) for goal in goals if list(goal.keys())[0].split('_')[-1] not in ['book', 'remotecontrol']]
-                        goal_names += [list(goal.keys())[0].split('_')[1] for goal in goals]
-                    
-                    obj_names = [obj.split('.')[0] for obj in message['unplaced']]
-                    obj_ids = [int(obj.split('.')[1]) for obj in message['unplaced']]
-                    id2node = {node['id']: node for node in init_graph['nodes']}
-                    for obj_id in obj_ids:
-                        print([id2node[edge['to_id']]['class_name'] for edge in init_graph['edges'] if edge['from_id'] == obj_id])
-
-                    if task_name!='read_book' and task_name!='watch_tv':
-                        intersection = set(obj_names) & set(goal_names)
-                    else:
-                        intersection = set(obj_ids) & set(goal_objs)
-                    
-                    ## goal objects cannot be placed
-                    if len(intersection)!=0:
-                        success2 = False
-                    else:
-                        init_graph = set_init_goal.remove_obj(init_graph, obj_ids)
-                        success2, message2 = comm.expand_scene(init_graph)
-                        success = True
-                
+                if task_name!='read_book' and task_name!='watch_tv':
+                    intersection = set(obj_names) & set(goal_names)
                 else:
-                    success2 = True
-                    
+                    intersection = set(obj_ids) & set(goal_objs)
+                
+                ## goal objects cannot be placed
+                if len(intersection)!=0:
+                    success2 = False
+                else:
+                    init_graph = set_init_goal.remove_obj(init_graph, obj_ids)
+                    success2, message2 = comm.expand_scene(init_graph)
+                    success = True
+            
+            else:
+                success2 = True
+                
 
-                if success2 and success:
-                    if apartment == 4:
-                        init_graph = set_init_goal.remove_obj(init_graph, [348])
-                    elif apartment == 6:
-                        init_graph = set_init_goal.remove_obj(init_graph, [173])
-                    success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal)
+            if success2 and success:
+                if apartment == 4:
+                    init_graph = set_init_goal.remove_obj(init_graph, [348])
+                elif apartment == 6:
+                    init_graph = set_init_goal.remove_obj(init_graph, [173])
+                success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal)
 
-                    if success:
-                        comm.reset(apartment)
-                        # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
-                        # ith_old_plate = 0
-                        # for ith_node, node in enumerate(init_graph['nodes']):
-                        #     if node['class_name'] == 'plate':
-                        #         if ith_old_plate < len(plate_ids):
-                        #             init_graph['nodes'][ith_node] = plate_ids[ith_old_plate]
-                        #             ith_old_plate += 1
-                        init_graph0 = copy.deepcopy(init_graph)
-                        comm.expand_scene(init_graph)
-                        s, init_graph = comm.environment_graph()
-                        print('final s:', s)
-                        if s:
-                            for subgoal in env_goal[task_name]:
-                                for k, v in subgoal.items():
-                                    elements = k.split('_')
-                                    # print(elements)
-                                    # pdb.set_trace()
-                                    if len(elements) == 4:
-                                        obj_class_name = elements[1]
-                                        ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
-                                        print(obj_class_name, v, ids)
-                                        # if len(ids) < v:
-                                        #     print(obj_class_name, v, ids)
-                                        #     pdb.set_trace()
+                if success:
+                    comm.reset(apartment)
+                    # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
+                    # ith_old_plate = 0
+                    # for ith_node, node in enumerate(init_graph['nodes']):
+                    #     if node['class_name'] == 'plate':
+                    #         if ith_old_plate < len(plate_ids):
+                    #             init_graph['nodes'][ith_node] = plate_ids[ith_old_plate]
+                    #             ith_old_plate += 1
+                    init_graph0 = copy.deepcopy(init_graph)
+                    comm.expand_scene(init_graph)
+                    s, init_graph = comm.environment_graph()
+                    print('final s:', s)
+                    if s:
+                        for subgoal in env_goal[task_name]:
+                            for k, v in subgoal.items():
+                                elements = k.split('_')
+                                # print(elements)
+                                # pdb.set_trace()
+                                if len(elements) == 4:
+                                    obj_class_name = elements[1]
+                                    ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
+                                    print(obj_class_name, v, ids)
+                                    # if len(ids) < v:
+                                    #     print(obj_class_name, v, ids)
+                                    #     pdb.set_trace()
 
-                            count_success += s
-                        # if s:
-                            success_init_graph.append({'id': count_success,
-                                                        'apartment': (apartment+1),
-                                                        'task_name': task_name,
-                                                        'init_graph': init_graph,
-                                                        'goal': env_goal})
+                        count_success += s
+                    # if s:
+                        success_init_graph.append({'id': count_success,
+                                                    'apartment': (apartment+1),
+                                                    'task_name': task_name,
+                                                    'init_graph': init_graph,
+                                                    'goal': env_goal})
 
-                    
+                
 
-            print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i+1, num_test) )
+        print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i+1, num_test) )
 
-            if count_success>=num_per_apartment:
-                break
+        if count_success>=num_per_demo:
+            break
     
     # pdb.set_trace()
-    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_full.pik".format(task, num_per_apartment), "wb" ) )
+    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_D{}_{}_full.pik".format(task, args.demo_id, num_per_demo), "wb" ) )
     # pickle.dump( success_init_graph, open( "result/init1_10.p", "wb" ) )
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 
