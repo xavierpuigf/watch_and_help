@@ -23,6 +23,7 @@ import torchvision
 import vh_graph
 from vh_graph.envs import belief, vh_env
 from simulation.unity_simulator import comm_unity as comm_unity
+import utils_viz
 
 from agents import MCTS_agent, PG_agent
 from gym import spaces, envs
@@ -74,34 +75,27 @@ def check_progress(state, goal_spec):
 class UnityEnvWrapper:
     def __init__(self, 
                  env_id,
-                 env_copy_id, 
-                 init_graph=None, 
-                 file_name=None, 
+                 env_copy_id,
+                 init_graph=None,
                  base_port=8080, 
                  num_agents=1,
                  recording=False,
                  output_folder=None,
-                 file_name_prefix=None):
+                 file_name_prefix=None,
+                 simulator_args={}):
+
+
 
         self.port_number = base_port + env_copy_id 
         self.proc = None
         self.timeout_wait = 60
 
-        self.file_name = file_name
 
-
-        self.executable_name = file_name
         self.output_folder = output_folder
         self.file_name_prefix = file_name_prefix
 
-        # TODO: get rid of this, should be notfiied somehow else
 
-        if self.executable_name is None:
-            self.comm = comm_unity.UnityCommunication(port=str(self.port_number))
-        else:
-            self.comm = comm_unity.UnityCommunication(port=str(self.port_number), file_name=self.executable_name)
-        print('Checking connection')
-        # self.comm.check_connection()
+        self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **simulator_args)
 
         self.num_agents = num_agents
         self.graph = None
@@ -141,6 +135,9 @@ class UnityEnvWrapper:
 
         self.get_graph()
         #self.test_prep()
+
+    def close(self):
+        self.comm.close()
 
     def reset(self, env_id, init_graph=None):
         self.comm.reset(env_id)
@@ -195,13 +192,18 @@ class UnityEnvWrapper:
         return pixelcoords[:2, :]
 
     def get_visible_objects(self):
+        obj_pos = None
+        graph = self.graph
+
+        # Get the objects visible by the character (currently buggy...)
         camera_ids = [[self.offset_cameras+i*self.num_camera_per_agent+self.CAMERA_NUM for i in range(self.num_agents)][1]]
         object_ids = [int(idi) for idi in self.comm.get_visible_objects(camera_ids)[1].keys()]
         _, cam_data = self.comm.camera_data(camera_ids)
-        graph = self.get_graph()
         object_position = np.array(
                 [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] in object_ids])
         obj_pos = self.world2im(cam_data[0], object_position)
+
+
         return object_ids, obj_pos
 
     def get_observations(self, mode='normal', image_width=128, image_height=128):
@@ -232,7 +234,8 @@ class UnityEnvWrapper:
         graph['nodes'].append(new_node)
         graph['edges'].append(new_edge)
         success = self.comm.expand_scene(graph)
-        print(success)
+        if self.env_copy_id == 0:
+          print(success)
 
     def agent_ids(self):
         return sorted([x['id'] for x in self.graph['nodes'] if x['class_name'] == 'character'])
@@ -306,7 +309,7 @@ class UnityEnv:
                  env_id=0, 
                  env_copy_id=0,
                  init_graph=None,
-                 observation_type='coords', 
+                 observation_type='rgb',
                  max_episode_length=100,
                  enable_alice=True,
                  simulator_type='python',
@@ -316,8 +319,13 @@ class UnityEnv:
                  logging=False,
                  recording=False,
                  record_dir=None,
-                 file_name=None):
+                 base_port=8080,
+                 simulator_args={}):
 
+        self.observation_type = observation_type
+        self.env_id = env_id
+        self.simulator_args = simulator_args
+        self.base_port = base_port
         self.enable_alice = enable_alice
         self.task_type = task_type
         self.env_name = 'virtualhome'
@@ -332,7 +340,6 @@ class UnityEnv:
         self.logging = logging
         self.recording = recording
         self.record_dir = record_dir
-        self.file_name = file_name
 
         self.unity_simulator = None # UnityEnvWrapper(int(env_id), int(env_copy_id), num_agents=self.num_agents)
         self.agent_ids =  [1,2] # self.unity_simulator.agent_ids()
@@ -391,7 +398,7 @@ class UnityEnv:
                 'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
                            shape=(self.num_objects, 3)), # 3D coords of the objects
                 # 'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
-
+                'target_class': spaces.Box(low=0, high=num_object_classes, shape=(1, 1)),
                 'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
             })
 
@@ -417,6 +424,7 @@ class UnityEnv:
         self.num_steps = 0
         self.prev_dist = None
         self.visible_nodes = None
+        self.observed_graph = None
 
         self.micro_id = -1
         self.last_action = ''
@@ -429,20 +437,22 @@ class UnityEnv:
         pass
 
     def close(self):
-        self.unity_simulator.close()
+        if self.unity_simulator is not None:
+            self.unity_simulator.close()
 
-    def distance_reward(self, graph):
-        dist = self.get_distance(graph)
+    def distance_reward(self, graph, target_class="microwave"):
+        dist, is_close = self.get_distance(graph, target_class=target_class)
 
 
-        reward = self.prev_dist - dist - 0.02
+        reward = - 0.02
         #print(self.prev_dist, dist, reward)
         self.prev_dist = dist
-        is_done = dist < 1.0
-        if is_done:
-            reward += 50
+        #is_done = is_close
+        is_done = False
+        if is_close:
+            reward += 5
         info = {'dist': dist, 'done': is_done, 'reward': reward}
-        return reward, is_done, info
+        return reward, is_close, info
 
 
     def reward(self, visible_ids=None, graph=None):
@@ -455,12 +465,27 @@ class UnityEnv:
         '''
 
         # Low level policy reward
+
+
+        done = False
         if self.task_type == 'find':
-            reward, done, info = self.distance_reward(graph)
+            grabbed_obj = [id2node[edge['to_id']]['class_name'] for edge in graph['edges'] if
+                           'HOLDS' in edge['relation_type']]
+            reward, is_close, info = self.distance_reward(graph, self.goal_find_spec)
             if visible_ids is not None:
-                if 'microwave' in [node[0] for node in visible_ids]:
-                    reward += 2
-                    print('seen')
+
+                # Reward if object is seen
+                if len(set(self.goal_find_spec).intersection([node[0] for node in visible_ids])) > 0:
+                    reward += 0.5
+
+                if len(set(self.goal_find_spec).intersection(grabbed_obj)) > 0.:
+                    reward += 100.
+                    done = True
+            return reward, done, info
+
+        elif self.task_type == 'open':
+            raise NotImplementedError
+            reward, is_close, info = self.distance_reward(graph, self.goal_find_spec)
             return reward, done, info
 
         if self.simulator_type == 'unity':
@@ -482,7 +507,8 @@ class UnityEnv:
         return count, done, {}
     
 
-    def get_distance(self, graph=None, target_id=None, target_class='microwave', norm=None):
+    def get_distance(self, graph=None, target_id=None, target_class=['microwave'], norm=None):
+        is_close = False
         if self.simulator_type == 'unity':
             if graph is None:
                 gr = self.unity_simulator.get_graph()
@@ -490,26 +516,41 @@ class UnityEnv:
                 gr = graph
 
             if target_id is None:
-                char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
-                target_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] == target_class][0]
-                target_id = target_node_id
+                try:
+                    char_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['class_name'] == 'character' and node['id'] == self.my_agent_id][0]
+                    target_node_id = [node['id'] for node in gr['nodes'] if node['class_name'] in target_class]
+                    target_id = target_node_id
+                except:
+                    pdb.set_trace()
+            target_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['id'] in target_id]
+            if graph is not None:
+                if len([edge for edge in graph['edges'] if
+                        edge['from_id'] in target_id and edge['to_id'] == self.my_agent_id]) > 0:
+                    is_close = True
 
-            target_node = [node['bounding_box']['center'] for node in gr['nodes'] if node['id'] == target_id][0]
             if norm == 'no':
-                return np.array(char_node) - np.array(target_node)
-            dist = (np.linalg.norm(np.array(char_node) - np.array(target_node), norm))
+                return np.array(char_node) - np.array(target_node[0]), is_close
+            dist = (np.linalg.norm(np.array(char_node) - np.array(target_node[0]), norm))
             #print([node['id'] for node in gr['nodes'] if node['class_name'] == 'microwave'])
             # print(dist, char_node, micro_node)
+
         else:
             gr = self.env.state
             if target_id is None:
-                target_id = [node['id'] for node in gr['nodes'] if node['class_name'] == target_class][0]
+                target_id = [node['id'] for node in gr['nodes'] if node['class_name'] in target_class][0]
 
             if len([edge for edge in gr['edges'] if edge['from_id'] == target_id and edge['to_id'] == self.my_agent_id]) > 0:
                 dist = 0
             else:
                 dist = 5.
-        return dist
+                is_close = True
+        return dist, is_close
+
+
+    def render_visdom(self):
+
+        utils_viz.plot_graph(self.observed_graph, self.visible_nodes)
+
 
     def render(self, mode='human'):
         image_width = 500
@@ -563,9 +604,24 @@ class UnityEnv:
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
         self.goal_spec = self.task_goal[self.system_agent_id]
-        self.level = env_task['level']
+
         random.seed(self.task_id)
         np.random.seed(self.task_id)
+
+
+
+        # Select an object ar random from our tasks
+        objects_spec = list(self.goal_spec.keys())
+        object_goal = random.choice(objects_spec)
+
+        if self.task_type == 'find':
+            self.goal_find_spec = [object_goal.split('_')[1]]
+            print('Goal: {}'.format(self.goal_find_spec))
+        elif self.task_type == "open":
+            self.goal_find_spec = ['microwave', 'fridge', 'cabinet', 'kitchencabinets']
+        else:
+            self.goal_find_spec = []
+        self.level = env_task['level']
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
@@ -585,10 +641,11 @@ class UnityEnv:
                 self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
                                                        num_agents=self.num_agents,
+                                                       base_port=self.base_port,
                                                        recording=self.recording,
                                                        output_folder=record_dir + '/',
                                                        file_name_prefix=file_name_prefix,
-                                                       file_name=self.file_name)
+                                                       simulator_args=self.simulator_args)
             else:
                 self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
@@ -600,8 +657,10 @@ class UnityEnv:
             else:
                 self.unity_simulator.reset(self.env_id, self.init_graph)
 
-            #self.env.reset(self.init_graph, self.task_goal)
+
             curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
+            self.env.reset(curr_graph_system_agent, self.task_goal)
+            self.env.to_pomdp()
             self.init_unity_graph = self.get_unity_graph()
 
         else:
@@ -634,9 +693,11 @@ class UnityEnv:
         self.agents[self.system_agent_id].reset(curr_graph_system_agent,
                                                 self.task_goal,
                                                 seed=self.system_agent_id,
+
                                                 simulator_type=self.simulator_type,
                                                 is_alice=True)
         self.prev_dist = self.get_distance()
+
         self.num_steps = 0
         # pdb.set_trace()
         return obs
@@ -659,7 +720,7 @@ class UnityEnv:
 
         # pdb.set_trace()
         self.agents[self.system_agent_id].reset(graph, self.task_goal, seed=self.system_agent_id)
-        self.prev_dist = self.get_distance()
+        self.prev_dist = self.get_distance()[0]
         self.num_steps = 0
         return obs_n
 
@@ -698,10 +759,12 @@ class UnityEnv:
                 self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
                                                        num_agents=self.num_agents,
+                                                       base_port=self.base_port,
                                                        recording=self.recording,
                                                        output_folder=record_dir + '/',
                                                        file_name_prefix=file_name_prefix,
-                                                       file_name=self.file_name)
+                                                       simulator_args = self.simulator_args)
+
             else:
                 self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
@@ -757,7 +820,7 @@ class UnityEnv:
             self.goal_spec = task_goal[self.system_agent_id]
             self.task_goal = task_goal
             self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
-        self.prev_dist = self.get_distance()
+        self.prev_dist = self.get_distance()[0]
         # obs = self.get_observations()[0]
         obs = None
         self.num_steps = 0
@@ -765,6 +828,7 @@ class UnityEnv:
 
 
     def get_action_command(self, my_agent_action):
+
         if my_agent_action is None:
             return None
 
@@ -773,14 +837,17 @@ class UnityEnv:
         else:
             current_graph = self.env.state
 
-
         objects1 = self.visible_nodes
-        action = self.graph_helper.action_dict.get_el(my_agent_action[0][0])
+        action_id, object_id = my_agent_action
 
-        try:
-            (o1, o1_id) = objects1[my_agent_action[1][0]]
-        except:
-            pdb.set_trace()
+        if type(action_id) != int:
+            action_id = action_id.item()
+
+        if type(object_id) != int:
+            object_id = object_id.item()
+
+        action = self.graph_helper.action_dict.get_el(action_id)
+        (o1, o1_id) = objects1[object_id]
         #action_str = actions[my_agent_action]
         if o1 == 'no_obj':
             o1 = None
@@ -804,6 +871,7 @@ class UnityEnv:
                 system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
                 self.last_actions[0] = system_agent_action
                 self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
 
@@ -843,7 +911,7 @@ class UnityEnv:
 
             if action_str is not None:
                 # if 'walk' not in action_str:
-                print(action_str)
+                # print(action_str)
                 action_dict[1] = action_str
 
             _, obs_n, dict_results = self.env.step(action_dict)
@@ -1159,28 +1227,52 @@ class UnityEnv:
             if image_width is None:
                 image_width = self.image_width
 
-            if self.observation_type != 'coords':
+            if self.observation_type == 'rgb':
                 images = self.unity_simulator.get_observations(mode=mode, image_width=image_width, image_height=image_height)
             else:
                 # For this mode we don't need images
                 images = [np.zeros((image_width, image_height, 3))]
+
             current_obs_img = images[0]
             current_obs_img = torchvision.transforms.functional.to_tensor(current_obs_img)[None, :]
+
             graph = self.unity_simulator.get_graph()
 
-            distance = self.get_distance(norm='no')
+
+            distance = self.get_distance(norm='no')[0]
             rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
-            visible_objects, position_objects = self.unity_simulator.get_visible_objects()
+
+
+            if self.observation_type in ['rgb', 'visibleids']:
+                visible_objects, position_objects = self.unity_simulator.get_visible_objects()
+            elif self.observation_type == 'mcts':
+                # Use the mcts function to get the obs
+                python_graph = self.env.get_observations(char_index=1)
+                visible_objects = [node['id'] for node in python_graph['nodes']]
+
+            elif self.observation_type == 'full':
+                visible_objects = [node['id'] for node in self.graph['nodes']]
+            else:
+                raise NotImplementedError
+
             id2node = {node['id']: node for node in graph['nodes']}
-            visible_objects = [object_id for object_id in visible_objects if self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]
+            visible_objects = [object_id for object_id in visible_objects if
+                               self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]
+
             if self.level == 0:
                 visible_objects = [object for object in visible_objects if id2node[object]['category'] != 'Rooms']
             graph_inputs, graph_viz = self.graph_helper.build_graph(graph, ids=visible_objects,
                                                                     character_id=self.my_agent_id, plot_graph=drawing,
                                                                     level=self.level)
             self.visible_nodes = graph_viz[-1]
-            print(self.visible_nodes)
+            self.observed_graph = graph
+
+            # if self.env_copy_id == 0:
+            #     print(self.visible_nodes)
+
             # mask = torch.Tensor(mask)[None, :]
+            for obj_goal in self.goal_find_spec:
+                assert(self.graph_helper.object_dict.get_id(obj_goal) > 0)
 
             current_obs = {'image': current_obs_img}
             current_obs.update(graph_inputs)
@@ -1188,6 +1280,7 @@ class UnityEnv:
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,
                     'object_dist': rel_coords,
+                    'target_class': int(self.graph_helper.object_dict.get_id(self.goal_find_spec[0]))
                     # 'object_coords': position_objects,
                     # 'mask_position_objects': mask
                 }

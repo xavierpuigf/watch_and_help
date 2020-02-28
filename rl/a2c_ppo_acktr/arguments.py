@@ -8,7 +8,7 @@ def get_args():
     parser.add_argument(
             '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
-        '--task_type', default='find', choices=['find', 'complex'], help='algorithm to use: find | complex')
+        '--task_type', default='find', choices=['find', 'complex', 'open'], help='algorithm to use: find | complex')
 
     parser.add_argument(
         '--gail',
@@ -184,10 +184,25 @@ def get_args():
         help='number of frames to stack in the observations')
 
     parser.add_argument(
+        '--obs_type',
+        type=str,
+        default='visibleid',
+        choices=['full', 'rgb', 'visibleid', 'mcts'],
+    )
+
+    parser.add_argument(
         '--use-linear-lr-decay',
         action='store_true',
         default=False,
         help='use a linear schedule on the learning rate')
+
+    parser.add_argument(
+        '--attention_type',
+        type=str,
+        default='linear',
+        choices=['fc', 'dot', 'linear'],
+        help='use a linear schedule on the learning rate')
+
 
     parser.add_argument(
         '--model_type',

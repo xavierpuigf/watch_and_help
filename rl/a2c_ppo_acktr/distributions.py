@@ -63,10 +63,16 @@ class FixedBernoulli(torch.distributions.Bernoulli):
 
 
 class ElementWiseCategorical(nn.Module):
-    def __init__(self, num_inputs, method='dotprod'):
+    def __init__(self, num_inputs, method='dot'):
         super(ElementWiseCategorical, self).__init__()
         self.method = method
         if self.method == 'fc':
+            self.layer = nn.Sequential(
+                nn.Linear(num_inputs, num_inputs),
+                nn.Relu(),
+                nn.Linear(num_inputs, 1)
+            )
+        if self.method == 'linear':
             self.layer = nn.Linear(num_inputs, 1)
 
     def update_logs(self, logs):
@@ -77,16 +83,20 @@ class ElementWiseCategorical(nn.Module):
         # y: [batch, num_nodes (padded), dim]
         # n x dim
         x0 = x.unsqueeze(1)
-        if self.method == 'dotprod':
+        if self.method == 'dot':
             logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]
+
         elif self.method == 'fc':
             num_nodes = y.shape[1]
             comb_embed = torch.cat([x0.repeat(1, num_nodes, 1), y], dim=2)
             logs = self.layer(comb_embed).squeeze(-1)
 
-        mask_char = np.ones(logs.shape)
-        mask_char[:, 0] = 0.
-        logs = logs * torch.Tensor(mask_char).to(logs.device)
+        elif self.method == 'linear':
+            logs = self.layer(y).squeeze(-1)
+
+        #mask_char = np.ones(logs.shape)
+        # mask_char[:, 0] = 0.
+        #logs = logs * torch.Tensor(mask_char).to(logs.device)
 
         self.original_logits = logs
         return FixedCategorical(logits=logs)

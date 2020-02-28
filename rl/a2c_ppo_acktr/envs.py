@@ -81,13 +81,14 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
             # Only add graphics to the first instance
             simulator_args = {
                 'file_name': env_info['executable_file'],
-                'x_display': '1' if rank == 0 else None,
+                'x_display': '2' if rank == 0 else None,
                 'no_graphics': rank > 0
 
             }
             print(simulator_type)
             env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set,
                            task_type=env_info['task'], simulator_type=simulator_type, base_port=env_info['base_port'],
+                           observation_type=env_info['observation_type'],
                            simulator_args=simulator_args)
         else:
             env = gym.make(env_id)

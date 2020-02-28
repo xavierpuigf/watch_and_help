@@ -22,7 +22,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_space, action_space, action_inst=True, base=None, base_kwargs=None):
+    def __init__(self, obs_space, action_space, action_inst=True, attention_type='dot', base=None, base_kwargs=None):
         super(Policy, self).__init__()
 
 
@@ -37,7 +37,7 @@ class Policy(nn.Module):
             if action_space_type.__class__.__name__ == "Discrete":
                 num_outputs = action_space_type.n
                 if action_inst and it > 0:
-                    dist.append(ElementWiseCategorical(self.base.output_size+self.base.context_size, method='fc'))
+                    dist.append(ElementWiseCategorical(self.base.output_size+self.base.context_size, method=attention_type))
                 else:
                     dist.append(Categorical(self.base.output_size, num_outputs))
             elif action_space_type.__class__.__name__ == "Box":
@@ -108,7 +108,7 @@ class Policy(nn.Module):
                 random_policy = torch.distributions.Categorical(logits=new_log_probs)
                 action = random_policy.sample().unsqueeze(-1)
 
-            else: 
+            else:
                 if deterministic:
                     action = dist.mode()
                 else:
@@ -257,17 +257,43 @@ class TransformerBase(NNBase):
         self.context_size = hidden_size
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
+
+        self.object_context_combine = nn.Sequential(nn.Linear(2*hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, hidden_size))
+        self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
         self.train()
 
     def forward(self, inputs, rnn_hxs, masks):
 
+        # Use transformer to get feats for every object
+        mask_visible = inputs['mask_object']
+        input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(), inputs['object_coords']).squeeze(1)
+        features_obj = self.main(input_node_embedding, mask_visible)
 
-        x = self.main(inputs)
+        # 1 x ndim. Avg pool the features for the context vec
+        mask_visible = mask_visible.unsqueeze(-1)
+        context_vec = (features_obj * mask_visible).sum(1) / mask_visible.sum(1)
 
-        char_node = x[:, 0]
+
+        # Goal embedding
+        class_name = inputs['target_class'][:, 0].long()
+        fake_coords = torch.zeros((class_name.shape[0], 1, 3)).to(class_name.device)
+        goal_encoding = self.single_object_encoding(class_name, fake_coords).squeeze(1)
+        goal_mask = torch.sigmoid(goal_encoding)
+
+        # Recurrent context
         if self.is_recurrent:
-            char_node, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
-        return self.critic_linear(char_node), char_node, x, rnn_hxs
+            r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
+
+        # GA . h
+        context_goal = goal_mask * r_context_vec
+
+        # Combine object representations with global representations
+        r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
+        r_object_vec_comb = self.object_context_combine(r_object_vec)
+
+        # GA . Sg
+        object_goal = goal_mask[:, None, :] * r_object_vec_comb
+        return self.critic_linear(context_goal), context_goal, object_goal, rnn_hxs
 
 
 
@@ -326,6 +352,24 @@ class CNNBaseResnetDist(NNBase):
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
         return self.critic_linear(x), x, rnn_hxs
 
+
+class ObjNameCoordEncode(nn.Module):
+    def __init__(self, output_dim=128, num_classes=50):
+        super(ObjNameCoordEncode, self).__init__()
+        self.output_dim = output_dim
+        self.num_classes = num_classes
+
+        self.class_embedding = nn.Embedding(num_classes, int(output_dim/2))
+        self.coord_embedding = nn.Sequential(nn.Linear(3, int(output_dim/2)),
+                                             nn.ReLU(),
+                                             nn.Linear(int(output_dim/2), int(output_dim/2)))
+
+    def forward(self, class_ids, coords):
+        class_embedding = self.class_embedding(class_ids)
+        coord_embedding = self.coord_embedding(coords)
+        return torch.cat([class_embedding, coord_embedding], dim=2)
+
+
 class CNNBaseResnet(NNBase):
     def __init__(self, recurrent=False, hidden_size=128, num_classes=50):
         super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
@@ -339,6 +383,8 @@ class CNNBaseResnet(NNBase):
 
         self.context_size = 10
         self.class_embedding = nn.Embedding(num_classes, self.context_size)
+
+
 
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 

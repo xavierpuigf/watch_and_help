@@ -25,7 +25,6 @@ class GraphHelper():
                 'open',
                 'close',
                 'putback',
-                'putin',
                 'grab',
                 'no_action'
             ]
@@ -138,8 +137,9 @@ class GraphHelper():
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
 
-        if level > 0:
-            ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
+        # if level > 0:
+        #
+        ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
         ids = [idi for idi in ids if idi != character_id]
         ids = list(set(ids))
         id2node = {node['id']: node for node in graph['nodes']}
@@ -225,6 +225,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
         return None
     # if action in ['open', 'close', 'grab', 'putback']:
     #     return False
+    print('Attemptinf', action, o1)
     obj2_str = ''
     obj1_str = ''
     id2node = {node['id']: node for node in graph['nodes']}
@@ -233,7 +234,11 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     if num_args != args_per_action(action):
         return None
     
-    if 'walk' not in action and 'turn' not in action:
+    # if 'walk' not in action and 'turn' not in action:
+    #     return None
+    close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1 and edge['relation_type'] == 'CLOSE']) > 0
+
+    if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
     if 'put' in action:
         if len(grabbed_objects) == 0:
@@ -257,6 +262,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
         elif 'SURFACES' in id2node[o1_id]['properties']:
             action = 'putback'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
+    #print(action_str)
     print(action_str)
     return action_str
 
@@ -290,6 +296,7 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
     :param mask_observations: bs x max_nodes with the valid nodes
     :return:
     """
+    #pdb.set_trace()
     inf_val = 1e9
     if i == 1:
         # Deciding on the object
@@ -311,9 +318,9 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
 
     elif i == 0:
         # Deciding on the action
-        selected_obj1 = object_classes[range(object_classes.shape[0]), actions[1]].long()
+        selected_obj1 = torch.gather(object_classes, 1, actions[1].long())
 
-        mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1)).squeeze(-1).float().to(log_probs.device)
+        mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1).long()).squeeze(-1).float().to(log_probs.device)
         log_probs = log_probs * mask + (1.-mask) * -inf_val
         
         #print("CLASS OBJ")

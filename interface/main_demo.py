@@ -139,7 +139,14 @@ if __name__ == '__main__':
                              env_task_set=env_task_set,
                              logging=True,
                              recording=args.recording,
-                             record_dir=args.record_dir)
+                             record_dir=args.record_dir,
+                             base_port=8092,
+                             simulator_args={
+                               'file_name': 'executables/linux02.25.2/exec_linux02.25.2.x86_64',
+                               'x_display': '2',
+                               'no_graphics': False
+
+                            })
         
         steps_list, failed_tasks = [], []
         episode_ids = list(range(len(env_task_set)))

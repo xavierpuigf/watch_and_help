@@ -33,7 +33,7 @@ home_path = os.getcwd()
 home_path = '/'.join(home_path.split('/')[:-2])
 
 sys.path.append(home_path+'/vh_multiagent_models')
-
+import utils_viz
 
 def main():
     args = get_args()
@@ -56,7 +56,8 @@ def main():
             'simulator_type': args.simulator_type,
             'task': args.task_type,
             'base_port': args.base_port,
-            'executable_file': args.executable_file
+            'executable_file': args.executable_file,
+            'observation_type': args.obs_type,
     }
     envs = make_vec_envs(env_info, simulator_type, args.seed, args.num_processes,
             args.gamma, args.log_dir, device, False, num_frame_stack=args.num_frame_stack)
@@ -98,6 +99,7 @@ def main():
         envs.action_space,
         base=base,
         action_inst=True,
+        attention_type=args.attention_type,
         base_kwargs={'recurrent': args.recurrent_policy, 'num_classes': 150})
     actor_critic.to(device)
 
@@ -182,7 +184,7 @@ def main():
         rollouts.to(device)
 
         episode_rewards = deque(maxlen=args.num_steps)
-        
+        history_locations = []
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
@@ -195,6 +197,21 @@ def main():
             #action_modif = [action[0],
             #                rollouts.obs['class_objects'][step][action[1]],
             #                rollouts.obs['node_ids'][step][action[1]]]
+
+            # TODO: make sure this is correct with 1 char too
+            coords_char = [node['bounding_box']['center'] for node in envs.envs[0].env.observed_graph['nodes'] if node['id'] == 2][0]
+            history_locations.append(coords_char)
+            if args.num_processes == 1:
+                if step % 20 == 0:
+                    utils_viz.plot_graph(envs.envs[0].unity_simulator.graph, [x[1] for x in envs.envs[0].env.visible_nodes],
+                                         history_locations=history_locations,
+                                         env=logger.experiment_name,
+                                         target_class=envs.envs[0].env.goal_find_spec)
+
+                    img = envs.envs[0].env.unity_simulator.get_observations(mode='normal')
+
+                    utils_viz.show_image(img[0].transpose(2,0,1), env=logger.experiment_name)
+
             obs, reward, done, infos = envs.step(action)
             if (step + 1) % args.t_max == 0:
                 recurrent_hidden_states = recurrent_hidden_states.detach()
@@ -220,8 +237,11 @@ def main():
                             action_log_prob, value, reward, masks, bad_masks)
             print(step, reward[0].item(), done[0].item())
             total_num_steps += 1
-            if done[0]: # break out after finishing an episode
+            done_float = done.astype(np.float32)
+            if step < (args.num_steps - 1) and done_float.sum() > 0: # break out after finishing an episode
                 break
+            else:
+                done_float = np.array([0.])
         print('one episode finished')
 
         with torch.no_grad():
@@ -278,6 +298,7 @@ def main():
                 'start': start,
                 'end': end,
                 'episode_rewards': episode_rewards,
+                'successes': done_float.mean(),
                 'dist_entropy': dist_entropy,
                 'value_loss': value_loss,
                 'action_loss': action_loss,
