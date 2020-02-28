@@ -14,3 +14,7 @@ dataset_*
 init_reward/result/*
 initial_environments/data/init_envs/*
 *.p
+rl/Player.log
+init_reward/Player.log
+rl/.nfs*
+interface/Player.log

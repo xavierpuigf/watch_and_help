@@ -65,6 +65,18 @@ class SetInitialGoal:
 
         
         ## make sure the goal is not empty
+        deb  = '''
+        while 1:
+            self.goal = {}
+            for k,v in self.init_pool.items():
+                self.goal[k] = random.randint(v['min_num'], v['max_num'])
+
+            # break
+            
+            count = 0
+            for k,v in self.goal.items(): 
+                count+=v
+        '''
         if goal_template is not None:
             self.goal = copy.deepcopy(goal_template)
         else:
@@ -926,6 +938,8 @@ def debug_function(comm):
 parser = argparse.ArgumentParser()
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
+parser.add_argument('--port', type=str, default='8092', help='Task name')
+parser.add_argument('--display', type=str, default='2', help='Task name')
 
 
 if __name__ == "__main__":
@@ -940,7 +954,8 @@ if __name__ == "__main__":
 
 
 
-    comm = comm_unity.UnityCommunication()
+    #comm = comm_unity.UnityCommunication()
+    comm = comm_unity.UnityCommunication(port="8092", file_name="../../executables/linux02.25.2/exec_linux02.25.2.x86_64", x_display="2")
     comm.reset()
     s, graph = comm.environment_graph()
     

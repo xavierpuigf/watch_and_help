@@ -4,6 +4,7 @@ from torch.utils.tensorboard import SummaryWriter
 import datetime
 import numpy as np
 import torch
+import json
 import torch.nn as nn
 
 from a2c_ppo_acktr.envs import VecNormalize
@@ -75,6 +76,14 @@ class Logger():
         self.save_dir = args.save_dir
         self.set_tensorboard()
         self.first_log = False
+        save_path = os.path.join(self.save_dir, self.experiment_name)
+        try:
+            os.makedirs(save_path)
+        except OSError:
+            pass
+        with open('{}/{}/args.txt'.format(self.save_dir, self.experiment_name), 'w+') as f:
+            dict_args = vars(args)
+            f.writelines(json.dumps(dict_args, indent=4))
 
 
     def set_tensorboard(self):
@@ -84,16 +93,18 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}-numenvs.{}/algo.{}-gamma.{}-sim.{}'.format(
+        experiment_name = 'env.{}/task.{}-numenvs.{}-obstype.{}-sim.{}/algo.{}-attention.{}-gamma.{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,
+            args.obs_type,
+            args.simulator_type,
             args.algo,
-            args.gamma,
-            args.simulator_type)
+            args.attention_type,
+            args.gamma)
         return experiment_name
 
-    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss, epsilon):
+    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss, epsilon, successes):
         if self.first_log == True:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
@@ -119,13 +130,11 @@ class Logger():
             self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
+            self.tensorboard_writer.add_scalar("info/success", successes, total_num_steps)
 
     def save_model(self, j, actor_critic, envs):
         save_path = os.path.join(self.save_dir, self.experiment_name)
-        try:
-            os.makedirs(save_path)
-        except OSError:
-            pass
+
         torch.save([
             actor_critic,
             getattr(get_vec_normalize(envs), 'ob_rms', None)

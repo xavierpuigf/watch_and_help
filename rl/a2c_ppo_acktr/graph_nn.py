@@ -185,7 +185,6 @@ class Transformer(nn.Module):
             num_layers=6,
             norm=nn.modules.normalization.LayerNorm(in_feat))
 
-        self.class_embedding = nn.Embedding(num_classes, in_feat-3)
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -195,18 +194,19 @@ class Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, inputs):
-        keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes',
-                'mask_object', 'mask_edge', 'object_coords']
-        # pdb.set_trace()
-        [all_class_names, node_states,
-         all_edge_ids, all_edge_types,
-         mask_nodes, mask_edges, coords] = [inputs[key] for key in keys]
+    def forward(self, inputs, mask_nodes):
+        # keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes',
+        #         'mask_object', 'mask_edge', 'object_coords']
+        # # pdb.set_trace()
+        # [all_class_names, node_states,
+        #  all_edge_ids, all_edge_types,
+        #  mask_nodes, mask_edges, coords] = [inputs[key] for key in keys]
+        #
+        # # inputs, combination of class names and coordinates
+        # inputs = self.class_embedding(all_class_names.long())
+        # inputs_and_coords = torch.cat((inputs, coords), dim=2)
+        # inputs_and_coords = inputs_and_coords.transpose(0,1)
 
-        # inputs, combination of class names and coordinates
-        inputs = self.class_embedding(all_class_names.long())
-        inputs_and_coords = torch.cat((inputs, coords), dim=2)
-        inputs_and_coords = inputs_and_coords.transpose(0,1)
-        outputs = self.transformer(inputs_and_coords, src_key_padding_mask=mask_nodes.bool())
+        outputs = self.transformer(inputs.transpose(0,1), src_key_padding_mask=mask_nodes.bool())
         outputs = outputs.squeeze(0).transpose(0,1)
         return outputs
