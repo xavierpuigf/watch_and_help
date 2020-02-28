@@ -25,7 +25,7 @@ class Policy(nn.Module):
     def __init__(self, obs_space, action_space, action_inst=True, attention_type='dot', base=None, base_kwargs=None):
         super(Policy, self).__init__()
 
-
+        self.attention_type = attention_type
 
 
         self.base = base(**base_kwargs)
@@ -37,7 +37,11 @@ class Policy(nn.Module):
             if action_space_type.__class__.__name__ == "Discrete":
                 num_outputs = action_space_type.n
                 if action_inst and it > 0:
-                    dist.append(ElementWiseCategorical(self.base.output_size+self.base.context_size, method=attention_type))
+                    if self.attention_type == 'linear':
+                        dist.append(ElementWiseCategorical(self.base.output_size,
+                                                           method=attention_type))
+                    else:
+                        dist.append(ElementWiseCategorical(self.base.output_size+self.base.context_size, method=attention_type))
                 else:
                     dist.append(Categorical(self.base.output_size, num_outputs))
             elif action_space_type.__class__.__name__ == "Box":
@@ -63,12 +67,16 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0):
+
         affordance_obj1 = inputs['affordance_matrix']
 
 
         # value function, history, node_embedding, rnn
         outputs = self.base(inputs, rnn_hxs, masks)
         object_classes = inputs['class_objects']
+
+        # if object_classes.shape[0] != 1:
+        #     pdb.set_trace()
         mask_observations = inputs['mask_object']
 
         if len(outputs) == 3:
@@ -112,7 +120,10 @@ class Policy(nn.Module):
                 if deterministic:
                     action = dist.mode()
                 else:
-                    action = dist.sample()
+                    try:
+                        action = dist.sample()
+                    except:
+                        pdb.set_trace()
             actions[i] = action
             # print(new_log_probs.shape)
             actions_log_probs[i] = dist.log_probs(action)
@@ -249,6 +260,7 @@ class GraphEncoder(nn.Module):
 
 
 class TransformerBase(NNBase):
+
     def __init__(self, recurrent=False, hidden_size=128, dist_size=10, max_nodes=150, num_classes=100):
         super(TransformerBase, self).__init__(recurrent, hidden_size, hidden_size)
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -258,9 +270,16 @@ class TransformerBase(NNBase):
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
 
-        self.object_context_combine = nn.Sequential(nn.Linear(2*hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, hidden_size))
+        self.object_context_combine = self.mlp2l(2*hidden_size, hidden_size)
         self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
+
+        self.fc_att_action = self.mlp2l(hidden_size, hidden_size)
+        self.fc_att_object = self.mlp2l(hidden_size, hidden_size)
         self.train()
+
+    def mlp2l(self, dim_in, dim_out):
+        return nn.Sequential(nn.Linear(dim_in, dim_out), nn.ReLU(), nn.Linear(dim_out, dim_out))
+
 
     def forward(self, inputs, rnn_hxs, masks):
 
@@ -271,28 +290,35 @@ class TransformerBase(NNBase):
 
         # 1 x ndim. Avg pool the features for the context vec
         mask_visible = mask_visible.unsqueeze(-1)
-        context_vec = (features_obj * mask_visible).sum(1) / mask_visible.sum(1)
+
+        # Mean pool of transformer
+        context_vec = (features_obj * mask_visible).sum(1) / (1e-9+mask_visible.sum(1))
 
 
         # Goal embedding
         class_name = inputs['target_class'][:, 0].long()
         fake_coords = torch.zeros((class_name.shape[0], 1, 3)).to(class_name.device)
         goal_encoding = self.single_object_encoding(class_name, fake_coords).squeeze(1)
-        goal_mask = torch.sigmoid(goal_encoding)
+        goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
+        goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
 
         # Recurrent context
         if self.is_recurrent:
             r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
 
-        # GA . h
-        context_goal = goal_mask * r_context_vec
+        # h' = GA . h [bs, h]
+        context_goal = goal_mask_action * r_context_vec
 
         # Combine object representations with global representations
         r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
         r_object_vec_comb = self.object_context_combine(r_object_vec)
 
-        # GA . Sg
-        object_goal = goal_mask[:, None, :] * r_object_vec_comb
+        # Sg' = GA . Sg [bs, N, h]
+        object_goal = goal_mask_object[:, None, :] * r_object_vec_comb
+
+        if torch.isnan(context_goal).any() or torch.isnan(object_goal).any():
+            pdb.set_trace()
+
         return self.critic_linear(context_goal), context_goal, object_goal, rnn_hxs
 
 

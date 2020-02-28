@@ -186,7 +186,7 @@ def get_args():
     parser.add_argument(
         '--obs_type',
         type=str,
-        default='visibleid',
+        default='mcts',
         choices=['full', 'rgb', 'visibleid', 'mcts'],
     )
 
@@ -215,6 +215,9 @@ def get_args():
 
     parser.add_argument(
         '--base_port', type=int, default=8080)
+
+    parser.add_argument(
+        '--display', type=str, default="2")
 
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')

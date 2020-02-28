@@ -81,7 +81,7 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
             # Only add graphics to the first instance
             simulator_args = {
                 'file_name': env_info['executable_file'],
-                'x_display': '2' if rank == 0 else None,
+                'x_display': env_info['display'] if rank == 0 else None,
                 'no_graphics': rank > 0
 
             }

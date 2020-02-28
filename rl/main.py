@@ -56,6 +56,7 @@ def main():
             'simulator_type': args.simulator_type,
             'task': args.task_type,
             'base_port': args.base_port,
+            'display': args.display,
             'executable_file': args.executable_file,
             'observation_type': args.obs_type,
     }
@@ -199,9 +200,11 @@ def main():
             #                rollouts.obs['node_ids'][step][action[1]]]
 
             # TODO: make sure this is correct with 1 char too
-            coords_char = [node['bounding_box']['center'] for node in envs.envs[0].env.observed_graph['nodes'] if node['id'] == 2][0]
-            history_locations.append(coords_char)
+
             if args.num_processes == 1:
+                coords_char = [node['bounding_box']['center'] for node in envs.envs[0].env.observed_graph['nodes'] if
+                               node['id'] == 2][0]
+                history_locations.append(coords_char)
                 if step % 20 == 0:
                     utils_viz.plot_graph(envs.envs[0].unity_simulator.graph, [x[1] for x in envs.envs[0].env.visible_nodes],
                                          history_locations=history_locations,
