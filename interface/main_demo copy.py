@@ -9,6 +9,7 @@ import pdb
 import timeit
 import os
 import argparse
+import copy
 
 # home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
 home_path = os.getcwd()
@@ -33,7 +34,7 @@ simulator_type = 'unity' # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
 
 
-def convert_goal_spec(task_name, goal, state, exclude=[]):
+def convert_goal_spec(task_name, goal0, state, exclude=[], full=False):
     goals = {}
     containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]
     id2node = {node['id']: node for node in state['nodes']}
@@ -84,19 +85,41 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
         else:
             predicate = key 
             goals[predicate] = count
+
+    if full:
+        return goals
+
+    if task_name in ['read_book', 'watch_tv']:
+        total_count = random.choice([2, 3, 4])
+    else:
+        total_count = random.choice([2, 3, 4, 5, 6])
+
+    predicates_list = []
+    for predicate, count in goals.items():
+        if predicate.startswith('on') or predicate.startswith('inside'):
+            predicates_list += [predicate] * count
+    selected_predicates = random.sample(predicates_list, total_count)
+
+    sampled_goals = copy.deepcopy(goals)
+    for predicate in sampled_goals:
+        sampled_goals[predicate] = 0
+    for predicate in selected_predicates:
+        sampled_goals[predicate] += 1
         
-    return goals
+    return sampled_goals
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
-parser.add_argument('--max-episode-length', type=int, default=250, help='Maximum episode length')
+parser.add_argument('--max-episode-length', type=int, default=200, help='Maximum episode length')
 parser.add_argument('--agent-type', type=str, default='MCTS', help='Alice type: MCTS (default), PG')
 parser.add_argument('--simulator-type', type=str, default='unity', help='Simulator type: python (default), unity')
 # parser.add_argument('--dataset-path', type=str, default='../initial_environments/data/init_envs/init7_100_simple.p', help='Dataset path')
 # parser.add_argument('--record-dir', type=str, default='../record/init7_100_same_room_simple', help='Record directory')
 parser.add_argument('--recording', action='store_true', default=False, help='True - recording frames')
-parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
+parser.add_argument('--full', action='store_true', default=False, help='True - test all predicates')
+parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum graph/apartment')
+parser.add_argument('--num-per-graph', type=int, default=1, help='Maximum #episodes/graph')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 
 
@@ -106,12 +129,16 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         args.dataset_path = '../initial_environments/data/init_envs/init7_{}_{}_full.pik'.format(args.task, args.num_per_apartment)
-        args.record_dir = '../record/init7_{}_{}_full'.format(args.task, args.num_per_apartment)
+        args.full = True
+        args.record_dir = '../record/init7_{}_{}_full'.format(args.task, args.num_per_apartment)# if not args.full else \
+                          # '../record/full/init7_{}_{}_full'.format(args.task, args.num_per_apartment)
+        args.env_task_set_path = '../initial_environments/data/init_envs/env_task_set_{}_{}_full.pik'.format(args.task, args.num_per_apartment)
         
         num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
         env_task_set = []
-        for task_id, problem_setup in enumerate(data):
+        task_id = 0
+        for init_graph_id, problem_setup in enumerate(data):
             env_id = problem_setup['apartment'] - 1
             task_name = problem_setup['task_name']
             init_graph = problem_setup['init_graph']
@@ -120,19 +147,22 @@ if __name__ == '__main__':
             #     continue
             # if task_name != 'setup_table':
             #     continue
-            goals = convert_goal_spec(task_name, goal, init_graph, 
-                                  exclude=['cutleryknife'])
-            print('env_id:', env_id)
-            print('task_name:', task_name)
-            print('goals:', goals)
+            for episode_id in range(args.num_per_graph):
+                goals = convert_goal_spec(task_name, goal, init_graph, 
+                                      exclude=['cutleryknife'], full=args.full)
+                print('env_id:', env_id)
+                print('task_name:', task_name)
+                print('goals:', goals)
 
-            task_goal = {}
-            for i in range(2):
-                task_goal[i] = goals
+                task_goal = {}
+                for i in range(2):
+                    task_goal[i] = goals
 
-            env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal,
-                                'level': 0, 'init_rooms': [0, 0]})
+                env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph, 'task_goal': task_goal,
+                                    'level': 0, 'init_rooms': [0, 0]})
+                task_id += 1
 
+        pickle.dump(env_task_set, open(args.env_task_set_path, 'wb'))
         unity_env = UnityEnv(num_agents=num_agents, 
                              max_episode_length=args.max_episode_length,
                              simulator_type=args.simulator_type,

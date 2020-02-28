@@ -69,6 +69,8 @@ class SetInitialGoal:
             self.goal = {}
             for k,v in self.init_pool.items():
                 self.goal[k] = random.randint(v['min_num'], v['max_num'])
+
+            # break
             
             count = 0
             for k,v in self.goal.items(): 
@@ -80,12 +82,6 @@ class SetInitialGoal:
             if 2<=count<=6 and self.task_name not in ['clean_table', 'unload_dishwasher'] or 3<=count<=6:
                 break
             
-        ## example setup table
-        # task_name = 'setup_table'
-        # goal = {'plate': 2,
-        #         'glasses': 2,
-        #         'wineglass': 1,
-        #         'cutleryfork': 0}
 
     def get_obj_room(self, obj_id):
         room_ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -347,7 +343,7 @@ class SetInitialGoal:
         ## remove objects on table
         id2node = {node['id']: node for node in graph['nodes']}
         objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON') and \
-                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake', 'cutleryknife']]
         graph = self.remove_obj(graph, objs_on_table)
 
         # ## remove objects on kitchen counter
@@ -602,7 +598,7 @@ class SetInitialGoal:
         ## remove objects on table
         id2node = {node['id']: node for node in graph['nodes']}
         objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON') and \
-                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake']]
+                        id2node[edge['from_id']]['class_name'] in ['plate', 'cutleryfork', 'waterglass', 'wineglass', 'book', 'poundcake', 'cutleryknife']]
         graph = self.remove_obj(graph, objs_on_table)
         # objs_on_table = [edge['from_id'] for edge in graph['edges'] if (edge['to_id']==table_id) and (edge['relation_type']=='ON')]
         # graph = self.remove_obj(graph, objs_on_table)
@@ -1014,14 +1010,18 @@ if __name__ == "__main__":
         # filtering out certain locations
         for obj, pos_list in obj_position.items():
             if obj in ['book', 'remotecontrol']:
-                positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
-                (['cabinet', 'bench', 'kitchencounterdrawer', 'nightstand'] + ([] if apartment == 2 else ['kitchentable']))]
+                positions = [pos for pos in pos_list if \
+                pos[0] == 'INSIDE' and pos[1] in ['kitchencabinet', 'cabinet'] or \
+                pos[0] == 'ON' and pos[1] in \
+                (['cabinet', 'bench', 'nightstand'] + ([] if apartment == 2 else ['kitchentable']))]
             elif obj == 'remotecontrol':
                  positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
                 ['tvstand']]
             else:
-                positions = [pos for pos in pos_list if pos[0] == 'ON' and pos[1] in \
-                    (['cabinet', 'coffeetable', 'bench', 'kitchencounterdrawer', 'sofa', 'nightstand']+ ([] if apartment == 2 else ['kitchentable']))]
+                positions = [pos for pos in pos_list if \
+                pos[0] == 'INSIDE' and pos[1] in ['fridge', 'kitchencabinets', 'cabinet', 'microwave', 'dishwasher', 'stove'] or \
+                pos[0] == 'ON' and pos[1] in \
+                    (['cabinet', 'coffeetable', 'bench']+ ([] if apartment == 2 else ['kitchentable']))]
             obj_position[obj] = positions
         print(obj_position['cutleryfork'])
 
@@ -1119,23 +1119,24 @@ if __name__ == "__main__":
                         #             ith_old_plate += 1
                         init_graph0 = copy.deepcopy(init_graph)
                         comm.expand_scene(init_graph)
-                        _, init_graph = comm.environment_graph()
+                        s, init_graph = comm.environment_graph()
+                        print('final s:', s)
+                        if s:
+                            for subgoal in env_goal[task_name]:
+                                for k, v in subgoal.items():
+                                    elements = k.split('_')
+                                    # print(elements)
+                                    # pdb.set_trace()
+                                    if len(elements) == 4:
+                                        obj_class_name = elements[1]
+                                        ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
+                                        print(obj_class_name, v, ids)
+                                        # if len(ids) < v:
+                                        #     print(obj_class_name, v, ids)
+                                        #     pdb.set_trace()
 
-                        for subgoal in env_goal[task_name]:
-                            for k, v in subgoal.items():
-                                elements = k.split('_')
-                                # print(elements)
-                                # pdb.set_trace()
-                                if len(elements) == 4:
-                                    obj_class_name = elements[1]
-                                    ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
-                                    print(obj_class_name, v, ids)
-                                    # if len(ids) < v:
-                                    #     print(obj_class_name, v, ids)
-                                    #     pdb.set_trace()
-
-                        count_success += success
-                        if success:
+                            count_success += s
+                        # if s:
                             success_init_graph.append({'id': count_success,
                                                         'apartment': (apartment+1),
                                                         'task_name': task_name,
@@ -1150,7 +1151,7 @@ if __name__ == "__main__":
                 break
     
     # pdb.set_trace()
-    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_simple.p".format(task, num_per_apartment), "wb" ) )
+    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_full.pik".format(task, num_per_apartment), "wb" ) )
     # pickle.dump( success_init_graph, open( "result/init1_10.p", "wb" ) )
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 

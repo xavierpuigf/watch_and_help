@@ -1016,6 +1016,14 @@ class UnityEnv:
         graph['edges'] = edges
         parent_for_node = {}
 
+        char_close = {1: [], 2:[]}
+        for char_id in range(1, 3):
+            for edge in graph['edges']:
+                if edge['relation_type'] == 'CLOSE':
+                    if edge['from_id'] == char_id and edge['to_id'] not in char_close[char_id]:
+                        char_close[char_id].append(edge['to_id'])
+                    elif edge['to_id'] == char_id and edge['from_id'] not in char_close[char_id]:
+                        char_close[char_id].append(edge['from_id'])
         ## Check that each node has at most one parent
         for edge in graph['edges']:
             if edge['relation_type'] == 'INSIDE':
@@ -1024,6 +1032,21 @@ class UnityEnv:
                     pdb.set_trace()
                     raise Exception
                 parent_for_node[edge['from_id']] = edge['to_id']
+                # add close edge between objects in a container and the character
+                if id2node[edge['to_id']]['class_name'] in ['fridge', 'kitchencabinets', 'cabinet', 'microwave', 'dishwasher', 'stove']: 
+                    for char_id in range(1, 3):
+                        if edge['to_id'] in char_close[char_id] and edge['from_id'] not in char_close[char_id]:
+                            graph['edges'].append({
+                                    'from_id': edge['from_id'],
+                                    'relation_type': 'CLOSE',
+                                    'to_id': char_id
+                                })
+                            graph['edges'].append({
+                                    'from_id': char_id,
+                                    'relation_type': 'CLOSE',
+                                    'to_id': edge['from_id']
+                                })
+
         
         ## Check that all nodes except rooms have one parent
         nodes_not_rooms = [node['id'] for node in graph['nodes'] if node['category'] not in ['Rooms', 'Doors']]
@@ -1034,6 +1057,7 @@ class UnityEnv:
                 print(id2node[nd])
             pdb.set_trace()
             raise Exception
+
         return graph
 
     # def inside_not_trans(self, graph):
