@@ -291,7 +291,7 @@ def main():
 
 
         
-        if j % args.log_interval == 0 and len(episode_rewards) > 1:
+        if (j % args.log_interval == 0 or args.log_interval == 1) and len(episode_rewards) > 1:
             # pdb.set_trace()
             # total_num_steps = (j + 1) * args.num_processes * args.num_steps
             end = time.time()

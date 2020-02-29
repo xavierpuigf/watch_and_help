@@ -282,7 +282,11 @@ class UnityEnvWrapper:
                                                        file_name_prefix=self.file_name_prefix,
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
         else:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            try:
+                success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            except:
+                success = False
+                message = {}
         if not success:
             print('action failed:', message)
             # ipdb.set_trace()
