@@ -53,7 +53,7 @@ from interface.envs.envs import UnityEnv
 
 
 
-def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
+def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_early_resets):
     env_id = env_info['env_name']
     def _thunk():
         if env_id.startswith("dm"):
@@ -63,8 +63,8 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
             data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
             init_graph = data[0]['init_graph']
 
-            # id2node = {node['id']: node for node in init_graph['nodes']}
-            # print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if id2node[edge['from_id']]['class_name'] == 'wineglass'])
+            id2node = {node['id']: node for node in init_graph['nodes']}
+            print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if id2node[edge['from_id']]['class_name'] == 'wineglass'])
             # print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if edge['from_id'] == 115])
             # ipdb.set_trace()
 
@@ -75,7 +75,7 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
                 'init_graph': init_graph,
                 'init_rooms': [76, 210],
                 'level': 0,
-                'task_goal': {agent_id: {'on_dishbowl_235': 1} for agent_id in range(2)}
+                'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
             }]
 
             # Only add graphics to the first instance
@@ -89,7 +89,8 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
             env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set,
                            task_type=env_info['task'], simulator_type=simulator_type, base_port=env_info['base_port'],
                            observation_type=env_info['observation_type'],
-                           simulator_args=simulator_args)
+                           simulator_args=simulator_args,
+                           max_episode_length=num_steps)
         else:
             env = gym.make(env_id)
 
@@ -133,6 +134,7 @@ def make_env(env_info, simulator_type, seed, rank, log_dir, allow_early_resets):
 
 
 def make_vec_envs(env_info,
+                  num_steps,
                   simulator_type,
                   seed,
                   num_processes,
@@ -152,7 +154,7 @@ def make_vec_envs(env_info,
     
     else:
         envs = [
-                make_env(env_info, simulator_type, seed, i, log_dir, allow_early_resets)
+                make_env(env_info, num_steps, simulator_type, seed, i, log_dir, allow_early_resets)
             for i in range(num_processes)
         ]
 
