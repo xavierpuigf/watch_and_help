@@ -245,9 +245,19 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     if action == 'grab':
         print(agent_id, o1_id, close_edge)
 
-
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
+
+    if action == 'open':
+        print(o1_id, id2node[o1_id]['states'])
+        if 'OPEN' in id2node[o1_id]['states'] or 'CLOSED' not in id2node[o1_id]['states']:
+            return None
+
+    if action == 'close':
+        print(o1_id, id2node[o1_id]['states'])
+        if 'CLOSED' in id2node[o1_id]['states'] or 'OPEN' not in id2node[o1_id]['states']:
+            return None
+
     if 'put' in action:
         if len(grabbed_objects) == 0:
             return None
