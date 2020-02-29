@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
         for obj, pos_list in obj_position.items():
             if obj in ['book', 'remotecontrol']:
                 positions = [pos for pos in pos_list if \
-                pos[0] == 'INSIDE' and pos[1] in ['kitchencabinet', 'cabinet'] or \
+                pos[0] == 'INSIDE' and pos[1] in ['kitchencabinets', 'cabinet'] or \
                 pos[0] == 'ON' and pos[1] in \
                 (['cabinet', 'bench', 'nightstand'] + ([] if apartment == 2 else ['kitchentable']))]
             elif obj == 'remotecontrol':

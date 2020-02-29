@@ -1,4 +1,5 @@
 import gym
+import scipy.special
 import ipdb
 import sys
 import json
@@ -98,6 +99,9 @@ parser.add_argument('--simulator-type', type=str, default='unity', help='Simulat
 parser.add_argument('--recording', action='store_true', default=False, help='True - recording frames')
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
+parser.add_argument('--mode', type=str, default='simple', help='Task name')
+parser.add_argument('--port', type=int, default=8092, help='port')
+parser.add_argument('--display', type=str, default='2', help='display')
 
 
 if __name__ == '__main__':
@@ -105,8 +109,8 @@ if __name__ == '__main__':
         print (' ' * 26 + 'Options')
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
-        args.dataset_path = '../initial_environments/data/init_envs/init7_{}_{}_full.pik'.format(args.task, args.num_per_apartment)
-        args.record_dir = '../record/init7_{}_{}_full'.format(args.task, args.num_per_apartment)
+        args.dataset_path = '../initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task, args.num_per_apartment, args.mode)
+        args.record_dir = '../record/init7_{}_{}_{}'.format(args.task, args.num_per_apartment, args.mode)
         
         num_agents = 1
         data = pickle.load(open(args.dataset_path, 'rb'))
@@ -140,10 +144,10 @@ if __name__ == '__main__':
                              logging=True,
                              recording=args.recording,
                              record_dir=args.record_dir,
-                             base_port=8092,
+                             base_port=args.port,
                              simulator_args={
-                               'file_name': 'executables/linux02.25.2/exec_linux02.25.2.x86_64',
-                               'x_display': '2',
+                                 'file_name': 'executables/execteleport2/exec_linux02.28teleport2.x86_64',
+                               'x_display': args.display,
                                'no_graphics': False
 
                             })
@@ -155,6 +159,7 @@ if __name__ == '__main__':
             print('episode:', episode_id)
             # if episode_id != 10: continue
             try:
+            #if True:
                 unity_env.reset_MCTS(task_id=episode_id)
 
                 graph = unity_env.get_graph()
