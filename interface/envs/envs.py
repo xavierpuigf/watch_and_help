@@ -667,16 +667,17 @@ class UnityEnv:
                                                        output_folder=record_dir + '/',
                                                        file_name_prefix=file_name_prefix,
                                                        simulator_args=self.simulator_args)
+                self.unity_simulator.reset(self.env_id, self.init_graph)
             else:
                 self.unity_simulator.set_record(output_folder=record_dir + '/', file_name_prefix=file_name_prefix)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]	        if graph is None:
-            if False:
-                self.unity_simulator.comm.fast_reset(self.env_id)
-            else:
-                self.unity_simulator.fast_reset(self.env_id, self.init_graph)
+                if False:
+                    self.unity_simulator.comm.fast_reset(self.env_id)
+                else:
+                    self.unity_simulator.reset(self.env_id, self.init_graph)
 
 
             curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
