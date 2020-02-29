@@ -59,7 +59,7 @@ class GraphHelper():
 
     def get_action_affordance_map(self, current_task=None, id2node=None):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(f'{dir_path}/dataset/object_info.json', 'r') as f:
+        with open(f'{dir_path}/dataset/object_info_small.json', 'r') as f:
             content = json.load(f)
 
         n_actions = len(self.actions)
@@ -109,12 +109,18 @@ class GraphHelper():
                                       current_task[0].keys() if t.split('_')[0] not in ['holds', 'sit', 'turnOn']]
                         ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
                         self.obj1_affordance[action_id, ids_goal2] = 1
+        # self.obj1_affordance[:,self.object_dict.get_id('kitchencounterdrawer')] = 0
+        self.obj1_affordance[self.action_dict.get_id('open'),self.object_dict.get_id('kitchencounterdrawer')] = 0
+        self.obj1_affordance[self.action_dict.get_id('close'),self.object_dict.get_id('kitchencounterdrawer')] = 0
+        self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('kitchencounterdrawer')] = 0
+        self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
+        self.obj1_affordance[:,id_no_obj] = 0
 
 
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
-        with open(f'{dir_path}/dataset/object_info_rl.json', 'r') as f:
+        with open(f'{dir_path}/dataset/object_info_small.json', 'r') as f:
             content = json.load(f)
         objects = []
         for obj in content.values():
@@ -137,9 +143,8 @@ class GraphHelper():
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
 
-        # if level > 0:
-        #
-        ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
+        if level > 0:
+            ids = [node['id'] for node in graph['nodes'] if node['category'] == 'Rooms'] + ids
         ids = [idi for idi in ids if idi != character_id]
         ids = list(set(ids))
         id2node = {node['id']: node for node in graph['nodes']}
@@ -236,7 +241,10 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     
     # if 'walk' not in action and 'turn' not in action:
     #     return None
-    close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1 and edge['relation_type'] == 'CLOSE']) > 0
+    close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1_id and edge['relation_type'] == 'CLOSE']) > 0
+    if action == 'grab':
+        print(agent_id, o1_id, close_edge)
+
 
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
@@ -261,6 +269,8 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             action = 'putin'
         elif 'SURFACES' in id2node[o1_id]['properties']:
             action = 'putback'
+    if action.startswith('walk'):
+        action = 'walkto'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
     #print(action_str)
     print(action_str)
@@ -321,6 +331,7 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
         selected_obj1 = torch.gather(object_classes, 1, actions[1].long())
 
         mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1).long()).squeeze(-1).float().to(log_probs.device)
+        # mask[action_dict.get_id('open'),object_dict.get_id('kitchencounterdrawer') ]= 0
         log_probs = log_probs * mask + (1.-mask) * -inf_val
         
         #print("CLASS OBJ")

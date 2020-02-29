@@ -114,7 +114,7 @@ class UnityEnvWrapper:
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, position=[-1, 0, -9])
+            self.comm.add_character(characters[i], position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -147,7 +147,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
 
-            self.comm.add_character(characters[i])#, position=[-1, 0, -9])
+            self.comm.add_character(characters[i], position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -282,7 +282,7 @@ class UnityEnvWrapper:
                                                        file_name_prefix=self.file_name_prefix,
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
         else:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False)
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
         if not success:
             print('action failed:', message)
             # ipdb.set_trace()
@@ -450,7 +450,7 @@ class UnityEnv:
         #is_done = is_close
         is_done = False
         if is_close:
-            reward += 5
+            reward += 1 #5
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, is_close, info
 
@@ -469,14 +469,17 @@ class UnityEnv:
 
         done = False
         if self.task_type == 'find':
+            id2node = {node['id']: node for node in graph['nodes']}
             grabbed_obj = [id2node[edge['to_id']]['class_name'] for edge in graph['edges'] if
                            'HOLDS' in edge['relation_type']]
+            print(grabbed_obj)
             reward, is_close, info = self.distance_reward(graph, self.goal_find_spec)
             if visible_ids is not None:
 
                 # Reward if object is seen
-                if len(set(self.goal_find_spec).intersection([node[0] for node in visible_ids])) > 0:
-                    reward += 0.5
+                if self.level > 0:
+                    if len(set(self.goal_find_spec).intersection([node[0] for node in visible_ids])) > 0:
+                        reward += 0.5
 
                 if len(set(self.goal_find_spec).intersection(grabbed_obj)) > 0.:
                     reward += 100.
@@ -652,7 +655,7 @@ class UnityEnv:
             # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
             # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]	        if graph is None:
-            if True:
+            if False:
                 self.unity_simulator.comm.fast_reset(self.env_id)
             else:
                 self.unity_simulator.reset(self.env_id, self.init_graph)
@@ -879,11 +882,13 @@ class UnityEnv:
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 action_dict[1] = action_str
+            print(action_dict)
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
             obs, info = self.get_observations()
 
             # pdb.set_trace()
+            print(info[-1][2])
             reward, done, info = self.reward(visible_ids=info[-1][2], graph=info[1])
             dict_results['finished'] = done
             reward = torch.Tensor([reward])
@@ -1257,7 +1262,8 @@ class UnityEnv:
 
             id2node = {node['id']: node for node in graph['nodes']}
             visible_objects = [object_id for object_id in visible_objects if
-                               self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]
+                               self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]# and 
+                               # id2node[object_id]['class_name'] == 'wineglass']
 
             if self.level == 0:
                 visible_objects = [object for object in visible_objects if id2node[object]['category'] != 'Rooms']

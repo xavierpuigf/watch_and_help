@@ -188,10 +188,10 @@ def main():
         history_locations = []
         for step in range(args.num_steps):
             # Sample actions
-            with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
-                    {kob: ob[step] for kob, ob in rollouts.obs.items()}, rollouts.recurrent_hidden_states[step],
-                    rollouts.masks[step], epsilon=epsilon)
+            # with torch.no_grad():
+            value, action, action_log_prob, dist_entropy, recurrent_hidden_states = actor_critic.act(
+                {kob: ob[step] for kob, ob in rollouts.obs.items()}, rollouts.recurrent_hidden_states[step],
+                rollouts.masks[step], epsilon=epsilon)
 
             # Obser reward and next obs
             #pdb.set_trace()
@@ -237,7 +237,7 @@ def main():
                 [[0.0] if 'bad_transition' in info.keys() else [1.0]
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
-                            action_log_prob, value, reward, masks, bad_masks)
+                            action_log_prob, dist_entropy, value, reward, masks, bad_masks)
             print(step, reward[0].item(), done[0].item())
             total_num_steps += 1
             done_float = done.astype(np.float32)
