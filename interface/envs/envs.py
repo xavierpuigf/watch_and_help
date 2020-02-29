@@ -152,6 +152,20 @@ class UnityEnvWrapper:
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
+
+    def fast_reset(self, env_id, init_graph=None):
+        self.comm.fast_reset(env_id)
+        if init_graph is not None:
+            self.comm.expand_scene(init_graph)
+        self.offset_cameras = self.comm.camera_count()[1]
+        characters = ['Chars/Female1', 'Chars/Male1']
+        for i in range(self.num_agents):
+
+            self.comm.add_character(characters[i], position=[-1, 0, -7])
+
+        graph = self.get_graph()
+        self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
+        self.id2node = {node['id']: node for node in graph['nodes']}
    
     def returncode_to_signal_name(returncode: int):
         """
@@ -448,13 +462,13 @@ class UnityEnv:
         dist, is_close = self.get_distance(graph, target_class=target_class)
 
 
-        reward = - 0.02
+        reward = 0#- 0.02
         #print(self.prev_dist, dist, reward)
         self.prev_dist = dist
         #is_done = is_close
         is_done = False
         if is_close:
-            reward += 1 #5
+            reward += 0.05#1 #5
         info = {'dist': dist, 'done': is_done, 'reward': reward}
         return reward, is_close, info
 
@@ -486,7 +500,7 @@ class UnityEnv:
                         reward += 0.5
 
                 if len(set(self.goal_find_spec).intersection(grabbed_obj)) > 0.:
-                    reward += 100.
+                    reward += 1#100.
                     done = True
             return reward, done, info
 
@@ -662,7 +676,7 @@ class UnityEnv:
             if False:
                 self.unity_simulator.comm.fast_reset(self.env_id)
             else:
-                self.unity_simulator.reset(self.env_id, self.init_graph)
+                self.unity_simulator.fast_reset(self.env_id, self.init_graph)
 
 
             curr_graph_system_agent = self.inside_not_trans(self.unity_simulator.get_graph())
