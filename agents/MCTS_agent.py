@@ -17,7 +17,7 @@ from vh_graph.envs.vh_env import VhGraphEnv
 #
 from MCTS import *
 
-def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+def find_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
     id2node = {node['id']: node for node in env_graph['nodes']}
     containerdict = {edge['from_id']: edge['to_id'] for edge in env_graph['edges'] if edge['relation_type'] == 'INSIDE'}
@@ -64,7 +64,7 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
 
     return action_list, cost_list
 
-def grab_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+def grab_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
     target_id = int(object_target.split('_')[-1])
 
@@ -84,10 +84,10 @@ def grab_heuristic(agent_id, char_index, env_graph, simulator, object_target):
     if len(agent_close) > 0 and target_id in observed_ids:
         return target_action, cost
     else:
-        find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
+        find_actions, find_costs = find_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target)
         return find_actions + target_action, find_costs + cost
 
-def turnOn_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+def turnOn_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
     target_id = int(object_target.split('_')[-1])
 
@@ -107,10 +107,10 @@ def turnOn_heuristic(agent_id, char_index, env_graph, simulator, object_target):
     if len(agent_close) > 0 and target_id in observed_ids:
         return target_action, cost
     else:
-        find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
+        find_actions, find_costs = find_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target)
         return find_actions + target_action, find_costs + cost
 
-def sit_heuristic(agent_id, char_index, env_graph, simulator, object_target):
+def sit_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
     target_id = int(object_target.split('_')[-1])
 
@@ -130,10 +130,10 @@ def sit_heuristic(agent_id, char_index, env_graph, simulator, object_target):
     if len(agent_close) > 0 and target_id in observed_ids:
         return target_action, cost
     else:
-        find_actions, find_costs = find_heuristic(agent_id, char_index, env_graph, simulator, object_target)
+        find_actions, find_costs = find_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target)
         return find_actions + target_action, find_costs + cost
 
-def put_heuristic(agent_id, char_index, env_graph, simulator, target):
+def put_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
 
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
@@ -154,7 +154,7 @@ def put_heuristic(agent_id, char_index, env_graph, simulator, target):
 
     object_diff_room = None
     if not target_grabbed:
-        grab_obj1, cost_grab_obj1 = grab_heuristic(agent_id, char_index, env_graph, simulator, 'grab_' + str(target_node['id']))
+        grab_obj1, cost_grab_obj1 = grab_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, 'grab_' + str(target_node['id']))
         if len(grab_obj1) > 0:
             if grab_obj1[0][0] == 'walk':
                 id_room = grab_obj1[0][1][1]
@@ -173,7 +173,7 @@ def put_heuristic(agent_id, char_index, env_graph, simulator, target):
         env_graph_new = env_graph
         grab_obj1 = []
         cost_grab_obj1 = []
-    find_obj2, cost_find_obj2 = find_heuristic(agent_id, char_index, env_graph_new, simulator, 'find_' + str(target_node2['id']))
+    find_obj2, cost_find_obj2 = find_heuristic(agent_id, char_index, unsatisfied, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     action = [('putback', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
     cost = [0.05]
     res = grab_obj1 + find_obj2 + action
@@ -182,7 +182,7 @@ def put_heuristic(agent_id, char_index, env_graph, simulator, target):
     #print(res, target)
     return res, cost_list
 
-def putIn_heuristic(agent_id, char_index, env_graph, simulator, target):
+def putIn_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
 
     target_grab, target_put = [int(x) for x in target.split('_')[-2:]]
@@ -203,7 +203,7 @@ def putIn_heuristic(agent_id, char_index, env_graph, simulator, target):
 
     object_diff_room = None
     if not target_grabbed:
-        grab_obj1, cost_grab_obj1 = grab_heuristic(agent_id, char_index, env_graph, simulator, 'grab_' + str(target_node['id']))
+        grab_obj1, cost_grab_obj1 = grab_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, 'grab_' + str(target_node['id']))
         if len(grab_obj1) > 0:
             if grab_obj1[0][0] == 'walk':
                 id_room = grab_obj1[0][1][1]
@@ -222,14 +222,25 @@ def putIn_heuristic(agent_id, char_index, env_graph, simulator, target):
         env_graph_new = env_graph
         grab_obj1 = []
         cost_grab_obj1 = []
-    find_obj2, cost_find_obj2 = find_heuristic(agent_id, char_index, env_graph_new, simulator, 'find_' + str(target_node2['id']))
+    find_obj2, cost_find_obj2 = find_heuristic(agent_id, char_index, unsatisfied, env_graph_new, simulator, 'find_' + str(target_node2['id']))
     target_put_state = target_node2['states']
     action_open = [('open', (target_node2['class_name'], target_put))]
     action_put = [('putin', (target_node['class_name'], target_grab), (target_node2['class_name'], target_put))]
-    action_close = [('close', (target_node2['class_name'], target_put))]
     cost_open = [0.05]
     cost_put = [0.05]
-    cost_close = [0.05]
+    
+
+    remained_to_put = 0
+    for predicate, count in unsatisfied.items():
+        if predicate.startswith('inside'):
+            remained_to_put += count
+    if remained_to_put == 1:
+        action_close= []
+        cost_close = []
+    else:
+        action_close = [('close', (target_node2['class_name'], target_put))]
+        cost_close = [0.05]
+
     if 'CLOSED' in target_put_state or 'OPEN' not in target_put_state:
         res = grab_obj1 + find_obj2 + action_open + action_put + action_close
         cost_list = cost_grab_obj1 + cost_find_obj2 + cost_open + cost_put + cost_close
@@ -349,7 +360,7 @@ def check_progress(state, goal_spec):
                 unsatisfied[key] -= 1
     return satisfied, unsatisfied
 
-def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, opponent_subgoal=None):
+def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, last_action, opponent_subgoal=None):
     init_state = env.state
     print('get plan, ')
     # ipdb.set_trace()
@@ -375,6 +386,18 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
         if sample_id is not None:
             res[sample_id] = None
         return
+
+    remained_to_put = 0
+    for predicate, count in unsatisfied.items():
+        if predicate.startswith('inside'):
+            remained_to_put += count
+
+    if last_action is not None and last_action.split(' ')[0] == '[putin]' and remained_to_put == 0: # close the door (may also need to check if it has a door)
+            elements = last_action.split(' ')
+            action = '[close] {} {}'.format(elements[3], elements[4])
+            plan = [action]
+            subgoals = [last_subgoal]
+
     # if root_action is None:
     root_node = Node(id=(root_action, [init_vh_state, init_state, goal_spec, satisfied, unsatisfied, 0, []]),
                      num_visited=0,
@@ -487,30 +510,27 @@ class MCTS_agent:
 
         """TODO: just close fridge, dishwasher?"""
         
-        # if last_action is None:
-        #     action = '[walk] <kitchen> (58)'
+        # if last_action is not None and last_action.split(' ')[0] == '[putin]': # close the door (may also need to check if it has a door)
+        #     elements = last_action.split(' ')
+        #     action = '[close] {} {}'.format(elements[3], elements[4])
         #     plan = [action]
-        if last_action is not None and last_action.split(' ')[0] == '[putin]': # close the door (may also need to check if it has a door)
-            elements = last_action.split(' ')
-            action = '[close] {} {}'.format(elements[3], elements[4])
-            plan = [action]
-            subgoals = [last_subgoal]
-        else:
+        #     subgoals = [last_subgoal]
+        # else:
             
 
-            # TODO: is this correct?
-            nb_steps = 0
-            root_action = None
-            root_node = None
+        # TODO: is this correct?
+        nb_steps = 0
+        root_action = None
+        root_node = None
 
 
 
-            plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, task_goal, None, last_subgoal, opponent_subgoal)
+        plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, task_goal, None, last_subgoal, last_action, opponent_subgoal)
 
-            if len(plan) > 0:
-                action = plan[0]
-            else:
-                action = None
+        if len(plan) > 0:
+            action = plan[0]
+        else:
+            action = None
         info = {
             'plan': plan,
             'action': action,

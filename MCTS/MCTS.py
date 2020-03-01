@@ -67,7 +67,39 @@ class MCTS:
         print('unsatisfied:', unsatisfied)
         print('subgoals:', subgoals)
         print('last_subgoal:', last_subgoal)
+
+        """TODO: check predicates other than ON"""
+        id2node = {node['id']: node for node in curr_state_tmp['nodes']}
+        inhand_objs = [id2node[edge['to_id']]['class_name'] for edge in curr_state_tmp['edges'] if edge['relation_type'].startswith('HOLDS') \
+                and self.agent_id == edge['from_id']]
+        needed_obj_count = {}
+        for predicate, count in unsatisfied.items():
+            elements = predicate.split('_')
+            if elements[0] == 'on':
+                if elements[1] not in needed_obj_count:
+                    needed_obj_count[elements[1]] = count
+                else:
+                    needed_obj_count[elements[1]] += count
+                if elements[1] in inhand_objs:
+                    needed_obj_count[elements[1]] -= 1
+
+        remained_to_put = {}
+        for predicate, count in unsatisfied.items():
+            elements = predicate.split('_')
+            if elements[0] == 'inside':
+                if int(elements[2]) not in remained_to_put:
+                    remained_to_put[int(elements[2])] = count
+                else:
+                    remained_to_put[int(elements[2])] += count
+
         need_to_close = False
+        if self.last_opened is None: # add close & opened containers
+            for edge in curr_state_tmp['edges']:
+                if edge['from_id'] == self.agent_id and edge['relation_type'] == 'CLOSE' and \
+                    id2node[edge['to_id']]['class_name'] in ['fridge', 'kitchencabinets', 'cabinet', 'microwave', 'dishwasher', 'stove'] and \
+                    'OPEN' in id2node[edge['to_id']]['states']:
+                    self.last_opened = ['<{}>'.format(id2node[edge['to_id']]['class_name']), '({})'.format(edge['to_id'])]
+                    
         if self.last_opened is not None and self.last_opened[0] != '<toilet>':
             for node in curr_state_tmp['nodes']:
                 # print(node)
@@ -76,7 +108,18 @@ class MCTS:
                     # print('check opened node:', node)
                     # ipdb.set_trace()
                     if 'OPEN' in node['states']:
-                        need_to_close = True
+                        # ipdb.set_trace()
+                        if node['id'] in remained_to_put:
+                            need_to_close = remained_to_put[node['id']] == 0 # finished putting
+                        else:
+                            need_to_close = True
+                            
+                            inside_objs = [edge['from_id'] for edge in curr_state_tmp['edges'] if edge['relation_type'] == 'INSIDE' and '({})'.format(edge['to_id']) == self.last_opened[1]]
+                            for obj_id in inside_objs:
+                                if str(obj_id) in needed_obj_count and needed_obj_count[str(obj_id)] > 0 or \
+                                   id2node[obj_id]['class_name'] in needed_obj_count and needed_obj_count[id2node[obj_id]['class_name']] > 0:
+                                   need_to_close = False
+                                   break
                     else:
                         self.last_opened = None
                     break
@@ -84,7 +127,7 @@ class MCTS:
         for subgoal in subgoals:
             if subgoal[0] == last_subgoal:
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]
-                actions, costs = heuristic(self.agent_id, self.char_index, curr_state_tmp, self.env, last_subgoal)
+                actions, costs = heuristic(self.agent_id, self.char_index, unsatisfied, curr_state_tmp, self.env, last_subgoal)
                 plan = [self.get_action_str(action) for action in actions] 
                 if len(plan) > 0:
                     elements = plan[0].split(' ')               
@@ -106,7 +149,7 @@ class MCTS:
             if edge['relation_type'].startswith('HOLDS') \
                 and self.agent_id in [edge['from_id'], edge['to_id']] and last_subgoal.split('_')[0] != 'grab':
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]
-                actions, costs = heuristic(self.agent_id, self.char_index, curr_state_tmp, self.env, last_subgoal)
+                actions, costs = heuristic(self.agent_id, self.char_index, unsatisfied, curr_state_tmp, self.env, last_subgoal)
                 plan = [self.get_action_str(action) for action in actions] 
                 if len(plan) > 0:
                     elements = plan[0].split(' ') 
@@ -200,7 +243,7 @@ class MCTS:
             # print(subgoals[list_goals[rollout_step]])
             goal_selected = subgoals[list_goals[rollout_step]][0]
             heuristic = self.heuristic_dict[goal_selected.split('_')[0]]
-            actions, costs = heuristic(self.agent_id, self.char_index, curr_state, self.env, goal_selected)
+            actions, costs = heuristic(self.agent_id, self.char_index, unsatisfied, curr_state, self.env, goal_selected)
             
             # print(actions)
 
@@ -332,7 +375,7 @@ class MCTS:
         for goal_predicate in subgoals:
             goal, predicate, aug_predicate = goal_predicate[0], goal_predicate[1], goal_predicate[2] # subgoal, goal predicate, the new satisfied predicate
             heuristic = self.heuristic_dict[goal.split('_')[0]]
-            actions_heuristic, costs = heuristic(self.agent_id, self.char_index, state, self.env, goal)
+            actions_heuristic, costs = heuristic(self.agent_id, self.char_index, unsatisfied, state, self.env, goal)
             if actions_heuristic is None:
                 continue
             cost = sum(costs)
@@ -385,6 +428,9 @@ class MCTS:
         """TODO: add more subgoal heuristics; currently only have (put x y)"""
         # print('get subgoal space, state:\n', state['nodes'])
 
+        obs = self.env._mask_state(state, self.char_index)
+        obsed_objs = [node["id"] for node in obs["nodes"]]
+
         inhand_objects = []
         for edge in state['edges']:
             if edge['relation_type'].startswith('HOLDS') and \
@@ -409,7 +455,7 @@ class MCTS:
                 opponent_predciate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
                 opponent_predciate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
 
-        subgoal_space = []
+        subgoal_space, obsed_subgoal_space= [], []
         for predicate, count in unsatisfied.items():
             if count > 1 or count > 0 and predicate not in [opponent_predciate_1, opponent_predciate_2]:
                 elements = predicate.split('_')
@@ -426,6 +472,8 @@ class MCTS:
                             tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 
                             if tmp_predicate not in satisified[predicate]:
                                 subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                if node['id'] in obsed_objs:
+                                    obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
                                 if node['id'] in inhand_objects:
                                     return [subgoal_space[-1]]
                 elif elements[0] == 'inside':
@@ -439,6 +487,8 @@ class MCTS:
                             tmp_predicate = 'inside_{}_{}'.format(node['id'], surface) 
                             if tmp_predicate not in satisified[predicate]:
                                 subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                if node['id'] in obsed_objs:
+                                    obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
                                 if node['id'] in inhand_objects:
                                     return [subgoal_space[-1]]
                 elif elements[0] == 'offOn':
@@ -461,6 +511,8 @@ class MCTS:
                             container = random.choice(containers)
                             predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
                             goals[predicate] = 1
+        if len(obsed_subgoal_space) > 0:
+            return obsed_subgoal_space
         if len(subgoal_space) == 0:
             for predicate, count in unsatisfied.items():
                 if count == 1:
