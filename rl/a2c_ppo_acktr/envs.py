@@ -49,6 +49,7 @@ import pickle
 
 from agents import MCTS_agent
 from interface.envs.envs import UnityEnv
+from interface.envs.envs_open_containers import UnityEnvOpenContainers
 ## ----------------------------------------------------------------------------
 
 
@@ -87,6 +88,38 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             }
             print(simulator_type)
             env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=False, env_task_set=env_task_set,
+                           task_type=env_info['task'], simulator_type=simulator_type, base_port=env_info['base_port'],
+                           observation_type=env_info['observation_type'],
+                           simulator_args=simulator_args,
+                           max_episode_length=num_steps)
+        elif env_id == 'virtualhome_opencontainers':
+            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
+            init_graph = data[0]['init_graph']
+
+            id2node = {node['id']: node for node in init_graph['nodes']}
+            print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if id2node[edge['from_id']]['class_name'] == 'wineglass'])
+            # print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if edge['from_id'] == 115])
+            # ipdb.set_trace()
+
+            env_task_set = [{
+                'env_id': 0,
+                'task_id': 0,
+                'task_name': 'setup_table',
+                'init_graph': init_graph,
+                'init_rooms': [76, 210],
+                'level': 0,
+                'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
+            }]
+
+            # Only add graphics to the first instance
+            simulator_args = {
+                'file_name': env_info['executable_file'],
+                'x_display': env_info['display'] if rank == 0 else None,
+                'no_graphics': rank > 0
+
+            }
+            print(simulator_type)
+            env = UnityEnvOpenContainers(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=True, env_task_set=env_task_set,
                            task_type=env_info['task'], simulator_type=simulator_type, base_port=env_info['base_port'],
                            observation_type=env_info['observation_type'],
                            simulator_args=simulator_args,
