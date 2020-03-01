@@ -3,7 +3,6 @@
 logs/*
 logs_test/*
 record/*
-analysis/*
 *.gv
 *.pdf
 __pycache__/
