@@ -740,6 +740,11 @@ class MCTS_agent:
             ## --------------------------------------------------------
             # self.unity_env.print_action(system_agent_action, my_agent_action)
             infos = self.unity_env.unity_simulator.execute(action_dict)
+            for key, action_str in action_dict.items():
+                elements = action_str.split(' ')
+                o1 = int(elements[-1][1:-1])
+                self.unity_env.obj2action[o1] = action_str
+
             # obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
             # print('done:', done)
             # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)

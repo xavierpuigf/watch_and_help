@@ -277,6 +277,7 @@ class UnityEnvWrapper:
         script_list = ['']
         for agent_id in agent_do:
             script = actions[agent_id]
+
             current_script = ['<char{}> {}'.format(agent_id, script)]
             
 
@@ -366,6 +367,8 @@ class UnityEnv:
         self.last_actions = [None] * self.num_agents
         self.last_subgoals = [None] * self.num_agents
         self.task_goal, self.goal_spec = {0: {}, 1: {}}, {}
+
+        self.obj2action = {}
 
         if self.num_agents>1:
             self.my_agent_id = self.agent_ids[1]
@@ -628,7 +631,7 @@ class UnityEnv:
         random.seed(self.task_id)
         np.random.seed(self.task_id)
 
-
+        self.obj2action = {}
 
         # Select an object ar random from our tasks
         objects_spec = list(self.goal_spec.keys())
@@ -770,6 +773,8 @@ class UnityEnv:
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
 
+        self.obj2action = {}
+
 
         if self.simulator_type == 'unity':
             record_dir = self.record_dir
@@ -900,6 +905,9 @@ class UnityEnv:
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 action_dict[1] = action_str
+                elements = action_str.split(' ')
+                o1 = int(elements[-1][1:-1])
+                self.obj2action[o1] = action_str
             print(action_dict)
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
@@ -1105,6 +1113,23 @@ class UnityEnv:
             else:
                 edges.append(edge)
         graph['edges'] = edges
+
+        # add missed edges
+        missed_edges = []
+        for obj_id, action in self.obj2action.items():
+            elements = action.split(' ')
+            if elements[0] == '[putback]':
+                surface_id = int(elements[-1][1:-1])
+                found = False
+                for edge in edges:
+                    if edge['relation_type'] == 'ON' and edge['from_id'] == obj_id and edge['to_id'] == surface_id:
+                        found = True
+                        break
+                if not found:
+                    missed_edges.append({'from_id': obj_id, 'relation_type': 'ON', 'to_id': surface_id})
+        graph['edges'] += missed_edges
+
+
         parent_for_node = {}
 
         char_close = {1: [], 2:[]}
