@@ -940,6 +940,7 @@ parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
 parser.add_argument('--display', type=str, default='2', help='Task name')
+parser.add_argument('--mode', type=str, default='simple', choices=['simple', 'full'], help='Task name')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 
 
@@ -1173,7 +1174,7 @@ if __name__ == "__main__":
                 break
     
     # pdb.set_trace()
-    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_full.pik".format(task, num_per_apartment), "wb" ) )
+    pickle.dump( success_init_graph, open( "../initial_environments/data/init_envs/init7_{}_{}_simple.pik".format(task, num_per_apartment), "wb" ) )
     # pickle.dump( success_init_graph, open( "result/init1_10.p", "wb" ) )
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 

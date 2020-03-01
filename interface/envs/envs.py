@@ -128,9 +128,11 @@ class UnityEnvWrapper:
                                    camera_mode='FIRST_PERSON',
                                    output_folder=output_folder,
                                    file_name_prefix=file_name_prefix,
-                                   image_synthesis=['normal', 'seg_inst', 'seg_class'])
+                                   image_synthesis=['normal', 'seg_inst', 'seg_class'],
+                                   time_step=5.
+                                   )
             else:
-                comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False)
+                comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False, time_step=10)
 
         self.get_graph()
         #self.test_prep()

@@ -18,3 +18,4 @@ rl/Player.log
 init_reward/Player.log
 rl/.nfs*
 interface/Player.log
+rl/logs.txt
