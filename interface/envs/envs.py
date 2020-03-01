@@ -113,7 +113,7 @@ class UnityEnvWrapper:
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i], position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -148,7 +148,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
 
-            self.comm.add_character(characters[i], position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -162,7 +162,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         for i in range(self.num_agents):
 
-            self.comm.add_character(characters[i], position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
