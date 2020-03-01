@@ -146,9 +146,10 @@ if __name__ == '__main__':
                              record_dir=args.record_dir,
                              base_port=args.port,
                              simulator_args={
-                                 'file_name': 'executables/execteleport2/exec_linux02.28teleport2.x86_64',
-                               'x_display': args.display,
-                               'no_graphics': False
+
+                                'file_name': 'executables/exec_linux02.29/exec_linux02.29.x86_64',
+                                'x_display': args.display,
+                                'no_graphics': False
 
                             })
         
