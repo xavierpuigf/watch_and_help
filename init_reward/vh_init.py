@@ -941,6 +941,7 @@ parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
 parser.add_argument('--display', type=str, default='2', help='Task name')
 parser.add_argument('--mode', type=str, default='simple', choices=['simple', 'full'], help='Task name')
+parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 
 
 if __name__ == "__main__":
@@ -956,7 +957,10 @@ if __name__ == "__main__":
 
 
     #comm = comm_unity.UnityCommunication()
-    comm = comm_unity.UnityCommunication(port="8092", file_name="../../executables/linux02.25.2/exec_linux02.25.2.x86_64", x_display="2")
+    if args.use_editor:
+        comm = comm_unity.UnityCommunication()
+    else:
+        comm = comm_unity.UnityCommunication(port="8092", file_name="../../executables/linux02.25.2/exec_linux02.25.2.x86_64", x_display="2")
     comm.reset()
     s, graph = comm.environment_graph()
     

@@ -84,18 +84,17 @@ class UnityEnvWrapper:
                  file_name_prefix=None,
                  simulator_args={}):
 
-
-
-        self.port_number = base_port + env_copy_id 
         self.proc = None
         self.timeout_wait = 60
-
 
         self.output_folder = output_folder
         self.file_name_prefix = file_name_prefix
 
-
-        self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **simulator_args)
+        if base_port is not None:
+            self.port_number = base_port + env_copy_id 
+            self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **simulator_args)
+        else:
+            self.comm = comm_unity.UnityCommunication()
 
         self.num_agents = num_agents
         self.graph = None
@@ -298,14 +297,14 @@ class UnityEnvWrapper:
                                                        file_name_prefix=self.file_name_prefix,
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
         else:
-            try:
-                success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
-            except:
-                success = False
-                message = {}
-        if not success:
-            print('action failed:', message)
-            # ipdb.set_trace()
+            # try:
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            # except:
+            #     success = False
+            #     message = {}
+        # if not success:
+        #     print('action failed:', message)
+        #     # ipdb.set_trace()
         result = {}
         for agent_id in agent_do:
             result[agent_id] = (success, message) 

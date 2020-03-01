@@ -111,9 +111,9 @@ if __name__ == '__main__':
         for k, v in vars(args).items():
                 print(' ' * 26 + k + ': ' + str(v))
         args.dataset_path = '../initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task, args.num_per_apartment, args.mode)
-        args.record_dir = '../record/init7_{}_{}_{}'.format(args.task, args.num_per_apartment, args.mode)
+        args.record_dir = '../record/init7_Bob_{}_{}_{}'.format(args.task, args.num_per_apartment, args.mode)
         
-        num_agents = 1
+        num_agents = 2
         data = pickle.load(open(args.dataset_path, 'rb'))
         env_task_set = []
         for task_id, problem_setup in enumerate(data):
@@ -166,7 +166,7 @@ if __name__ == '__main__':
         steps_list, failed_tasks = [], []
         episode_ids = list(range(len(env_task_set)))
         random.shuffle(episode_ids)
-        for episode_id in episode_ids:
+        for episode_id in episode_ids[3:]:
             print('episode:', episode_id)
             # if episode_id != 10: continue
             try:
