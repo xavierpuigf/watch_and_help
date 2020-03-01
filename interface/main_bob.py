@@ -166,7 +166,7 @@ if __name__ == '__main__':
         steps_list, failed_tasks = [], []
         episode_ids = list(range(len(env_task_set)))
         random.shuffle(episode_ids)
-        for episode_id in episode_ids:
+        for episode_id in episode_ids[3:]:
             print('episode:', episode_id)
             # if episode_id != 10: continue
             try:

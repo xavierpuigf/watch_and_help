@@ -73,9 +73,12 @@ class MCTS:
         inhand_objs = [id2node[edge['to_id']]['class_name'] for edge in curr_state_tmp['edges'] if edge['relation_type'].startswith('HOLDS') \
                 and self.agent_id == edge['from_id']]
         needed_obj_count = {}
+        # needed_container = []
         for predicate, count in unsatisfied.items():
             elements = predicate.split('_')
-            if elements[0] == 'on':
+            if elements[0] in ['on', 'inside']:
+                # if elements[0] == 'inside':
+                #     needed_container.append(int(elements[2]))
                 if elements[1] not in needed_obj_count:
                     needed_obj_count[elements[1]] = count
                 else:
@@ -108,7 +111,8 @@ class MCTS:
                     # print('check opened node:', node)
                     # ipdb.set_trace()
                     if 'OPEN' in node['states']:
-                        # ipdb.set_trace()
+                        # if self.agent_id == 2 and node['id'] == 323:
+                        #     ipdb.set_trace()
                         if node['id'] in remained_to_put:
                             need_to_close = remained_to_put[node['id']] == 0 # finished putting
                         else:
