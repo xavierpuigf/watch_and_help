@@ -112,7 +112,8 @@ class MCTS:
                     # ipdb.set_trace()
                     if 'OPEN' in node['states']:
                         if self.agent_id == 2:# and node['id'] == 323:
-                            ipdb.set_trace()
+                            pass
+                            #ipdb.set_trace()
                         if node['id'] in remained_to_put:
                             need_to_close = remained_to_put[node['id']] == 0 # finished putting
                         else:
