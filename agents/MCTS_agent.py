@@ -772,6 +772,8 @@ class MCTS_agent:
 
 
             obs, reward, done, infos = self.unity_env.step_alice()
+            saved_info['finished'] = infos['finished']
+            
             if system_agent_action.startswith('[sit]'):
                 done[0] = True
                 saved_info['finished'] = True
