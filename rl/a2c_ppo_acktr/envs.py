@@ -93,7 +93,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
                            simulator_args=simulator_args,
                            max_episode_length=num_steps)
         elif env_id == 'virtualhome_opencontainers':
-            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
+            data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init7_setup_table_1_full.pik', 'rb'))
             init_graph = data[0]['init_graph']
 
             id2node = {node['id']: node for node in init_graph['nodes']}
@@ -108,7 +108,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
                 'init_graph': init_graph,
                 'init_rooms': [76, 210],
                 'level': 0,
-                'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
+                'task_goal': {agent_id: {'on_cutleryfork_235': 1} for agent_id in range(2)}
             }]
 
             # Only add graphics to the first instance
@@ -150,7 +150,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
         if is_atari:
             if len(env.observation_space.shape) == 3:
                 env = wrap_deepmind(env)
-        elif env_id != 'virtualhome' and len(env.observation_space.shape) == 3:
+        elif not env_id.startswith('virtualhome') and len(env.observation_space.shape) == 3:
             raise NotImplementedError(
                 "CNN models work only for atari,\n"
                 "please use a custom wrapper for a custom pixel input env.\n"
@@ -196,7 +196,7 @@ def make_vec_envs(env_info,
         else:
             envs = DummyVecEnv(envs)
 
-        if env_name != 'virtualhome' and len(envs.observation_space.shape) == 1:
+        if not env_name.startswith('virtualhome') and len(envs.observation_space.shape) == 1:
             if gamma is None:
                 envs = VecNormalize(envs, ret=False)
             else:

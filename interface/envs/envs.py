@@ -514,7 +514,7 @@ class UnityEnv:
             return reward, done, info
 
         if self.simulator_type == 'unity':
-            satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
+            satisfied, unsatisfied = check_progress(self.get_graph(), self.goal_spec)
 
         else:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)

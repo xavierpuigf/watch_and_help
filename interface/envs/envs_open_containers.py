@@ -112,8 +112,11 @@ class UnityEnvWrapperOpenContainers:
         # TODO: make sure this is true
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        init_pos = [[-6.721887,0.5700575,0.738445044],[-6.70455742,0.7735813,0.713833451]]
         for i in range(self.num_agents):
             self.comm.add_character(characters[i], initial_room='kitchen')
+        # success, message = self.comm.render_script(['<char0> [walkto] <kitchen> (210)|<char1> [walkto] <kitchen> (210)'], recording=False, gen_vid=False, time_scale=10, processing_time_limit=20)
+
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -132,9 +135,10 @@ class UnityEnvWrapperOpenContainers:
                                    time_step=5.
                                    )
             else:
-                comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False, time_step=10)
+                comm.render_script(['<char0> [walk] <kitchentable> (225)'], camera_mode=False, gen_vid=False, time_scale=10)
 
         self.get_graph()
+        # pdb.set_trace()
         #self.test_prep()
 
     def close(self):
@@ -146,13 +150,15 @@ class UnityEnvWrapperOpenContainers:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        init_pos = [[-6.721887,0.5700575,0.738445044],[-6.70455742,0.7735813,0.713833451]]
         for i in range(self.num_agents):
-
             self.comm.add_character(characters[i], initial_room='kitchen')
+        # success, message = self.comm.render_script(['<char0> [walkto] <kitchen> (210)|<char1> [walkto] <kitchen> (210)'], recording=False, gen_vid=False, time_scale=10, processing_time_limit=20)
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
         self.id2node = {node['id']: node for node in graph['nodes']}
+        # pdb.set_trace()
 
     def fast_reset(self, env_id, init_graph=None):
         self.comm.fast_reset(env_id)
@@ -160,9 +166,10 @@ class UnityEnvWrapperOpenContainers:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        init_pos = [[-6.721887,0.5700575,0.738445044],[-6.70455742,0.7735813,0.713833451]]
         for i in range(self.num_agents):
-
             self.comm.add_character(characters[i], initial_room='kitchen')
+        # success, message = self.comm.render_script(['<char0> [walkto] <kitchen> (210)|<char1> [walkto] <kitchen> (210)'], recording=False, gen_vid=False, time_scale=10, processing_time_limit=20)
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -270,7 +277,7 @@ class UnityEnvWrapperOpenContainers:
         if self.follow:
             actions[0] = '[walk] <character> (438)'
         if len(actions.keys()) > 1:
-            if sum(['walk' in x for x in actions.values()]) == 0:
+            if sum(['walk' in x for x in actions.values()]) == 0 and sum(['turn' in x for x in actions.values()]) == 0:
                 #continue
                 objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
                 if len(set(objects_interaction)) == 1:
@@ -299,7 +306,7 @@ class UnityEnvWrapperOpenContainers:
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
         else:
             # try:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, time_scale=10, processing_time_limit=20)
             # except:
             #     success = False
             #     message = {}
@@ -514,7 +521,7 @@ class UnityEnvOpenContainers:
             return reward, done, info
 
         if self.simulator_type == 'unity':
-            satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
+            satisfied, unsatisfied = check_progress(self.get_graph(), self.goal_spec)
 
         else:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
@@ -645,7 +652,7 @@ class UnityEnvOpenContainers:
         elif self.task_type == "open":
             self.goal_find_spec = ['microwave', 'fridge', 'cabinet', 'kitchencabinets']
         else:
-            self.goal_find_spec = []
+            self.goal_find_spec = [object_goal.split('_')[1]]
         self.level = env_task['level']
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
@@ -663,7 +670,7 @@ class UnityEnvOpenContainers:
                 record_dir = 'Output'
                 file_name_prefix = None
             if self.unity_simulator is None:
-                self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
+                self.unity_simulator = UnityEnvWrapperOpenContainers(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
                                                        num_agents=self.num_agents,
                                                        base_port=self.base_port,
@@ -688,6 +695,7 @@ class UnityEnvOpenContainers:
             self.env.reset(curr_graph_system_agent, self.task_goal)
             self.env.to_pomdp()
             self.init_unity_graph = self.get_unity_graph()
+            # pdb.set_trace()
 
         else:
             # room_ids = [node['id'] for node in self.init_graph['nodes'] if node['category'] == 'Rooms']
@@ -739,7 +747,7 @@ class UnityEnvOpenContainers:
         print('task_name:', self.task_name)
         print('goals:', self.task_goal[0])
         if self.unity_simulator is None:
-            self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents,
+            self.unity_simulator = UnityEnvWrapperOpenContainers(int(self.env_id), int(self.env_copy_id), init_graph=self.init_graph, num_agents=self.num_agents,
                                                        file_name=self.file_name)
         graph = self.inside_not_trans(self.unity_simulator.get_graph())
         obs_n = self.env.reset(graph, self.task_goal)
@@ -784,7 +792,7 @@ class UnityEnvOpenContainers:
             file_name_prefix = str(self.task_id) + '_' + self.task_name
 
             if self.unity_simulator is None:
-                self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
+                self.unity_simulator = UnityEnvWrapperOpenContainers(int(self.env_id), int(self.env_copy_id),
                                                        init_graph=self.init_graph,
                                                        num_agents=self.num_agents,
                                                        base_port=self.base_port,
@@ -895,23 +903,32 @@ class UnityEnvOpenContainers:
                 # pdb.set_trace()
                 if self.num_steps == 0:
                     graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
-                self.env.reset(graph , self.task_goal)
+                self.env.reset(graph, self.task_goal)
                 system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
                 self.last_actions[0] = system_agent_action
-                self.last_subgoals[0] = system_agent_info['subgoals'][0]
-                pdb.set_trace()
+                self.last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
+                # pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
+                    elements = system_agent_action.split(' ')
+                    if len(elements) > 2 and elements[2][1:-1].isdigit():
+                        o1 = int(elements[2][1:-1])
+                        self.obj2action[o1] = system_agent_action
 
             # user agent action
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 action_dict[1] = action_str
                 elements = action_str.split(' ')
-                o1 = int(elements[-1][1:-1])
-                self.obj2action[o1] = action_str
+                if len(elements) > 2 and elements[2][1:-1].isdigit():
+                    o1 = int(elements[2][1:-1])
+                    self.obj2action[o1] = system_agent_action
             print(action_dict)
-            dict_results = self.unity_simulator.execute(action_dict)
+            try:
+                dict_results = self.unity_simulator.execute(action_dict)
+            except:
+                print('failed to execute!!!!!!!!!!!!!!!!!!')
+                dict_results = {}
             self.num_steps += 1
             obs, info = self.get_observations()
 
@@ -1307,8 +1324,8 @@ class UnityEnvOpenContainers:
 
             id2node = {node['id']: node for node in graph['nodes']}
             visible_objects = [object_id for object_id in visible_objects if
-                               self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0]# and 
-                               # id2node[object_id]['class_name'] == 'wineglass']
+                               self.graph_helper.object_dict.get_id(id2node[object_id]['class_name']) != 0 and 
+                                id2node[object_id]['class_name'] in ['fridge', 'stove', 'microwave', 'kitchencabinets']]
 
             if self.level == 0:
                 visible_objects = [object for object in visible_objects if id2node[object]['category'] != 'Rooms']
