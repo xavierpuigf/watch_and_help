@@ -112,8 +112,9 @@ class UnityEnvWrapper:
         # TODO: make sure this is true
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -146,9 +147,9 @@ class UnityEnvWrapper:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -160,9 +161,9 @@ class UnityEnvWrapper:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -337,6 +338,7 @@ class UnityEnv:
                  task_type='complex',
                  max_num_objects=150,
                  logging=False,
+                 logging_graphs=False,
                  recording=False,
                  record_dir=None,
                  base_port=8080,
@@ -358,6 +360,7 @@ class UnityEnv:
         self.task_goal = None
         self.env_task_set = env_task_set
         self.logging = logging
+        self.logging_graphs = logging_graphs
         self.recording = recording
         self.record_dir = record_dir
 
@@ -1040,7 +1043,8 @@ class UnityEnv:
                                c_base=1000000,
                                num_samples=1,
                                num_processes=1,
-                               logging=self.logging)
+                               logging=self.logging,
+                               logging_graphs=self.logging_graphs)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
         # if last_subgoal is not None:
@@ -1116,20 +1120,20 @@ class UnityEnv:
                 edges.append(edge)
         graph['edges'] = edges
 
-        # add missed edges
-        missed_edges = []
-        for obj_id, action in self.obj2action.items():
-            elements = action.split(' ')
-            if elements[0] == '[putback]':
-                surface_id = int(elements[-1][1:-1])
-                found = False
-                for edge in edges:
-                    if edge['relation_type'] == 'ON' and edge['from_id'] == obj_id and edge['to_id'] == surface_id:
-                        found = True
-                        break
-                if not found:
-                    missed_edges.append({'from_id': obj_id, 'relation_type': 'ON', 'to_id': surface_id})
-        graph['edges'] += missed_edges
+        # # add missed edges
+        # missed_edges = []
+        # for obj_id, action in self.obj2action.items():
+        #     elements = action.split(' ')
+        #     if elements[0] == '[putback]':
+        #         surface_id = int(elements[-1][1:-1])
+        #         found = False
+        #         for edge in edges:
+        #             if edge['relation_type'] == 'ON' and edge['from_id'] == obj_id and edge['to_id'] == surface_id:
+        #                 found = True
+        #                 break
+        #         if not found:
+        #             missed_edges.append({'from_id': obj_id, 'relation_type': 'ON', 'to_id': surface_id})
+        # graph['edges'] += missed_edges
 
 
         parent_for_node = {}
