@@ -660,7 +660,7 @@ class MCTS_agent:
         while True:
             graph = self.unity_env.get_graph()
             if self.logging_graphs:
-                saved_info['curr_graph'].append(graph) 
+                saved_info['curr_graph'].append(graph['nodes']) 
             saved_info['init_unity_graph'] = self.unity_env.init_unity_graph
             # pdb.set_trace()
             # if num_steps == 0:

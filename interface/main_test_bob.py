@@ -178,42 +178,42 @@ if __name__ == '__main__':
         for episode_id in episode_ids:
             print('episode:', episode_id)
             # if episode_id != 10: continue
-            try:
-                #if True:
-                unity_env.reset_MCTS(task_id=episode_id)
+            # try:
+            #if True:
+            unity_env.reset_MCTS(task_id=episode_id)
 
-                graph = unity_env.get_graph()
+            graph = unity_env.get_graph()
 
-                if num_agents==1:
-                    steps, finished = unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
-                    if not finished:
-                        failed_tasks.append(episode_id)
-                    else:
-                        steps_list.append(steps)
-
+            if num_agents==1:
+                steps, finished = unity_env.agents[unity_env.system_agent_id].run(single_agent=True)
+                if not finished:
+                    failed_tasks.append(episode_id)
                 else:
-                    ## ------------------------------------------------------------------------------
-                    ## your agent, add your code here
-                    ## ------------------------------------------------------------------------------
-                    my_agent_id = unity_env.get_my_agent_id()
-                    my_agent = MCTS_agent(unity_env=unity_env,
-                                         agent_id=my_agent_id,
-                                         char_index=1,
-                                         max_episode_length=5,
-                                         num_simulation=100,
-                                         max_rollout_steps=3,
-                                         c_init=0.1,
-                                         c_base=1000000,
-                                         num_samples=1,
-                                         num_processes=1,
-                                         logging=True,
-                                         logging_graphs=True)
+                    steps_list.append(steps)
 
-                    ## ------------------------------------------------------------------------------
-                    ## run your agent
-                    ## ------------------------------------------------------------------------------
-                    my_agent.run()
-            except:
-                pass
+            else:
+                ## ------------------------------------------------------------------------------
+                ## your agent, add your code here
+                ## ------------------------------------------------------------------------------
+                my_agent_id = unity_env.get_my_agent_id()
+                my_agent = MCTS_agent(unity_env=unity_env,
+                                     agent_id=my_agent_id,
+                                     char_index=1,
+                                     max_episode_length=5,
+                                     num_simulation=100,
+                                     max_rollout_steps=3,
+                                     c_init=0.1,
+                                     c_base=1000000,
+                                     num_samples=1,
+                                     num_processes=1,
+                                     logging=True,
+                                     logging_graphs=True)
+
+                ## ------------------------------------------------------------------------------
+                ## run your agent
+                ## ------------------------------------------------------------------------------
+                my_agent.run()
+            # except:
+            #     pass
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
