@@ -307,7 +307,7 @@ class UnityEnvWrapper:
         if self.follow:
             actions[0] = '[walk] <character> (438)'
         if len(actions.keys()) > 1:
-            if sum(['walk' in x for x in actions.values()]) == 0:
+            if sum(['walk' in x for x in actions.values()]) == 0 and sum(['turn' in x for x in actions.values()]) == 0:
                 #continue
                 objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
                 if len(set(objects_interaction)) == 1:
@@ -570,7 +570,7 @@ class UnityEnv:
             count += min(len(value), self.goal_spec[key])
             if unsatisfied[key] > 0:
                 done = False
-        return count, done, {}
+        return count - 0.1, done, {}
     
 
     def get_distance(self, graph=None, target_id=None, target_class=['microwave'], norm=None):

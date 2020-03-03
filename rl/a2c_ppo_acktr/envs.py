@@ -79,7 +79,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             #     'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
             # }]
 
-            env_task_set = pickle.load(open('../../initial_environments/data/init_envs/trai_demo_set.pik', 'rb'))
+            env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
 
             # Only add graphics to the first instance
             simulator_args = {
