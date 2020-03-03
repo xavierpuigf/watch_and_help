@@ -566,11 +566,13 @@ class UnityEnv:
         # print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
+        tot = 0
         for key, value in satisfied.items():
             count += min(len(value), self.goal_spec[key])
+            tot += self.goal_spec[key] 
             if unsatisfied[key] > 0:
                 done = False
-        return count - 0.1, done, {}
+        return count / (tot + 1e-6) - 0.1, done, {}
     
 
     def get_distance(self, graph=None, target_id=None, target_class=['microwave'], norm=None):
@@ -939,7 +941,7 @@ class UnityEnv:
                 self.env.reset(graph , self.task_goal)
                 system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
                 self.last_actions[0] = system_agent_action
-                self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                self.last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
                 # pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action

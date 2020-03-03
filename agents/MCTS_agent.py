@@ -456,6 +456,7 @@ class MCTS_agent:
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
                          self.c_init, self.c_base)
+
         if self.mcts is None:
             raise Exception
 
@@ -558,6 +559,9 @@ class MCTS_agent:
         graph_belief = self.sample_belief(self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(graph_belief, task_goal)
         self.sim_env.to_pomdp()
+        self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
+                         self.num_simulation, self.max_rollout_steps,
+                         self.c_init, self.c_base)
 
 
 
