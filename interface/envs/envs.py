@@ -112,8 +112,9 @@ class UnityEnvWrapper:
         # TODO: make sure this is true
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -146,9 +147,9 @@ class UnityEnvWrapper:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -160,9 +161,9 @@ class UnityEnvWrapper:
             self.comm.expand_scene(init_graph)
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
+        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-
-            self.comm.add_character(characters[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -338,6 +339,7 @@ class UnityEnv:
                  task_type='complex',
                  max_num_objects=150,
                  logging=False,
+                 logging_graphs=False,
                  recording=False,
                  record_dir=None,
                  base_port=8080,
@@ -359,6 +361,7 @@ class UnityEnv:
         self.task_goal = None
         self.env_task_set = env_task_set
         self.logging = logging
+        self.logging_graphs = logging_graphs
         self.recording = recording
         self.record_dir = record_dir
 
@@ -421,7 +424,8 @@ class UnityEnv:
                 'object_coords': spaces.Box(low=0, high=max(self.image_height, self.image_width),
                            shape=(self.num_objects, 3)), # 3D coords of the objects
                 # 'mask_position_objects': spaces.Box(low=0, high=1, shape=(self.num_objects, )),
-                'target_class': spaces.Box(low=0, high=num_object_classes, shape=(1, 1)),
+                'target_obj_class': spaces.Box(low=0, high=num_object_classes, shape=(1, 6)),
+                'target_loc_class': spaces.Box(low=0, high=num_object_classes, shape=(1, 6)),
                 'affordance_matrix': spaces.Box(low=0, high=1, shape=(num_actions, num_object_classes))
             })
 
@@ -515,7 +519,7 @@ class UnityEnv:
             return reward, done, info
 
         if self.simulator_type == 'unity':
-            satisfied, unsatisfied = check_progress(self.unity_simulator.get_graph(), self.goal_spec)
+            satisfied, unsatisfied = check_progress(self.get_graph(), self.goal_spec)
 
         else:
             satisfied, unsatisfied = check_progress(self.env.state, self.goal_spec)
@@ -647,7 +651,7 @@ class UnityEnv:
             self.goal_find_spec = ['microwave', 'fridge', 'cabinet', 'kitchencabinets']
         else:
             self.goal_find_spec = []
-        self.level = env_task['level']
+        self.level = 1#env_task['level']
 
         self.graph_helper.get_action_affordance_map(self.task_goal, {node['id']: node for node in self.init_graph['nodes']})
         print('env_id:', self.env_id)
@@ -900,7 +904,7 @@ class UnityEnv:
                 system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
                 self.last_actions[0] = system_agent_action
                 self.last_subgoals[0] = system_agent_info['subgoals'][0]
-                pdb.set_trace()
+                # pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
 
@@ -1041,7 +1045,8 @@ class UnityEnv:
                                c_base=1000000,
                                num_samples=1,
                                num_processes=1,
-                               logging=self.logging)
+                               logging=self.logging,
+                               logging_graphs=self.logging_graphs)
 
     def get_system_agent_action(self, task_goal, last_action, last_subgoal, opponent_subgoal=None):
         # if last_subgoal is not None:
@@ -1117,20 +1122,20 @@ class UnityEnv:
                 edges.append(edge)
         graph['edges'] = edges
 
-        # add missed edges
-        missed_edges = []
-        for obj_id, action in self.obj2action.items():
-            elements = action.split(' ')
-            if elements[0] == '[putback]':
-                surface_id = int(elements[-1][1:-1])
-                found = False
-                for edge in edges:
-                    if edge['relation_type'] == 'ON' and edge['from_id'] == obj_id and edge['to_id'] == surface_id:
-                        found = True
-                        break
-                if not found:
-                    missed_edges.append({'from_id': obj_id, 'relation_type': 'ON', 'to_id': surface_id})
-        graph['edges'] += missed_edges
+        # # add missed edges
+        # missed_edges = []
+        # for obj_id, action in self.obj2action.items():
+        #     elements = action.split(' ')
+        #     if elements[0] == '[putback]':
+        #         surface_id = int(elements[-1][1:-1])
+        #         found = False
+        #         for edge in edges:
+        #             if edge['relation_type'] == 'ON' and edge['from_id'] == obj_id and edge['to_id'] == surface_id:
+        #                 found = True
+        #                 break
+        #         if not found:
+        #             missed_edges.append({'from_id': obj_id, 'relation_type': 'ON', 'to_id': surface_id})
+        # graph['edges'] += missed_edges
 
 
         parent_for_node = {}
@@ -1289,7 +1294,6 @@ class UnityEnv:
 
             graph = self.unity_simulator.get_graph()
 
-
             distance = self.get_distance(norm='no')[0]
             rel_coords = torch.Tensor(list([distance[0], distance[2]]))[None, :]
 
@@ -1328,11 +1332,25 @@ class UnityEnv:
 
             current_obs = {'image': current_obs_img}
             current_obs.update(graph_inputs)
+            target_obj_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
+            target_loc_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
+            pre_id = 0
+            for predicate, count in self.goal_spec.items():
+                if count == 0:
+                    continue
+                elements = predicate.split('_')
+                obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
+                loc_class_id = int(self.graph_helper.object_dict.get_id(id2node[int(elements[2])]['class_name']))
+                for tmp_i in range(count):
+                    target_obj_class[pre_id] = obj_class_id
+                    target_loc_class[pre_id] = loc_class_id
+                    pre_id += 1
             current_obs.update(
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,
                     'object_dist': rel_coords,
-                    'target_class': int(self.graph_helper.object_dict.get_id(self.goal_find_spec[0]))
+                    'target_obj_class': target_obj_class,
+                    'target_loc_class': target_loc_class 
                     # 'object_coords': position_objects,
                     # 'mask_position_objects': mask
                 }

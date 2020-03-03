@@ -205,15 +205,15 @@ def main():
                 coords_char = [node['bounding_box']['center'] for node in envs.envs[0].env.observed_graph['nodes'] if
                                node['id'] == 2][0]
                 history_locations.append(coords_char)
-                if step % 20 == 0:
-                    utils_viz.plot_graph(envs.envs[0].unity_simulator.graph, [x[1] for x in envs.envs[0].env.visible_nodes],
-                                         history_locations=history_locations,
-                                         env=logger.experiment_name,
-                                         target_class=envs.envs[0].env.goal_find_spec)
+                # if step % 20 == 0:
+                #     utils_viz.plot_graph(envs.envs[0].unity_simulator.graph, [x[1] for x in envs.envs[0].env.visible_nodes],
+                #                          history_locations=history_locations,
+                #                          env=logger.experiment_name,
+                #                          target_class=envs.envs[0].env.goal_find_spec)
 
-                    img = envs.envs[0].env.unity_simulator.get_observations(mode='normal')
+                #     img = envs.envs[0].env.unity_simulator.get_observations(mode='normal')
 
-                    utils_viz.show_image(img[0].transpose(2,0,1), env=logger.experiment_name)
+                #     utils_viz.show_image(img[0].transpose(2,0,1), env=logger.experiment_name)
 
             obs, reward, done, infos = envs.step(action)
             if (step + 1) % args.t_max == 0:

@@ -431,11 +431,12 @@ class MCTS_agent:
     """
     def __init__(self, unity_env, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
-                 num_samples=1, num_processes=1, comm=None, logging=False):
+                 num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
         self.unity_env = unity_env
         self.env = unity_env.env
 
         self.logging = logging
+        self.logging_graphs = logging_graphs
 
         self.agent_id = agent_id
         self.char_index = char_index
@@ -648,7 +649,8 @@ class MCTS_agent:
                       'subgoal': {0: [], 1: []},
                       'init_pos': {0: None, 1: None},
                       'finished': None,
-                      'init_unity_graph': None}
+                      'init_unity_graph': None,
+                      'curr_graph': []}
 
         last_actions = [None] * 2
         last_subgoals = [None] * 2
@@ -657,6 +659,8 @@ class MCTS_agent:
         succeed = False
         while True:
             graph = self.unity_env.get_graph()
+            if self.logging_graphs:
+                saved_info['curr_graph'].append(graph['nodes']) 
             saved_info['init_unity_graph'] = self.unity_env.init_unity_graph
             # pdb.set_trace()
             # if num_steps == 0:
@@ -780,12 +784,14 @@ class MCTS_agent:
             if system_agent_action.startswith('[switchon]'):
                 ipdb.set_trace()
 
-            if self.logging:
+            if self.logging and not self.logging_graphs:
                 Path("../logs_test").mkdir(parents=True, exist_ok=True)
                 with open(self.unity_env.record_dir + '/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
                     f.write(json.dumps(saved_info, indent=4))
                 # pickle.dump(saved_info, open('../logs_test/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
-           
+            elif self.logging and self.logging_graphs:
+                pickle.dump(saved_info, open(self.unity_env.record_dir + '/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
+            
             if done[0]: # ended
                 break
             
