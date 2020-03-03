@@ -272,9 +272,10 @@ class TransformerBase(NNBase):
 
         self.object_context_combine = self.mlp2l(2*hidden_size, hidden_size)
         self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
+        self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
 
-        self.fc_att_action = self.mlp2l(hidden_size, hidden_size)
-        self.fc_att_object = self.mlp2l(hidden_size, hidden_size)
+        self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
+        self.fc_att_object = self.mlp2l(hidden_size * 2, hidden_size)
         self.train()
 
     def mlp2l(self, dim_in, dim_out):
@@ -296,15 +297,17 @@ class TransformerBase(NNBase):
 
 
         # Goal embedding
-        class_name = inputs['target_class'][:, 0].long()
-        fake_coords = torch.zeros((class_name.shape[0], 1, 3)).to(class_name.device)
-        goal_encoding = self.single_object_encoding(class_name, fake_coords).squeeze(1)
+        obj_class_name = inputs['target_obj_class'][:, 0].long()
+        loc_class_name = inputs['target_loc_class'][:, 0].long()
+        goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
+        goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
+        goal_encoding = torch.cat([goal_encoding_obj, goal_encoding_loc], dim=-1)
         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
         goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
 
         # Recurrent context
-        if self.is_recurrent:
-            r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
+        # if self.is_recurrent:
+        r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
 
         # h' = GA . h [bs, h]
         context_goal = goal_mask_action * r_context_vec
