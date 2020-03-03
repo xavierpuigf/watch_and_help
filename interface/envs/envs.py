@@ -105,7 +105,19 @@ class UnityEnvWrapper:
         
 
         self.comm.reset(env_id)
+
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
 
         # Assumption, over initializing the env wrapper, we only use one enviroment id
@@ -144,7 +156,19 @@ class UnityEnvWrapper:
     def reset(self, env_id, init_graph=None):
         self.comm.reset(env_id)
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
+
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
@@ -158,7 +182,19 @@ class UnityEnvWrapper:
     def fast_reset(self, env_id, init_graph=None):
         self.comm.fast_reset(env_id)
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
+
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
@@ -301,7 +337,7 @@ class UnityEnvWrapper:
             pdb.set_trace()
         else:
             # try:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20, time_scale=10)
             # except:
             #     success = False
             #     message = {}
@@ -907,14 +943,19 @@ class UnityEnv:
                 # pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
+                    elements = system_agent_action.split(' ')
+                    if len(elements) > 2 and elements[2][1:-1].isdigit():
+                        o1 = int(elements[2][1:-1])
+                        self.obj2action[o1] = system_agent_action
 
             # user agent action
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 action_dict[1] = action_str
                 elements = action_str.split(' ')
-                o1 = int(elements[-1][1:-1])
-                self.obj2action[o1] = action_str
+                if len(elements) > 2 and elements[2][1:-1].isdigit():
+                    o1 = int(elements[2][1:-1])
+                    self.obj2action[o1] = system_agent_action
             print(action_dict)
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
