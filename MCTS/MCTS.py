@@ -475,11 +475,13 @@ class MCTS:
                             #     print(node)
                             tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 
                             if tmp_predicate not in satisified[predicate]:
-                                subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
-                                if node['id'] in obsed_objs:
-                                    obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
-                                if node['id'] in inhand_objects:
-                                    return [subgoal_space[-1]]
+                                tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
+                                if tmp_subgoal != opponent_subgoal:
+                                    subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                    if node['id'] in obsed_objs:
+                                        obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                    if node['id'] in inhand_objects:
+                                        return [subgoal_space[-1]]
                 elif elements[0] == 'inside':
                     subgoal_type = 'putIn'
                     obj = elements[1]
@@ -490,11 +492,13 @@ class MCTS:
                             #     print(node)
                             tmp_predicate = 'inside_{}_{}'.format(node['id'], surface) 
                             if tmp_predicate not in satisified[predicate]:
-                                subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
-                                if node['id'] in obsed_objs:
-                                    obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
-                                if node['id'] in inhand_objects:
-                                    return [subgoal_space[-1]]
+                                tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
+                                if tmp_subgoal != opponent_subgoal:
+                                    subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                    if node['id'] in obsed_objs:
+                                        obsed_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                    if node['id'] in inhand_objects:
+                                        return [subgoal_space[-1]]
                 elif elements[0] == 'offOn':
                     if id2node[elements[2]]['class_name'] in ['dishwasher', 'kitchentable']:
                         containers = [[node['id'], node['class_name']] for node in state['nodes'] if node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]

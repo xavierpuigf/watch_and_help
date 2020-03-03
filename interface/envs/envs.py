@@ -126,7 +126,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -173,7 +173,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -199,7 +199,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
