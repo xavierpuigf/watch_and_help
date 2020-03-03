@@ -297,6 +297,7 @@ class UnityEnvWrapper:
                                                        output_folder=self.output_folder,
                                                        file_name_prefix=self.file_name_prefix,
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
+            pdb.set_trace()
         else:
             # try:
             success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)

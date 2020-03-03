@@ -38,11 +38,14 @@ if __name__ == '__main__':
     parser.add_argument('--record_dir', default='../record/', type=str)
     args = parser.parse_args()
 
-    dir_files = glob.glob('{}/init*'.format(args.record_dir))
+    dir_files = glob.glob('{}/init*50*'.format(args.record_dir))
     dict_failures = []
     destinations = []
 
     for dir_file in dir_files:
+        if 'Bob' in dir_file:
+            continue
+                 
         dict_apartments = {}
         finished = 0
         count = 0
@@ -56,6 +59,8 @@ if __name__ == '__main__':
         print('======')
         json_files = glob.glob('{}/*.json'.format(dir_file))
         for json_file in json_files:
+            if 'Bob' in json_file:
+                continue
             count += 1
             try:
                 with open(json_file, 'r') as f:
@@ -66,8 +71,13 @@ if __name__ == '__main__':
 
             id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
             rooms = [node['id'] for node in content['init_unity_graph']['nodes'] if node['category'] == 'Rooms']
-            if content['finished']:
+            if content['finished'] and len(content['action']['0']) > 50:
+                if finished == 0:
+                    print(len(content['action']['0']), json_file)
+
                 finished += 1
+                #print(dir_file)
+                #pdb.set_trace()
                 add_to_stats(dict_apartments, content)
             else:
 
@@ -116,7 +126,7 @@ if __name__ == '__main__':
 
         print(errors)
 
-        print('({}/{}) ({:.2f})'.format(finished, count, finished*100./count), count)
+        print('({}/{}) ({:.2f})'.format(finished, count, finished*100./(count+1e-9)), count)
         for i in range(7):
             print(i, ': {}'.format(dict_apartments[i] if i in dict_apartments.keys() else 0))
 

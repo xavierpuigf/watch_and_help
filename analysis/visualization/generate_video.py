@@ -28,7 +28,7 @@ def write_video(log_file, out_file, comm):
                       zip([node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0],
                           livingroom_center)]
     character_pos2 = None
-    if len(action_1) > 0:
+    if len(action_2) > 0:
         # pdb.set_trace()
         character_pos2 = character_pos1
         character_pos2 = [x + y for x, y in
@@ -68,7 +68,7 @@ def write_video(log_file, out_file, comm):
             action_str += '| <char1> {}'.format(action_2[it]).replace('walk', 'walktowards')
         print('Rendeer...')
         comm.render_script([action_str],
-                           recording=True, gen_vid=False, camera_mode="PERSON_TOP",
+                recording=True, gen_vid=False, camera_mode="PERSON_FROM_BACK",
                            smooth_walk=True, file_name_prefix=out_file, processing_time_limit=50)
         s, graph = comm.environment_graph()
         character_pos1 = [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0]
@@ -79,12 +79,20 @@ def write_video(log_file, out_file, comm):
 
 if __name__ == '__main__':
     file_name = '../logs_bob/logs_agent_2_read_book.json'
+    file_names = [
+            #'../../../record/init7_put_dishwasher_50_simple/logs_agent_107_put_dishwasher.json',
+            #'../../../record/init7_prepare_food_50_simple/logs_agent_163_prepare_food.json',
+            #'../../../record/init7_setup_table_50_simple/logs_agent_25_setup_table.json',
+            #'../../../record/init7_put_fridge_50_simple/logs_agent_171_put_fridge.json'
+            '../../record/init7_put_fridge_50_simple/logs_agent_10_put_fridge.json'
+            ]
 
     #comm = comm_unity.UnityCommunication(x_display="3", port="8079",
     #                                     file_name='../../../executables/exec_linux03.1/exec_linux03.1.x86_64')
 
-    comm = comm_unity.UnityCommunication(port="8090")
-    splitf = file_name.split('/')[-1].split('.')[0]
-    write_video(file_name, splitf, comm)
+    for file_name in file_names:
+        comm = comm_unity.UnityCommunication(port="8090")
+        splitf = file_name.split('/')[-1].split('.')[0]
+        write_video(file_name, splitf, comm)
 
 
