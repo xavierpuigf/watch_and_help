@@ -71,15 +71,17 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             # print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if edge['from_id'] == 115])
             # ipdb.set_trace()
 
-            env_task_set = [{
-                'env_id': 0,
-                'task_id': 0,
-                'task_name': 'setup_table',
-                'init_graph': init_graph,
-                'init_rooms': [76, 210],
-                'level': 0,
-                'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
-            }]
+            # env_task_set = [{
+            #     'env_id': 0,
+            #     'task_id': 0,
+            #     'task_name': 'setup_table',
+            #     'init_graph': init_graph,
+            #     'init_rooms': [76, 210],
+            #     'level': 0,
+            #     'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
+            # }]
+
+            env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
 
             # Only add graphics to the first instance
             simulator_args = {

@@ -105,7 +105,19 @@ class UnityEnvWrapper:
         
 
         self.comm.reset(env_id)
+
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
 
         # Assumption, over initializing the env wrapper, we only use one enviroment id
@@ -114,7 +126,7 @@ class UnityEnvWrapper:
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -144,12 +156,24 @@ class UnityEnvWrapper:
     def reset(self, env_id, init_graph=None):
         self.comm.reset(env_id)
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
+
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -158,12 +182,24 @@ class UnityEnvWrapper:
     def fast_reset(self, env_id, init_graph=None):
         self.comm.fast_reset(env_id)
         if init_graph is not None:
+            s, tmp_graph = self.comm.environment_graph()
+            max_id_object = max([node['id'] for node in tmp_graph['nodes']])
+            for node in init_graph['nodes']:
+                if node['id'] > max_id_object:
+                    node['id'] = node['id'] - max_id_object + 1000
+            for edge in init_graph['edges']:
+                if edge['from_id'] > max_id_object:
+                    edge['from_id'] = edge['from_id'] - max_id_object + 1000
+                if edge['to_id'] > max_id_object:
+                    edge['to_id'] = edge['to_id'] - max_id_object + 1000
+
             self.comm.expand_scene(init_graph)
+
         self.offset_cameras = self.comm.camera_count()[1]
         characters = ['Chars/Female1', 'Chars/Male1']
         rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         for i in range(self.num_agents):
-            self.comm.add_character(characters[i])#, initial_room=rooms[i])#, position=[-1, 0, -7])
+            self.comm.add_character(characters[i], initial_room=rooms[i])#, position=[-1, 0, -7])
 
         graph = self.get_graph()
         self.rooms = [(node['class_name'], node['id']) for node in graph['nodes'] if node['category'] == 'Rooms']
@@ -271,7 +307,7 @@ class UnityEnvWrapper:
         if self.follow:
             actions[0] = '[walk] <character> (438)'
         if len(actions.keys()) > 1:
-            if sum(['walk' in x for x in actions.values()]) == 0:
+            if sum(['walk' in x for x in actions.values()]) == 0 and sum(['turn' in x for x in actions.values()]) == 0:
                 #continue
                 objects_interaction = [x.split('(')[1].split(')')[0] for x in actions.values()]
                 if len(set(objects_interaction)) == 1:
@@ -301,7 +337,7 @@ class UnityEnvWrapper:
             pdb.set_trace()
         else:
             # try:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20, time_scale=10)
             # except:
             #     success = False
             #     message = {}
@@ -530,11 +566,13 @@ class UnityEnv:
         # print('reward goal spec:', self.goal_spec)
         count = 0
         done = True
+        tot = 0
         for key, value in satisfied.items():
             count += min(len(value), self.goal_spec[key])
+            tot += self.goal_spec[key] 
             if unsatisfied[key] > 0:
                 done = False
-        return count, done, {}
+        return count / (tot + 1e-6) - 0.1, done, {}
     
 
     def get_distance(self, graph=None, target_id=None, target_class=['microwave'], norm=None):
@@ -903,18 +941,23 @@ class UnityEnv:
                 self.env.reset(graph , self.task_goal)
                 system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
                 self.last_actions[0] = system_agent_action
-                self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                self.last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
                 # pdb.set_trace()
                 if system_agent_action is not None:
                     action_dict[0] = system_agent_action
+                    elements = system_agent_action.split(' ')
+                    if len(elements) > 2 and elements[2][1:-1].isdigit():
+                        o1 = int(elements[2][1:-1])
+                        self.obj2action[o1] = system_agent_action
 
             # user agent action
             action_str = self.get_action_command(my_agent_action)
             if action_str is not None:
                 action_dict[1] = action_str
                 elements = action_str.split(' ')
-                o1 = int(elements[-1][1:-1])
-                self.obj2action[o1] = action_str
+                if len(elements) > 2 and elements[2][1:-1].isdigit():
+                    o1 = int(elements[2][1:-1])
+                    self.obj2action[o1] = system_agent_action
             print(action_dict)
             dict_results = self.unity_simulator.execute(action_dict)
             self.num_steps += 1
