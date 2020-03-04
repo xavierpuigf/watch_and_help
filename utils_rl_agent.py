@@ -24,7 +24,7 @@ class GraphHelper():
                 'walktowards',
                 'open',
                 'close',
-                'putback',
+                'put',
                 'grab',
                 'no_action'
             ]
@@ -33,8 +33,7 @@ class GraphHelper():
                 'walk',
                 'open',
                 'close',
-                'putback',
-                'putin',
+                'put',
                 'grab',
                 'no_action'
             ]
@@ -296,6 +295,7 @@ def args_per_action(action):
     'close': 1,
     'putback':1,
     'putin': 1,
+    'put': 1,
     'grab': 1,
     'no_action': 0,
     'walk': 1}

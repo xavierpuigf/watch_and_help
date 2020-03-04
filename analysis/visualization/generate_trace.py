@@ -1,4 +1,5 @@
 import json
+import cv2
 import pickle
 import pdb
 import sys
@@ -40,9 +41,12 @@ if __name__ == '__main__':
     comm.expand_scene(graph)
 
     character_pos1[1] = 0.
-    comm.add_character(position=character_pos)
+    comm.add_character(position=character_pos1)
     cam_id = 78
-    s, image = comm.camera_image([cam_id])
+    s, image = comm.camera_image([cam_id], mode='normal')
+    s, image2 = comm.camera_image([cam_id], mode='seg_class')
+    cv2.imwrite('image.png', image[0])
+    cv2.imwrite('image_seg.png', image2[0])
 
 
 positions = []

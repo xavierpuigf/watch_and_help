@@ -30,7 +30,7 @@ class A2C_ACKTR():
             self.optimizer = optim.RMSprop(
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
 
-    def update(self, rollouts):
+    def update(self, rollouts, ce=False):
         obs_shape = {kob: ob.size()[2:] for kob, ob in rollouts.obs.items()}
         action_shape = [action.size()[-1] for action in rollouts.actions]
         num_steps, num_processes, _ = rollouts.rewards.size()
@@ -49,35 +49,45 @@ class A2C_ACKTR():
         value_loss = advantages.pow(2).mean()
         
         # aggregate across action types
-        action_log_probs = torch.cat([x.unsqueeze(0) for x in action_log_probs], dim=0).mean(0)
-        action_loss = -(advantages.detach() * action_log_probs).mean()
 
-        if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
-            # Compute fisher, see Martens 2014
-            self.actor_critic.zero_grad()
-            pg_fisher_loss = -action_log_probs.mean()
 
-            value_noise = torch.randn(values.size())
-            if values.is_cuda:
-                value_noise = value_noise.cuda()
+        if not ce:
+            action_log_probs = torch.cat([x.unsqueeze(0) for x in action_log_probs], dim=0).mean(0)
+            action_loss = -(advantages.detach() * action_log_probs).mean()
 
-            sample_values = values + value_noise
-            vf_fisher_loss = -(values - sample_values.detach()).pow(2).mean()
+            if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
+                # Compute fisher, see Martens 2014
+                self.actor_critic.zero_grad()
+                pg_fisher_loss = -action_log_probs.mean()
 
-            fisher_loss = pg_fisher_loss + vf_fisher_loss
-            self.optimizer.acc_stats = True
-            fisher_loss.backward(retain_graph=True)
-            self.optimizer.acc_stats = False
-        
-        dist_entropy = torch.cat([x.unsqueeze(0) for x in dist_entropy], dim=0).mean(0)
-        self.optimizer.zero_grad()
-        (value_loss * self.value_loss_coef + action_loss -
-         dist_entropy * self.entropy_coef).backward()
+                value_noise = torch.randn(values.size())
+                if values.is_cuda:
+                    value_noise = value_noise.cuda()
 
-        if self.acktr == False:
-            nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
-                                     self.max_grad_norm)
+                sample_values = values + value_noise
+                vf_fisher_loss = -(values - sample_values.detach()).pow(2).mean()
 
+                fisher_loss = pg_fisher_loss + vf_fisher_loss
+                self.optimizer.acc_stats = True
+                fisher_loss.backward(retain_graph=True)
+                self.optimizer.acc_stats = False
+
+            dist_entropy = torch.cat([x.unsqueeze(0) for x in dist_entropy], dim=0).mean(0)
+            self.optimizer.zero_grad()
+            (value_loss * self.value_loss_coef + action_loss -
+             dist_entropy * self.entropy_coef).backward()
+
+            if self.acktr == False:
+                nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
+                                         self.max_grad_norm)
+        else:
+            action_log_probs = -torch.cat([x.unsqueeze(0) for x in action_log_probs], dim=0).sum(0).mean()
+            self.optimizer.zero_grad()
+
+            action_log_probs.backward()
+            action_loss = action_log_probs
+            value_loss = torch.zeros(1)
+            dist_entropy = torch.zeros(1)
         self.optimizer.step()
 
         return value_loss.item(), action_loss.item(), dist_entropy.item()

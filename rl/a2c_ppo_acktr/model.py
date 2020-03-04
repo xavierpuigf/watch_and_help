@@ -66,7 +66,7 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0):
+    def act(self, inputs, rnn_hxs, masks, deterministic=False, epsilon=0.0, action_indices=None):
 
         affordance_obj1 = inputs['affordance_matrix']
 
@@ -106,24 +106,28 @@ class Policy(nn.Module):
             # if i == 1:
             #     print(new_log_probs)
             # Correct probabilities according to previously selected acitons
-            u = np.random.random()
-            if u < epsilon:
-                uniform_logits = torch.ones(dist.original_logits.shape).to(new_log_probs.device)
-                updated_uniform_logits = utils_rl_agent.update_probs(uniform_logits, i, actions, object_classes,
-                                                                     mask_observations, affordance_obj1)
+            if action_indices is None:
+                u = np.random.random()
+                if u < epsilon:
+                    uniform_logits = torch.ones(dist.original_logits.shape).to(new_log_probs.device)
+                    updated_uniform_logits = utils_rl_agent.update_probs(uniform_logits, i, actions, object_classes,
+                                                                         mask_observations, affordance_obj1)
 
 
-                random_policy = torch.distributions.Categorical(logits=new_log_probs)
-                action = random_policy.sample().unsqueeze(-1)
+                    random_policy = torch.distributions.Categorical(logits=new_log_probs)
+                    action = random_policy.sample().unsqueeze(-1)
 
-            else:
-                if deterministic:
-                    action = dist.mode()
                 else:
-                    try:
-                        action = dist.sample()
-                    except:
-                        pdb.set_trace()
+                    if deterministic:
+                        action = dist.mode()
+                    else:
+                        try:
+                            action = dist.sample()
+                        except:
+                            pdb.set_trace()
+            else:
+                action = action_indices[i][0].long()
+
             actions[i] = action
             # print(new_log_probs.shape)
             actions_log_probs[i] = dist.log_probs(action)

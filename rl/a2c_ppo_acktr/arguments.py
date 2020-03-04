@@ -211,7 +211,14 @@ def get_args():
         help='use a linear schedule on the learning rate')
 
     parser.add_argument(
-        '--executable_file', type=str, default='../../executables/linux02.25.2/exec_linux02.25.2.x86_64')
+        '--executable_file', type=str, default='../../executables/linux03.03/exec_linux03.3multiagent.x86_64')
+
+    parser.add_argument(
+        '--train_mode',
+        default='RL',
+        choices=['BC', 'RL']
+    )
+
 
     parser.add_argument(
         '--base_port', type=int, default=8080)

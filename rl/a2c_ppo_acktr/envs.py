@@ -50,6 +50,7 @@ import pickle
 from agents import MCTS_agent
 from interface.envs.envs import UnityEnv
 from interface.envs.envs_open_containers import UnityEnvOpenContainers
+from interface.envs.envs_bc import UnityEnv as UnityEnvBC
 ## ----------------------------------------------------------------------------
 
 
@@ -61,6 +62,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
+            pdb.set_trace()
             data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
             init_graph = data[0]['init_graph']
 
@@ -92,6 +94,24 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
                            observation_type=env_info['observation_type'],
                            simulator_args=simulator_args,
                            max_episode_length=num_steps)
+
+
+        elif env_id == 'virtualhome_bc':
+            # Only add graphics to the first instance
+            simulator_args = {
+                'file_name': env_info['executable_file'],
+                'x_display': env_info['display'] if rank == 0 else None,
+                'no_graphics': rank > 0
+
+            }
+            env = UnityEnvBC(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=True,
+                           env_task_set_file=env_info['behavior_cloning_train_file'],
+                           simulator_type=simulator_type, base_port=env_info['base_port'],
+                           observation_type=env_info['observation_type'],
+                           simulator_args=simulator_args,
+                           max_episode_length=num_steps)
+
+
         elif env_id == 'virtualhome_opencontainers':
             data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init7_setup_table_1_full.pik', 'rb'))
             init_graph = data[0]['init_graph']
