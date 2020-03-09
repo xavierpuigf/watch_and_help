@@ -1,6 +1,6 @@
-Found path: /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/multiagent/exec_linux03.1multiagent.x86_64
-Mono path[0] = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/multiagent/exec_linux03.1multiagent_Data/Managed'
-Mono config path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/multiagent/exec_linux03.1multiagent_Data/MonoBleedingEdge/etc'
+Found path: /data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent.x86_64
+Mono path[0] = '/data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent_Data/Managed'
+Mono config path = '/data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent_Data/MonoBleedingEdge/etc'
 Preloaded 'ScreenSelector.so'
 Display 0 '0': 1280x1024 (primary device).
 Display 1 '1': 1280x1024 (secondary device).

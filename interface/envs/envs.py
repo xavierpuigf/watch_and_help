@@ -29,6 +29,7 @@ from agents import MCTS_agent, PG_agent
 from gym import spaces, envs
 import ipdb
 from profilehooks import profile
+import copy
 
 import utils_rl_agent
 logger = logging.getLogger("mlagents_envs")
@@ -336,13 +337,13 @@ class UnityEnvWrapper:
                                                        image_synthesis=['normal', 'seg_inst', 'seg_class'])
             pdb.set_trace()
         else:
-            # try:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20, time_scale=10)
-            # except:
-            #     success = False
-            #     message = {}
-        # if not success:
-        #     print('action failed:', message)
+            try:
+                success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20, time_scale=10)
+            except:
+                success = False
+                message = {}
+        if not success:
+            print('action failed:', message)
         #     # ipdb.set_trace()
         result = {}
         for agent_id in agent_do:
@@ -664,6 +665,10 @@ class UnityEnv:
         # reset system agent
         # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
+        # while True:
+        #     env_task = random.choice(self.env_task_set)
+        #     if env_task['task_name'] != 'read_book':
+        #         break
         env_task = random.choice(self.env_task_set)
         self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
@@ -671,7 +676,12 @@ class UnityEnv:
         self.task_goal = env_task['task_goal']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
-        self.goal_spec = self.task_goal[self.system_agent_id]
+        goal_spec = copy.deepcopy(self.task_goal[self.system_agent_id])
+        self.goal_spec = {}
+        for predicate, count in goal_spec.items():
+            if predicate.startswith('on') or predicate.startswith('inside'):
+                self.goal_spec[predicate] = count
+        self.task_goal = {0: self.goal_spec, 1 : self.goal_spec}
 
         random.seed(self.task_id)
         np.random.seed(self.task_id)
@@ -793,7 +803,7 @@ class UnityEnv:
         self.num_steps = 0
         return obs_n
 
-    def reset_MCTS(self, graph=None, task_goal=None, task_id=None):
+    def reset_MCTS(self, graph=None, task_goal=None, task_id=None, mode='full'):
         # reset system agent
         # #self.agents[self.system_agent_id].reset(graph, task_goal, seed=self.system_agent_id)
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
@@ -809,6 +819,15 @@ class UnityEnv:
         self.env_id = env_task['env_id']
         self.goal_spec = self.task_goal[self.system_agent_id]
         self.level = env_task['level']
+
+        if mode == 'basic':
+            goal_spec = copy.deepcopy(self.task_goal[self.system_agent_id])
+            self.goal_spec = {}
+            for predicate, count in goal_spec.items():
+                if predicate.startswith('on') or predicate.startswith('inside'):
+                    self.goal_spec[predicate] = count
+            self.task_goal = {0: self.goal_spec, 1: self.goal_spec}
+
         random.seed(self.task_id)
         np.random.seed(self.task_id)
 
@@ -1382,12 +1401,13 @@ class UnityEnv:
                 if count == 0:
                     continue
                 elements = predicate.split('_')
-                obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
-                loc_class_id = int(self.graph_helper.object_dict.get_id(id2node[int(elements[2])]['class_name']))
-                for tmp_i in range(count):
-                    target_obj_class[pre_id] = obj_class_id
-                    target_loc_class[pre_id] = loc_class_id
-                    pre_id += 1
+                if elements[0] in ['on', 'inside']:
+                    obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
+                    loc_class_id = int(self.graph_helper.object_dict.get_id(id2node[int(elements[2])]['class_name']))
+                    for tmp_i in range(count):
+                        target_obj_class[pre_id] = obj_class_id
+                        target_loc_class[pre_id] = loc_class_id
+                        pre_id += 1
             current_obs.update(
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,
