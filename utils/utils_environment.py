@@ -89,8 +89,7 @@ def inside_not_trans(graph):
 
 
 def convert_action(action_dict):
-    agent_do = list(action_dict.keys())
-
+    agent_do = [item for item, action in action_dict.items() if action is not None]
     # Make sure only one agent interact with the same object
     if len(action_dict.keys()) > 1:
         if sum(['walk' in x for x in action_dict.values()]) == 0:
@@ -100,6 +99,7 @@ def convert_action(action_dict):
                 agent_do = [1]  # [random.choice([0,1])]
 
     script_list = ['']
+
     for agent_id in agent_do:
         script = action_dict[agent_id]
 

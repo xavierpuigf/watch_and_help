@@ -205,7 +205,7 @@ def get_args():
         help='use a linear schedule on the learning rate')
 
     parser.add_argument(
-        '--model_type',
+        '--base_net',
         default='TF',
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
@@ -220,10 +220,53 @@ def get_args():
     )
 
     parser.add_argument(
+        '--epsilon',
+        type=float,
+        default=0.05,
+        help='epsilon for e-greedy')
+
+    parser.add_argument(
+        '--hidden-size',
+        type=int,
+        default=128,
+        help='network dim')
+
+    parser.add_argument(
+        '--nb_episodes',
+        type=int,
+        default=2000,
+        help='number of episodes')
+
+    parser.add_argument(
+        '--max_episode_length',
+        type=int,
+        default=200,
+        help='number of episodes')
+
+
+    parser.add_argument(
+        '--max-num-edges',
+        type=int,
+        default=300,
+        help='how many objects in observation space')
+
+    parser.add_argument(
+        '--max-num-objects',
+        type=int,
+        default=150,
+        help='how many objects in observation space')
+
+    parser.add_argument(
         '--base_port', type=int, default=8080)
 
     parser.add_argument(
         '--display', type=str, default="2")
+
+    parser.add_argument(
+        '--memory-capacity-episodes', type=int, default=10000)
+
+    parser.add_argument('--on-policy', action='store_true', default=False,
+                        help='whether to run on or off policy')
 
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')

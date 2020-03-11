@@ -395,6 +395,7 @@ class MCTS_agent:
     def __init__(self, unity_env, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, recursive=False,
                  num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
+        self.agent_type = 'MCTS'
 
         self.recursive = recursive
         self.unity_env = unity_env
@@ -542,189 +543,189 @@ class MCTS_agent:
 
 
 
-    def run(self, single_agent=False, rec=True, random_goal=False, predicted_task_goal=None):
-        graph = self.env.state
-        if predicted_task_goal is not None:
-            task_goal = copy.deepcopy(predicted_task_goal)
-        else:
-            task_goal = copy.deepcopy(self.unity_env.task_goal)
-            if random_goal:
-                for predicate in task_goal[0]:
-                    u = random.choice([0, 1, 2])
-                    task_goal[0][predicate] = u
-                    task_goal[1][predicate] = u
-        ## --------------------------------------------------------
-        # graph = self.unity_env.inside_not_trans(graph)
-        all_agent_id = self.unity_env.get_all_agent_id()
-        ## --------------------------------------------------------
-        num_agents = 1 if single_agent else 2
-
-        if not single_agent:
-            self.reset(graph, task_goal, seed=self.agent_id)
-        
-            
-        last_position = [200 for _ in all_agent_id]
-        last_walk_room = [False for _ in all_agent_id]
-        num_steps = 0
-
-
-        saved_info = {'task_id': self.unity_env.task_id,
-                      'env_id': self.unity_env.env_id,
-                      'task_name': self.unity_env.task_name,
-                      'gt_goals': self.unity_env.task_goal[0],
-                      'goals': task_goal[0],
-                      'action': {0: [], 1: []}, 
-                      'plan': {0: [], 1: []},
-                      'subgoal': {0: [], 1: []},
-                      'init_pos': {0: None, 1: None},
-                      'finished': None,
-                      'init_unity_graph': None,
-                      'curr_graph': []}
-
-        last_actions = [None] * 2
-        last_subgoals = [None] * 2
-
-        print('Starting')
-        succeed = False
-        while True:
-            graph = self.unity_env.get_graph()
-            if self.logging_graphs:
-                saved_info['curr_graph'].append(graph['nodes']) 
-            saved_info['init_unity_graph'] = self.unity_env.init_unity_graph
-            # pdb.set_trace()
-            # if num_steps == 0:
-            #     graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
-            # graph = self.unity_env.inside_not_trans(graph)
-
-
-            num_steps += 1
-            id2node = {node['id']: node for node in graph['nodes']}
-            for agent_id in range(num_agents):
-                saved_info['init_pos'][agent_id] = id2node[all_agent_id[agent_id]]['bounding_box']['center']
-            
-            ##### We won't need this once the character location is working well ####
-
-            # print('INSIDE', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id and edge['relation_type'] == 'INSIDE'])
-            # # Inside seems to be working now
-            # for it, agent_id in enumerate(all_agent_id):  
-            #     if last_position[it] is not None: 
-            #         character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
-            #             (x['from_id'] == char_id or x['to_id'] == char_id))
-            #         character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
-            #             (x['from_id'] == char_id or x['to_id'] == char_id))
-                    
-            #         if last_walk_room[it]:
-            #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
-            #         else:
-            #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
-            #         graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
-
-
-            # self.unity_env.env.reset(graph, task_goal)
-
-            # print([edge for edge in graph['edges'] if edge['relation_type'] == 'CLOSE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
-            # print([edge for edge in graph['edges'] if edge['relation_type'] == 'INSIDE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
-            # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 306 or edge['to_id'] == 306])
-            # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 202 or edge['to_id'] == 202])
-            print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id])
-            print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
-            ##########
-
-
-            ## --------------------------------------------------------
-            system_agent_action, system_agent_info = self.unity_env.get_system_agent_action(self.unity_env.task_goal, last_actions[0], last_subgoals[0])
-            ## --------------------------------------------------------
-
-            last_actions[0] = system_agent_action
-            last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
-
-            print(system_agent_info['plan'][:3])
-            saved_info['action'][0].append(system_agent_action)
-            saved_info['plan'][0].append(system_agent_info['plan'][:3])
-            saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
-            print('Alice action:', system_agent_action)
-
-            action_dict = {}
-            if system_agent_action is not None:
-                action_dict[0] = system_agent_action
-            if single_agent:
-                my_agent_action = None
-            else:
-                observations = self.env.get_observations(char_index=1)
-                graph_belief = self.sample_belief(observations)
-                self.sim_env.reset(graph_belief, task_goal)
-                if rec:
-                    my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
-                else:
-                    my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], None)
-
-                last_actions[1] = my_agent_action
-                print('bob subgoal:', my_agent_info['subgoals'])
-                last_subgoals[1] = my_agent_info['subgoals'][0] if len(my_agent_info['subgoals']) > 0 else None
-
-                if my_agent_action is None:
-                    print("My agent action is None! DONE!")
-                    # ipdb.set_trace()
-                else:
-                    action_dict[1] = my_agent_action
-                
-                print(my_agent_info['plan'][:3])
-
-                saved_info['action'][1].append(my_agent_action)
-                saved_info['plan'][1].append(my_agent_info['plan'][:3])
-                saved_info['subgoal'][1].append(my_agent_info['subgoals'][:2])
-            ## --------------------------------------------------------
-            # self.unity_env.print_action(system_agent_action, my_agent_action)
-            infos = self.unity_env.unity_simulator.execute(action_dict)
-            for key, action_str in action_dict.items():
-                elements = action_str.split(' ')
-                o1 = int(elements[-1][1:-1])
-                self.unity_env.obj2action[o1] = action_str
-
-            # obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
-            # print('done:', done)
-            # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
-            ## --------------------------------------------------------
-
-            # for char_id, (success, message) in infos.items():
-            #     if not success:
-            #         print(char_id, message)
-
-
-
-            # if success:
-            #     for it, agent_id in enumerate(all_agent_id):
-                    
-            #         last_walk_room[it] = False
-            #         if it in action_dict:
-            #             action = action_dict[it]
-            #         else:
-            #             action = None
-            #         if action is not None and 'walk' in action:
-            #             walk_id = int(action.split('(')[1][:-1])
-            #             if id2node[walk_id]['category'] == 'Rooms':
-            #                 last_position[it] = walk_id
-            #                 last_walk_room[it] = True
-
-
-            obs, reward, done, infos = self.unity_env.step_alice()
-            saved_info['finished'] = infos['finished']
-            
-            if system_agent_action is not None and system_agent_action.startswith('[sit]'):
-                done[0] = True
-                saved_info['finished'] = True
-            if system_agent_action is not None and system_agent_action.startswith('[switchon]'):
-                ipdb.set_trace()
-
-            if self.logging and not self.logging_graphs:
-                Path("../logs_test").mkdir(parents=True, exist_ok=True)
-                with open(self.unity_env.record_dir + '/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
-                    f.write(json.dumps(saved_info, indent=4))
-                # pickle.dump(saved_info, open('../logs_test/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
-            elif self.logging and self.logging_graphs:
-                pickle.dump(saved_info, open(self.unity_env.record_dir + '/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
-            
-            if done[0]: # ended
-                break
-            
-        return self.unity_env.num_steps, saved_info['finished']
+    # def run(self, single_agent=False, rec=True, random_goal=False, predicted_task_goal=None):
+    #     graph = self.env.state
+    #     if predicted_task_goal is not None:
+    #         task_goal = copy.deepcopy(predicted_task_goal)
+    #     else:
+    #         task_goal = copy.deepcopy(self.unity_env.task_goal)
+    #         if random_goal:
+    #             for predicate in task_goal[0]:
+    #                 u = random.choice([0, 1, 2])
+    #                 task_goal[0][predicate] = u
+    #                 task_goal[1][predicate] = u
+    #     ## --------------------------------------------------------
+    #     # graph = self.unity_env.inside_not_trans(graph)
+    #     all_agent_id = self.unity_env.get_all_agent_id()
+    #     ## --------------------------------------------------------
+    #     num_agents = 1 if single_agent else 2
+    #
+    #     if not single_agent:
+    #         self.reset(graph, task_goal, seed=self.agent_id)
+    #
+    #
+    #     last_position = [200 for _ in all_agent_id]
+    #     last_walk_room = [False for _ in all_agent_id]
+    #     num_steps = 0
+    #
+    #
+    #     saved_info = {'task_id': self.unity_env.task_id,
+    #                   'env_id': self.unity_env.env_id,
+    #                   'task_name': self.unity_env.task_name,
+    #                   'gt_goals': self.unity_env.task_goal[0],
+    #                   'goals': task_goal[0],
+    #                   'action': {0: [], 1: []},
+    #                   'plan': {0: [], 1: []},
+    #                   'subgoal': {0: [], 1: []},
+    #                   'init_pos': {0: None, 1: None},
+    #                   'finished': None,
+    #                   'init_unity_graph': None,
+    #                   'curr_graph': []}
+    #
+    #     last_actions = [None] * 2
+    #     last_subgoals = [None] * 2
+    #
+    #     print('Starting')
+    #     succeed = False
+    #     while True:
+    #         graph = self.unity_env.get_graph()
+    #         if self.logging_graphs:
+    #             saved_info['curr_graph'].append(graph['nodes'])
+    #         saved_info['init_unity_graph'] = self.unity_env.init_unity_graph
+    #         # pdb.set_trace()
+    #         # if num_steps == 0:
+    #         #     graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id))]
+    #         # graph = self.unity_env.inside_not_trans(graph)
+    #
+    #
+    #         num_steps += 1
+    #         id2node = {node['id']: node for node in graph['nodes']}
+    #         for agent_id in range(num_agents):
+    #             saved_info['init_pos'][agent_id] = id2node[all_agent_id[agent_id]]['bounding_box']['center']
+    #
+    #         ##### We won't need this once the character location is working well ####
+    #
+    #         # print('INSIDE', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id and edge['relation_type'] == 'INSIDE'])
+    #         # # Inside seems to be working now
+    #         # for it, agent_id in enumerate(all_agent_id):
+    #         #     if last_position[it] is not None:
+    #         #         character_close = lambda x, char_id: x['relation_type'] in ['CLOSE'] and (
+    #         #             (x['from_id'] == char_id or x['to_id'] == char_id))
+    #         #         character_location = lambda x, char_id: x['relation_type'] in ['INSIDE'] and (
+    #         #             (x['from_id'] == char_id or x['to_id'] == char_id))
+    #
+    #         #         if last_walk_room[it]:
+    #         #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id) and not character_close(edge, agent_id)]
+    #         #         else:
+    #         #             graph['edges'] = [edge for edge in graph['edges'] if not character_location(edge, agent_id)]
+    #         #         graph['edges'].append({'from_id': agent_id, 'relation_type': 'INSIDE', 'to_id': last_position[it]})
+    #
+    #
+    #         # self.unity_env.env.reset(graph, task_goal)
+    #
+    #         # print([edge for edge in graph['edges'] if edge['relation_type'] == 'CLOSE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
+    #         # print([edge for edge in graph['edges'] if edge['relation_type'] == 'INSIDE' and (edge['from_id'] == 1 or edge['from_id'] == 299 or edge['to_id'] == 299 or edge['to_id'] == 1)])
+    #         # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 306 or edge['to_id'] == 306])
+    #         # print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 202 or edge['to_id'] == 202])
+    #         print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] in all_agent_id or edge['to_id'] in all_agent_id])
+    #         print('unity env graph:', [edge for edge in graph['edges'] if edge['from_id'] == 1010 or edge['to_id'] == 1010])
+    #         ##########
+    #
+    #
+    #         ## --------------------------------------------------------
+    #         system_agent_action, system_agent_info = self.unity_env.get_system_agent_action(self.unity_env.task_goal, last_actions[0], last_subgoals[0])
+    #         ## --------------------------------------------------------
+    #
+    #         last_actions[0] = system_agent_action
+    #         last_subgoals[0] = system_agent_info['subgoals'][0] if len(system_agent_info['subgoals']) > 0 else None
+    #
+    #         print(system_agent_info['plan'][:3])
+    #         saved_info['action'][0].append(system_agent_action)
+    #         saved_info['plan'][0].append(system_agent_info['plan'][:3])
+    #         saved_info['subgoal'][0].append(system_agent_info['subgoals'][:2])
+    #         print('Alice action:', system_agent_action)
+    #
+    #         action_dict = {}
+    #         if system_agent_action is not None:
+    #             action_dict[0] = system_agent_action
+    #         if single_agent:
+    #             my_agent_action = None
+    #         else:
+    #             observations = self.env.get_observations(char_index=1)
+    #             graph_belief = self.sample_belief(observations)
+    #             self.sim_env.reset(graph_belief, task_goal)
+    #             if rec:
+    #                 my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
+    #             else:
+    #                 my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], None)
+    #
+    #             last_actions[1] = my_agent_action
+    #             print('bob subgoal:', my_agent_info['subgoals'])
+    #             last_subgoals[1] = my_agent_info['subgoals'][0] if len(my_agent_info['subgoals']) > 0 else None
+    #
+    #             if my_agent_action is None:
+    #                 print("My agent action is None! DONE!")
+    #                 # ipdb.set_trace()
+    #             else:
+    #                 action_dict[1] = my_agent_action
+    #
+    #             print(my_agent_info['plan'][:3])
+    #
+    #             saved_info['action'][1].append(my_agent_action)
+    #             saved_info['plan'][1].append(my_agent_info['plan'][:3])
+    #             saved_info['subgoal'][1].append(my_agent_info['subgoals'][:2])
+    #         ## --------------------------------------------------------
+    #         # self.unity_env.print_action(system_agent_action, my_agent_action)
+    #         infos = self.unity_env.unity_simulator.execute(action_dict)
+    #         for key, action_str in action_dict.items():
+    #             elements = action_str.split(' ')
+    #             o1 = int(elements[-1][1:-1])
+    #             self.unity_env.obj2action[o1] = action_str
+    #
+    #         # obs, reward, done, infos = self.unity_env.step_2agents_python(action_dict)
+    #         # print('done:', done)
+    #         # obs, reward, done, infos = self.unity_env.step_with_system_agent_oracle(my_agent_action)
+    #         ## --------------------------------------------------------
+    #
+    #         # for char_id, (success, message) in infos.items():
+    #         #     if not success:
+    #         #         print(char_id, message)
+    #
+    #
+    #
+    #         # if success:
+    #         #     for it, agent_id in enumerate(all_agent_id):
+    #
+    #         #         last_walk_room[it] = False
+    #         #         if it in action_dict:
+    #         #             action = action_dict[it]
+    #         #         else:
+    #         #             action = None
+    #         #         if action is not None and 'walk' in action:
+    #         #             walk_id = int(action.split('(')[1][:-1])
+    #         #             if id2node[walk_id]['category'] == 'Rooms':
+    #         #                 last_position[it] = walk_id
+    #         #                 last_walk_room[it] = True
+    #
+    #
+    #         obs, reward, done, infos = self.unity_env.step_alice()
+    #         saved_info['finished'] = infos['finished']
+    #
+    #         if system_agent_action is not None and system_agent_action.startswith('[sit]'):
+    #             done[0] = True
+    #             saved_info['finished'] = True
+    #         if system_agent_action is not None and system_agent_action.startswith('[switchon]'):
+    #             ipdb.set_trace()
+    #
+    #         if self.logging and not self.logging_graphs:
+    #             Path("../logs_test").mkdir(parents=True, exist_ok=True)
+    #             with open(self.unity_env.record_dir + '/logs_agent_{}_{}.json'.format(self.unity_env.task_id, self.unity_env.task_name), 'w+') as f:
+    #                 f.write(json.dumps(saved_info, indent=4))
+    #             # pickle.dump(saved_info, open('../logs_test/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
+    #         elif self.logging and self.logging_graphs:
+    #             pickle.dump(saved_info, open(self.unity_env.record_dir + '/logs_agent_{}_{}.pik'.format(self.unity_env.task_id, self.unity_env.task_name), 'wb'))
+    #
+    #         if done[0]: # ended
+    #             break
+    #
+    #     return self.unity_env.num_steps, saved_info['finished']

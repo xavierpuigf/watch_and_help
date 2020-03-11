@@ -52,6 +52,7 @@ class GraphHelper():
         self.simulaor_type = simulator_type
         self.objects = self.get_objects()
         self.rooms = ['bathroom', 'bedroom', 'kitchen', 'livingroom']
+        self.removed_categories = ['foor', 'wall', 'ceiling', 'window', 'lamp', 'walllamp']
 
         if simulator_type == 'unity':
             self.actions = [
@@ -79,6 +80,8 @@ class GraphHelper():
         self.state_dict = DictObjId(self.states)
         self.action_dict = DictObjId(self.actions, include_other=False)
 
+
+        self.num_actions = len(self.actions)
         self.num_objects = max_num_objects
         self.num_edges = max_num_edges
         self.num_edge_types = len(self.relation_dict)
@@ -95,7 +98,7 @@ class GraphHelper():
 
     def get_action_affordance_map(self, current_task=None, id2node=None):
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        with open(f'{dir_path}/dataset/object_info_small.json', 'r') as f:
+        with open(f'{dir_path}/../dataset/object_info_small.json', 'r') as f:
             content = json.load(f)
 
         n_actions = len(self.actions)
@@ -156,7 +159,7 @@ class GraphHelper():
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
-        with open(f'{dir_path}/dataset/object_info_small.json', 'r') as f:
+        with open(f'{dir_path}/../dataset/object_info_small.json', 'r') as f:
             content = json.load(f)
         objects = []
         for obj in content.values():
@@ -173,8 +176,7 @@ class GraphHelper():
 
     def build_graph(self, graph, character_id, ids=None, plot_graph=False, level=1):
         if ids is None:
-            ids = [node['id'] for node in graph['nodes']]
-
+            ids = [node['id'] for node in graph['nodes'] if node['class_name'].lower() not in self.removed_categories]
         for node in graph['nodes']:
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
@@ -267,7 +269,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     # if action in ['open', 'close', 'grab', 'putback']:
     #     return False
     #pdb.set_trace()
-    print('Attemptinf', action, o1)
+    #print('Attemptinf', action, o1)
     obj2_str = ''
     obj1_str = ''
     id2node = {node['id']: node for node in graph['nodes']}
@@ -353,11 +355,12 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
     :param mask_observations: bs x max_nodes with the valid nodes
     :return:
     """
-    #pdb.set_trace()
+
     inf_val = 1e9
     if i == 1:
         # Deciding on the object
-        log_probs =  log_probs * mask_observations + (1.-mask_observations) * -inf_val
+        mask_and_class = mask_observations * (object_classes > 0)
+        log_probs =  log_probs * mask_observations + (1.-mask_and_class) * -inf_val
         # check if an object cannot in no class
 
         # b x num_classes

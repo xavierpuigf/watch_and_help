@@ -7,10 +7,11 @@ from envs.unity_environment import UnityEnvironment
 import pdb
 import pickle
 import random
-from agents import MCTS_agent
+from agents import MCTS_agent, RL_agent
 from arguments import get_args
 from algos.arena import Arena
-from utils import utils_goals
+from algos.a2c import A2C
+from utils import utils_goals, utils_rl_agent
 
 if __name__ == '__main__':
     args = get_args()
@@ -18,8 +19,9 @@ if __name__ == '__main__':
     args.num_per_apartment = '50'
     args.mode = 'full'
     args.use_editor = True
+    num_agents = 1
     args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
-                                                                                           args.num_per_apartment,
+                                                                                        args.num_per_apartment,
                                                                                         args.mode)
     data = pickle.load(open(args.dataset_path, 'rb'))
     executable_args = {
@@ -53,10 +55,12 @@ if __name__ == '__main__':
     episode_ids = list(range(len(env_task_set)))
     random.shuffle(episode_ids)
 
-    env = UnityEnvironment(0, 0, 2, env_task_set, use_editor=args.use_editor,
+
+
+    env = UnityEnvironment(0, 0, num_agents, env_task_set, use_editor=args.use_editor,
                            executable_args=executable_args)
 
-    args_common = dict(unity_env=env,
+    args_mcts = dict(unity_env=env,
                        recursive=True,
                        max_episode_length=5,
                        num_simulation=100,
@@ -67,13 +71,19 @@ if __name__ == '__main__':
                        num_processes=1,
                        logging=True)
 
+
+    graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
+                                              max_num_edges=args.max_num_edges, current_task=None, simulator_type='unity')
+
     args_agent1 = {'agent_id': 1, 'char_index': 0}
-    args_agent2 = {'agent_id': 2, 'char_index': 1}
-    args_agent1.update(args_common)
-    args_agent2.update(args_common)
-    agents = [MCTS_agent(**args_agent1), MCTS_agent(**args_agent2)]
-    arena = Arena(agents, env)
-    arena.reset()
+    args_agent2 = {'agent_id': 1, 'char_index': 0, 'args': args, 'graph_helper': graph_helper}
+    args_agent1.update(args_mcts)
+    #args_agent2.update(args_common)
+    agents = [MCTS_agent(**args_agent1), RL_agent(**args_agent2)]
+    agents = [RL_agent(**args_agent2)]
+    arena = A2C(agents, env, args)
+    arena.train()
+    pdb.set_trace()
 
     arena.run()
 

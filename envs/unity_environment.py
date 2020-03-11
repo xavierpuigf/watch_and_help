@@ -30,6 +30,8 @@ class UnityEnvironment(BaseEnvironment):
         random.seed(env_id)
         np.random.seed(env_id)
 
+        self.steps = 0
+
         self.pythnon_graph = None
         self.test_mode = test_mode
         self.env_task_set = env_task_set
@@ -115,6 +117,7 @@ class UnityEnvironment(BaseEnvironment):
         obs = self.get_observations()
         graph = self.get_graph()
         self.python_graph_reset(graph)
+        self.steps += 1
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):
@@ -161,6 +164,7 @@ class UnityEnvironment(BaseEnvironment):
         self.id2node = {node['id']: node for node in graph['nodes']}
 
         obs = self.get_observations()
+        self.steps = 0
         return obs
 
     def get_graph(self):
