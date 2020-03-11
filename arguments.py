@@ -238,11 +238,28 @@ def get_args():
         help='number of episodes')
 
     parser.add_argument(
+        '--replay_start',
+        type=int,
+        default=2,
+        help='when to start using the replay buffer')
+
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=2,
+        help='batch size for replay buffer')
+
+    parser.add_argument(
         '--max_episode_length',
         type=int,
         default=200,
         help='number of episodes')
 
+    parser.add_argument(
+        '--balanced_sample',
+        action='store_true',
+        default=False,
+        help='what')
 
     parser.add_argument(
         '--max-num-edges',

@@ -63,7 +63,6 @@ class A2C(Arena):
                         len(self.memory_all[agent_id].memory[self.memory_all[agent_id].position]) > 0:
                     self.memory_all[agent_id].append(None, None, None, 0, 0)
 
-        pdb.set_trace()
         return c_r_all
 
 
@@ -79,7 +78,6 @@ class A2C(Arena):
         start_episode_id = 1
         for episode_id in range(start_episode_id, self.args.nb_episodes):
             c_r_all = self.rollout()
-            pdb.set_trace()
             print("episode: #{} steps: {} reward: {}".format(episode_id, self.env.steps, [c_r_all[agent_id] for agent_id in trainable_agents]))
 
 
@@ -88,7 +86,6 @@ class A2C(Arena):
 
 
             # ===================== off-policy training =====================
-            pdb.set_trace()
             if not self.args.on_policy and episode_id - start_episode_id + 1 >= self.args.replay_start:
                 nb_replays = 1
                 for replay_id in range(nb_replays):
@@ -97,11 +94,13 @@ class A2C(Arena):
                             trajs = self.memory_all[agent_id].sample_batch_balanced(
                                 self.args.batch_size,
                                 self.args.neg_ratio,
-                                maxlen=args.max_episode_length)
+                                maxlen=self.args.max_episode_length)
                         else:
                             trajs = self.memory_all[agent_id].sample_batch(
                                 self.args.batch_size,
-                                maxlen=args.max_episode_length)
+                                maxlen=self.args.max_episode_length)
+
+                        pdb.set_trace()
 
                         N = len(trajs[0])
                         policies, actions, rewards, Vs, old_policies, dones, masks = \
