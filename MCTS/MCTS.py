@@ -62,7 +62,7 @@ class MCTS:
         curr_vh_state_tmp, curr_state_tmp, _, satisfied, unsatisfied, _, actions_parent = curr_root.id[1]
         subgoals = self.get_subgoal_space(curr_state_tmp, satisfied, unsatisfied, opponent_subgoal, verbose=1)
         # subgoals = [sg for sg in subgoals if sg[0] != opponent_subgoal] # avoid repreating
-        print(curr_state_tmp['edges'])
+        #print(curr_state_tmp['edges'])
         print('satisfied:', satisfied)
         print('unsatisfied:', unsatisfied)
         print('subgoals:', subgoals)

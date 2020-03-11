@@ -1,3 +1,5 @@
+import pdb
+
 def inside_not_trans(graph):
     id2node = {node['id']: node for node in graph['nodes']}
     parents = {}
@@ -84,3 +86,72 @@ def inside_not_trans(graph):
         raise Exception
 
     return graph
+
+
+def convert_action(action_dict):
+    agent_do = list(action_dict.keys())
+
+    # Make sure only one agent interact with the same object
+    if len(action_dict.keys()) > 1:
+        if sum(['walk' in x for x in action_dict.values()]) == 0:
+            # continue
+            objects_interaction = [x.split('(')[1].split(')')[0] for x in action_dict.values()]
+            if len(set(objects_interaction)) == 1:
+                agent_do = [1]  # [random.choice([0,1])]
+
+    script_list = ['']
+    for agent_id in agent_do:
+        script = action_dict[agent_id]
+
+        current_script = ['<char{}> {}'.format(agent_id, script)]
+
+        script_list = [x + '|' + y if len(x) > 0 else y for x, y in zip(script_list, current_script)]
+
+    # if self.follow:
+    script_list = [x.replace('[walk]', '[walktowards]') for x in script_list]
+    # script_all = script_list
+    return script_list
+
+
+
+def check_progress(state, goal_spec):
+    """TODO: add more predicate checkers; currently only ON"""
+    unsatisfied = {}
+    satisfied = {}
+    id2node = {node['id']: node for node in state['nodes']}
+    for key, value in goal_spec.items():
+        elements = key.split('_')
+        unsatisfied[key] = value if elements[0] not in ['offOn', 'offInside'] else 0
+        satisfied[key] = [None] * 2
+        satisfied[key]
+        satisfied[key] = []
+        for edge in state['edges']:
+            if elements[0] in ['on', 'inside']:
+                if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+            elif elements[0] == 'offOn':
+                if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    unsatisfied[key] += 1
+            elif elements[0] == 'offInside':
+                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
+                    unsatisfied[key] += 1
+            elif elements[0] == 'holds':
+                if edge['relation_type'].lower().startswith('holds') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+            elif elements[0] == 'sit':
+                if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
+        if elements[0] == 'turnOn':
+            if 'ON' in id2node[int(elements[1])]['states']:
+                predicate = '{}_{}_{}'.format(elements[0], elements[1], 1)
+                satisfied[key].append(predicate)
+                unsatisfied[key] -= 1
+    return satisfied, unsatisfied

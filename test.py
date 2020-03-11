@@ -17,8 +17,9 @@ if __name__ == '__main__':
     args.task = 'setup_table'
     args.num_per_apartment = '50'
     args.mode = 'full'
+    args.use_editor = True
     args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
-                                                                                        args.num_per_apartment,
+                                                                                           args.num_per_apartment,
                                                                                         args.mode)
     data = pickle.load(open(args.dataset_path, 'rb'))
     executable_args = {
@@ -52,9 +53,11 @@ if __name__ == '__main__':
     episode_ids = list(range(len(env_task_set)))
     random.shuffle(episode_ids)
 
-    env = UnityEnvironment(0, 0, 2, env_task_set, executable_args=executable_args)
+    env = UnityEnvironment(0, 0, 2, env_task_set, use_editor=args.use_editor,
+                           executable_args=executable_args)
 
     args_common = dict(unity_env=env,
+                       recursive=True,
                        max_episode_length=5,
                        num_simulation=100,
                        max_rollout_steps=3,
@@ -72,7 +75,5 @@ if __name__ == '__main__':
     arena = Arena(agents, env)
     arena.reset()
 
-
-    arena.step()
-    pdb.set_trace()
+    arena.run()
 

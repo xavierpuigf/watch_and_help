@@ -113,6 +113,8 @@ class UnityEnvironment(BaseEnvironment):
 
         self.changed_graph = True
         obs = self.get_observations()
+        graph = self.get_graph()
+        self.python_graph_reset(graph)
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):
@@ -183,6 +185,7 @@ class UnityEnvironment(BaseEnvironment):
             return self.env.get_observations(char_index=agent_id)
 
         elif obs_type == 'full':
+            pdb.set_trace()
             return self.get_graph()
 
         elif obs_type == 'visible':

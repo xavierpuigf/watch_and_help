@@ -17,6 +17,11 @@ from vh_graph.envs.vh_env import VhGraphEnv
 #
 from MCTS import *
 
+import sys
+sys.path.append('..')
+from utils import utils_environment as utils_env
+
+
 def find_heuristic(agent_id, char_index, unsatisfied, env_graph, simulator, object_target):
     observations = simulator.get_observations(env_graph, char_index=char_index)
     id2node = {node['id']: node for node in env_graph['nodes']}
@@ -309,7 +314,6 @@ def clean_graph(state, goal_spec, last_opened):
         if obj_id not in ids_interaction:
             ids_interaction.append(obj_id)
 
-    print(ids_interaction)
 
     new_graph = {
             "edges": [edge for edge in state['edges'] if edge['from_id'] in ids_interaction and edge['to_id'] in ids_interaction],
@@ -318,47 +322,6 @@ def clean_graph(state, goal_spec, last_opened):
 
     return new_graph
 
-def check_progress(state, goal_spec):
-    """TODO: add more predicate checkers; currently only ON"""
-    unsatisfied = {}
-    satisfied = {}
-    id2node = {node['id']: node for node in state['nodes']}
-    for key, value in goal_spec.items():
-        elements = key.split('_')
-        unsatisfied[key] = value if elements[0] not in ['offOn', 'offInside'] else 0 
-        satisfied[key] = [None] * 2
-        satisfied[key]
-        satisfied[key] = []
-        for edge in state['edges']:
-            if elements[0] in ['on', 'inside']:
-                if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                    satisfied[key].append(predicate)
-                    unsatisfied[key] -= 1
-            elif elements[0] == 'offOn':
-                if edge['relation_type'].lower() == 'on' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                    unsatisfied[key] += 1
-            elif elements[0] == 'offInside':
-                if edge['relation_type'].lower() == 'inside' and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
-                    predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])
-                    unsatisfied[key] += 1
-            elif elements[0] == 'holds':
-                if edge['relation_type'].lower().startswith('holds') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
-                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
-                    satisfied[key].append(predicate)
-                    unsatisfied[key] -= 1
-            elif elements[0] == 'sit':
-                if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
-                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
-                    satisfied[key].append(predicate)
-                    unsatisfied[key] -= 1
-        if elements[0] == 'turnOn':
-            if 'ON' in id2node[int(elements[1])]['states']:
-                predicate = '{}_{}_{}'.format(elements[0], elements[1], 1)
-                satisfied[key].append(predicate)
-                unsatisfied[key] -= 1
-    return satisfied, unsatisfied
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, last_action, opponent_subgoal=None):
     init_state = env.state
@@ -372,14 +335,12 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
     #                 mcts.last_opened = None
     #                 break
     if True: # clean graph
-        import pdb
-        pdb.set_trace()
         init_state = clean_graph(init_state, goal_spec, mcts.last_opened)
         init_vh_state = env.get_vh_state(init_state)
     else:
         init_vh_state = env.vh_state
 
-    satisfied, unsatisfied = check_progress(init_state, goal_spec)
+    satisfied, unsatisfied = utils_env.check_progress(init_state, goal_spec)
     print('goal_spec:', goal_spec)
     # print('get plan:', init_state)
 
@@ -432,8 +393,10 @@ class MCTS_agent:
     MCTS for a single agent
     """
     def __init__(self, unity_env, agent_id, char_index,
-                 max_episode_length, num_simulation, max_rollout_steps, c_init, c_base,
+                 max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, recursive=False,
                  num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
+
+        self.recursive = recursive
         self.unity_env = unity_env
         self.env = unity_env.env
 
@@ -512,8 +475,6 @@ class MCTS_agent:
     def get_action(self, obs, task_goal, opponent_subgoal=None):
 
         self.sample_belief(obs)
-        import pdb
-        pdb.set_trace()
         self.sim_env.reset(self.previous_belief_graph, task_goal)
 
         last_action = self.last_action
