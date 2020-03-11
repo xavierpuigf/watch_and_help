@@ -1,5 +1,6 @@
 from .arena import Arena
 from utils.memory import MemoryMask
+import torch
 import pdb
 
 class A2C(Arena):
@@ -8,6 +9,7 @@ class A2C(Arena):
         self.memory_capacity_episodes = args.memory_capacity_episodes
         self.args = args
         self.memory_all = []
+        self.device = torch.device('cuda:0' if args.cuda else 'cpu')
 
     def reset(self):
         super(A2C, self).reset()
@@ -40,10 +42,11 @@ class A2C(Arena):
                 # append to memory
                 for agent_id in range(self.num_agents):
                     if self.agents[agent_id].agent_type == 'RL':
-                        state = obs[agent_id]
+                        state = agent_info[agent_id]['state_inputs']
                         policy = [log_prob.data for log_prob in agent_info[agent_id]['log_probs']]
-                        action = agent_actions[agent_id]
+                        action = agent_info[agent_id]['actions']
                         rewards = reward
+
                         self.memory_all[agent_id].append(state, policy, action, rewards, 1)
 
         # padding
@@ -53,8 +56,9 @@ class A2C(Arena):
                 if self.agents[agent_id].agent_type == 'RL':
                     state = obs[agent_id]
                     policy = [log_prob.data for log_prob in agent_info[agent_id]['log_probs']]
-                    action = agent_actions[agent_id]
+                    action = agent_info[agent_id]['actions']
                     rewards = reward
+                    print('SAVING', action)
                     self.memory_all[agent_id].append(state, policy, action, rewards, 1)
 
         if not self.args.on_policy:
@@ -100,10 +104,35 @@ class A2C(Arena):
                                 self.args.batch_size,
                                 maxlen=self.args.max_episode_length)
 
-                        pdb.set_trace()
 
                         N = len(trajs[0])
                         policies, actions, rewards, Vs, old_policies, dones, masks = \
                             [], [], [], [], [], [], []
 
                         pdb.set_trace()
+
+                        for t in range(len(trajs) - 1):
+                            hx = torch.zeros(N, self.agents[agent_id].hidden_size).to(self.device)
+                            cx = torch.zeros(N,  self.agents[agent_id].hidden_size).to(self.device)
+
+                            # TODO: decompose here
+                            state = torch.cat([trajs[t][i].state.to(self.device)
+                                               for i in range(N)])
+                            action = torch.cat([torch.LongTensor([trajs[t][i].action]).unsqueeze(0).to(self.device)
+                                                for i in range(N)])
+                            old_policy = torch.cat([trajs[t][i].policy.to(self.device)
+                                                    for i in range(N)])
+                            done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
+                                0).to(self.device)
+                                              for i in range(N)])
+                            mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
+                                              for i in range(N)])
+                            reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
+
+                            # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
+                            v, _, policy, hx = self.agents[agent_id].act(inputs, hx, mask)
+
+                            [array.append(element) for array, element in
+                             zip((policies, actions, rewards, Vs, old_policies, dones, masks),
+                                 (policy, action, reward, v, old_policy, done, mask))]
+                            dones.append(done)

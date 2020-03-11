@@ -4,7 +4,7 @@ from __future__ import division
 import random
 import pickle
 from collections import deque, namedtuple
-
+import pdb
 
 Transition = namedtuple('Transition',
             ('state', 'policy', 'action', 'reward', 'mask'))
@@ -121,6 +121,7 @@ class MemoryMask():
         idx = range(self.episode_counts)
         batch_idx = random.sample(idx, batch_size)
         batch = []
+        pdb.set_trace()
         for mem_idx in batch_idx:
           mem = self.memory[mem_idx]
           T = len(mem)

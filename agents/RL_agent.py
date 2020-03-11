@@ -4,6 +4,7 @@ from gym import spaces
 from utils import utils_rl_agent
 import numpy as np
 import pdb
+import copy
 
 class RL_agent:
     """
@@ -104,6 +105,7 @@ class RL_agent:
         info_model['log_probs'] = action_log_probs
         info_model['value'] = value
         info_model['actions'] = action
+        info_model['state_inputs'] = copy.deepcopy(inputs)
 
 
         visible_objects = info[-1]
