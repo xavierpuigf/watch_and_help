@@ -57,7 +57,7 @@ def update_graph(new_graph, graph, char_id):
     """
     Update the new_graph(to be expanded) according to the char_id in original graph
     """
-    with open('./class_name_equivalence.json', 'r') as f:
+    with open('class_name_equivalence.json', 'r') as f:
         name_equivalence = json.load(f)
 
     nodes = new_graph['nodes']

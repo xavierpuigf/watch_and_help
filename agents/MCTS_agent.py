@@ -372,6 +372,8 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
     #                 mcts.last_opened = None
     #                 break
     if True: # clean graph
+        import pdb
+        pdb.set_trace()
         init_state = clean_graph(init_state, goal_spec, mcts.last_opened)
         init_vh_state = env.get_vh_state(init_state)
     else:
@@ -507,8 +509,15 @@ class MCTS_agent:
         print('---')
 
 
-    def get_action(self, task_goal, last_action, last_subgoal, opponent_subgoal):
+    def get_action(self, obs, task_goal, opponent_subgoal=None):
 
+        self.sample_belief(obs)
+        import pdb
+        pdb.set_trace()
+        self.sim_env.reset(self.previous_belief_graph, task_goal)
+
+        last_action = self.last_action
+        last_subgoal = self.last_subgoal
 
         """TODO: just close fridge, dishwasher?"""
         
@@ -540,6 +549,9 @@ class MCTS_agent:
             # 'belief': copy.deepcopy(self.belief.edge_belief),
             # 'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
         }
+
+        self.last_action = action
+        self.last_subgoal = info['subgoals'][0]
         return action, info
 
     def reset(self, graph, task_goal, seed=0, simulator_type='python', is_alice=False):
@@ -547,6 +559,8 @@ class MCTS_agent:
             s, graph = self.comm.environment_graph()
 
 
+        self.last_action = None
+        self.last_subgoal = None
         """TODO: do no need this?"""
         if simulator_type == 'unity':
             self.env.reset(graph, task_goal)
@@ -565,65 +579,6 @@ class MCTS_agent:
 
 
 
-    def rollout(self, graph, task_goal):
-
-        self.reset(graph, task_goal)
-        nb_steps = 0
-        done = False
-
-        root_action = None
-        root_node = None
-        obs_graph = None
-        # print(self.sim_env.pomdp)
-
-
-        history = {'belief': [], 'plan': [], 'action': [], 'belief_graph': []}
-
-        unsatisfied = {}
-        satisfied = {}
-        for key, value in task_goal[0]:
-            unsatisfied[key] = value
-            satisfied[key] = [None] * 2
-            satisfied[key][0] = 0
-            satisfied[key][1] = []
-
-        last_action = None
-
-        while not done and nb_steps < self.max_episode_length:
-
-            """TODO: get satisfied, unsatisfied from the latest state"""
-
-            action, info = self.get_action(task_goal[0], last_action)
-            last_action = action
-            plan, belief, belief_graph = info['plan'], info['belief'], info['belief_graph']
-
-            if obs_graph is not None:
-                self.get_relations_char(obs_graph)
-
-            history['belief'].append(belief)
-            history['plan'].append(plan)
-            history['action'].append(action)
-            history['belief_graph'].append(belief_graph)
-
-            reward, state, infos = self.env.step({0: action})
-            done = abs(reward[0] - 1.0) < 1e-6
-            nb_steps += 1
-
-
-            obs_graph = self.env.get_observations(char_index=self.char_index)
-            graph_belief = self.sample_belief(self.env.get_observations(char_index=self.char_index))
-            self.sim_env.reset(graph_belief, task_goal)
-            self.sim_env.to_pomdp()
-
-            state = self.env.vh_state.to_dict()
-
-
-            sim_state = self.sim_env.vh_state.to_dict()
-            
-
-
-        import pdb
-        return history
 
 
     def run(self, single_agent=False):

@@ -1,0 +1,284 @@
+Found path: /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64
+Mono path[0] = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/../executables/exec_linux03.03/exec_linux03.3multiagent_Data/Managed'
+Mono config path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/../executables/exec_linux03.03/exec_linux03.3multiagent_Data/MonoBleedingEdge/etc'
+Preloaded 'ScreenSelector.so'
+Can't get home directory!
+ 
+(Filename:  Line: 385)
+
+Unable to synchronize player prefs
+Initialize engine version: 2018.4.15f1 (13f5a1bf9ca1)
+Forcing GfxDevice: Null
+GfxDevice: creating device client; threaded=0
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Completed reload, in  0.149 seconds
+UnloadTime: 0.767000 ms
+Can't get home directory!
+ 
+(Filename:  Line: 385)
+
+Unable to synchronize player prefs
+Starting
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+Started
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885265.3413982", "action": "idle"}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885278.3983886", "action": "reset", "intParams": [3]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Unloading 6 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 59.660000 ms
+
+Unloading 107604 unused Assets to reduce memory usage. Loaded Objects now: 7203.
+Total: 189.020000 ms (FindLiveObjects: 16.495000 ms CreateObjectMapping: 17.155000 ms MarkObjects: 5.277000 ms  DeleteObjects: 150.091000 ms)
+
+Starting
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+Started
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+env_graph time: 165
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885281.690104", "action": "camera_count"}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885281.6939049", "action": "add_character", "stringParams": ["{\"character_resource\": \"Chars/Female1\", \"mode\": \"random\", \"character_position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"initial_room\": \"\"}"]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Kitchen_01
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Bathroom_03
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Bedroom_03
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Livingroom_08
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885281.8646367", "action": "add_character", "stringParams": ["{\"character_resource\": \"Chars/Male1\", \"mode\": \"random\", \"character_position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"initial_room\": \"\"}"]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885282.026664", "action": "environment_graph"}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+env_graph time: 8
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885283.5310175", "action": "reset", "intParams": [1]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Unloading 5 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 34.876000 ms
+
+Unloading 107857 unused Assets to reduce memory usage. Loaded Objects now: 6282.
+Total: 175.531000 ms (FindLiveObjects: 34.645000 ms CreateObjectMapping: 16.423000 ms MarkObjects: 5.728000 ms  DeleteObjects: 118.733000 ms)
+
+Starting
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+Started
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+env_graph time: 70
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885286.797525", "action": "camera_count"}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885286.8017185", "action": "add_character", "stringParams": ["{\"character_resource\": \"Chars/Female1\", \"mode\": \"random\", \"character_position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"initial_room\": \"\"}"]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Bathroom_05
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Kitchen_02
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Bedroom_02
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+PRE_ROO_Livingroom_02
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885286.8952522", "action": "add_character", "stringParams": ["{\"character_resource\": \"Chars/Male1\", \"mode\": \"random\", \"character_position\": {\"x\": 0, \"y\": 0, \"z\": 0}, \"initial_room\": \"\"}"]}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Received request: {"id": "1583885287.0420148", "action": "environment_graph"}
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Processing
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+env_graph time: 7
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+

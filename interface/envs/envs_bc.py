@@ -302,7 +302,7 @@ class UnityEnvWrapper:
             pdb.set_trace()
         else:
             # try:
-            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20)
+            success, message = self.comm.render_script(script_list, recording=False, gen_vid=False, processing_time_limit=20, time_step=10)
             # except:
             #     success = False
             #     message = {}
@@ -344,8 +344,10 @@ class UnityEnv:
                  recording=False,
                  record_dir=None,
                  base_port=8080,
+                 testing=False,
                  simulator_args={}):
 
+        self.testing = testing
         self.observation_type = observation_type
         self.env_id = env_id
         self.simulator_args = simulator_args
@@ -719,14 +721,20 @@ class UnityEnv:
                     current_edges.append({'from_id': object_grabbed, 'to_id': object_placed, 'relation_type': rel_type})
 
         # Update the location of the character
+        cont = 0
         for it, graph in enumerate(new_graph_seq):
             try:
                 ac1, obj1 = parse_script_line(actions[0][it])
                 ac2, obj2 = parse_script_line(actions[1][it])
             except:
+                break
                 pdb.set_trace()
             if obj1[0][1] not in room_nodes_ids:
-                r1 = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == obj1[-1][1] and edge['to_id'] in room_nodes_ids][0]
+                try:
+                    r1 = [edge['to_id'] for edge in graph['edges'] if edge['from_id'] == obj1[-1][1] and edge['to_id'] in room_nodes_ids][0]
+                except:
+                    break
+                    pdb.set_trace()
             else:
                 charp1 = [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0]
                 r1 = self.in_room(charp1, room_nodes)
@@ -739,7 +747,9 @@ class UnityEnv:
 
             graph['edges'].append({'from_id': 1, 'relation_type': 'INSIDE', 'to_id': r1})
             graph['edges'].append({'from_id': 2, 'relation_type': 'INSIDE', 'to_id': r2})
+            cont += 1
 
+        new_graph_seq = new_graph_seq[:cont]
         for it, gr in enumerate(new_graph_seq):
             objects_in_graph = [edge['from_id'] for edge in gr['edges']]
             objects_in_graph += [edge['to_id'] for edge in gr['edges'] if 'HOLDS' in edge['relation_type']]
@@ -760,20 +770,54 @@ class UnityEnv:
         # #self.history_observations = [torch.zeros(1, 84, 84) for _ in range(self.len_hist)]
         self.step_count = 0
         curr_file_selected = random.choice(self.env_task_set_files)
-        env_task = pickle.load(open(curr_file_selected, 'rb'))
+        env_task = None
+        random.seed(self.env_id)
+        while env_task is None:
+            try:
+                print(curr_file_selected)
+                with open(curr_file_selected, 'rb') as f:
+                    env_task = pickle.load(f)
+            except:
+                continue
 
         while env_task['action'][1][0] is None or len(env_task['curr_graph']) == 0:
             curr_file_selected = random.choice(self.env_task_set_files)
-            env_task = pickle.load(open(curr_file_selected, 'rb'))
+            env_task = None
+            while env_task is None:
+                try:
+                    with open(curr_file_selected, 'rb') as f:
+                        env_task = pickle.load(f)
+                except:
+                    continue
 
+        print(curr_file_selected)
         self.env_task = env_task
         self.env_task['curr_graph'] = self.update_graph_seq(env_task['init_unity_graph'], env_task['curr_graph'], env_task['action'])
+
+
 
 
         self.task_id = env_task['task_id']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
+        if self.recording:
+            Path(record_dir).mkdir(parents=True, exist_ok=True)
+            file_name_prefix = str(self.task_id) + '_' + self.task_name
+        else:
+            record_dir = 'Output'
+            file_name_prefix = None
 
+        if self.testing:
+            if self.unity_simulator is None:
+                self.unity_simulator = UnityEnvWrapper(int(self.env_id), int(self.env_copy_id),
+                                                       init_graph=self.init_graph,
+                                                       num_agents=self.num_agents,
+                                                       base_port=self.base_port,
+                                                       recording=self.recording,
+                                                       output_folder=record_dir + '/',
+                                                       file_name_prefix=file_name_prefix,
+                                                       simulator_args=self.simulator_args)
+            self.unity_simulator.reset(self.env_id, self.init_graph)
 
         self.init_graph = env_task['init_unity_graph']
 
@@ -973,95 +1017,100 @@ class UnityEnv:
         return converted_action
 
     def step(self, my_agent_action):
-        #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
-        if self.step_count < len(self.env_task['curr_graph']) - 1:
-            self.step_count += 1
-            obs = self.get_observations()[0]
-            reward = np.array([0.])
-            done = np.array([False])
+        if True:
+            if self.unity_simulator:
+                action_str = self.get_action_command(my_agent_action)
+                print(action_str)
+            #actions = ['<char0> [walktowards] <microwave> ({})'.format(self.micro_id), '<char0> [turnleft]', '<char0> [turnright]']
+            if self.step_count < len(self.env_task['curr_graph']) - 1:
+                self.step_count += 1
+                obs = self.get_observations()[0]
+                reward = np.array([0.])
+                done = np.array([False])
 
-            return obs, reward, done, {}
+                return obs, reward, done, {}
+            else:
+                done = np.array([True])
+                obs = self.get_observations()[0]
+                reward = np.array([0.])
+                return obs, reward, done, {}
         else:
-            done = np.array([True])
-            obs = self.get_observations()[0]
-            reward = np.array([0.])
-            return obs, reward, done, {}
 
-        # if self.simulator_type == 'unity':
-        #     action_dict = {}
-        #     # system agent action
-        #
-        #     if self.enable_alice:
-        #         graph = self.get_graph()
-        #         # pdb.set_trace()
-        #         if self.num_steps == 0:
-        #             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
-        #         self.env.reset(graph , self.task_goal)
-        #         system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
-        #         self.last_actions[0] = system_agent_action
-        #         self.last_subgoals[0] = system_agent_info['subgoals'][0]
-        #         # pdb.set_trace()
-        #         if system_agent_action is not None:
-        #             action_dict[0] = system_agent_action
-        #
-        #     # user agent action
-        #     action_str = self.get_action_command(my_agent_action)
-        #     if action_str is not None:
-        #         action_dict[1] = action_str
-        #         elements = action_str.split(' ')
-        #         o1 = int(elements[-1][1:-1])
-        #         self.obj2action[o1] = action_str
-        #     print(action_dict)
-        #     dict_results = self.unity_simulator.execute(action_dict)
-        #     self.num_steps += 1
-        #     obs, info = self.get_observations()
-        #
-        #     # pdb.set_trace()
-        #     print(info[-1][2])
-        #     reward, done, info = self.reward(visible_ids=info[-1][2], graph=info[1])
-        #     dict_results['finished'] = done
-        #     reward = torch.Tensor([reward])
-        #     if self.num_steps >= self.max_episode_length:
-        #         done = True
-        #     done = np.array([done])
-        #     graph = self.unity_simulator.get_graph()
-        #     self.env.reset(graph, self.task_goal)
-        # else:
-        #     action_dict = {}
-        #     if self.enable_alice:
-        #         graph = self.env.state
-        #         if self.num_steps == 0:
-        #             graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (
-        #                         edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
-        #         self.env.reset(graph, self.task_goal)
-        #         system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal,
-        #                                                                               self.last_actions[0],
-        #                                                                               self.last_subgoals[0])
-        #         self.last_actions[0] = system_agent_action
-        #         self.last_subgoals[0] = system_agent_info['subgoals'][0]
-        #         if system_agent_action is not None:
-        #             action_dict[0] = system_agent_action
-        #     action_str = self.get_action_command(my_agent_action)
-        #
-        #     if action_str is not None:
-        #         # if 'walk' not in action_str:
-        #         # print(action_str)
-        #         action_dict[1] = action_str
-        #
-        #     _, obs_n, dict_results = self.env.step(action_dict)
-        #     obs, _ = self.get_observations()
-        #     self.num_steps += 1
-        #     reward, done, info = self.reward()
-        #     dict_results['finished'] = done
-        #     reward = reward# - 0.01
-        #     reward = torch.Tensor([reward])
-        #     if self.num_steps >= self.max_episode_length:
-        #         done = True
-        #     done = np.array([done])
-        #
-        # self.last_action = action_str
-        # self.step_count +=  1
-        # return obs, reward, done, dict_results
+            if self.simulator_type == 'unity':
+                action_dict = {}
+                # system agent action
+                pdb.set_trace()
+                if self.enable_alice:
+                    graph = self.get_graph()
+                    # pdb.set_trace()
+                    if self.num_steps == 0:
+                        graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+                    self.env.reset(graph , self.task_goal)
+                    system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal, self.last_actions[0], self.last_subgoals[0])
+                    self.last_actions[0] = system_agent_action
+                    self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                    # pdb.set_trace()
+                    if system_agent_action is not None:
+                        action_dict[0] = system_agent_action
+
+                # user agent action
+                action_str = self.get_action_command(my_agent_action)
+                if action_str is not None:
+                    action_dict[1] = action_str
+                    elements = action_str.split(' ')
+                    o1 = int(elements[-1][1:-1])
+                    self.obj2action[o1] = action_str
+                print(action_dict)
+                dict_results = self.unity_simulator.execute(action_dict)
+                self.num_steps += 1
+                obs, info = self.get_observations()
+
+                # pdb.set_trace()
+                print(info[-1][2])
+                reward, done, info = self.reward(visible_ids=info[-1][2], graph=info[1])
+                dict_results['finished'] = done
+                reward = torch.Tensor([reward])
+                if self.num_steps >= self.max_episode_length:
+                    done = True
+                done = np.array([done])
+                graph = self.unity_simulator.get_graph()
+                self.env.reset(graph, self.task_goal)
+            else:
+                action_dict = {}
+                if self.enable_alice:
+                    graph = self.env.state
+                    if self.num_steps == 0:
+                        graph['edges'] = [edge for edge in graph['edges'] if not (edge['relation_type'] == 'CLOSE' and (
+                                    edge['from_id'] in self.agent_ids or edge['to_id'] in self.agent_ids))]
+                    self.env.reset(graph, self.task_goal)
+                    system_agent_action, system_agent_info = self.get_system_agent_action(self.task_goal,
+                                                                                          self.last_actions[0],
+                                                                                          self.last_subgoals[0])
+                    self.last_actions[0] = system_agent_action
+                    self.last_subgoals[0] = system_agent_info['subgoals'][0]
+                    if system_agent_action is not None:
+                        action_dict[0] = system_agent_action
+                action_str = self.get_action_command(my_agent_action)
+
+                if action_str is not None:
+                    # if 'walk' not in action_str:
+                    # print(action_str)
+                    action_dict[1] = action_str
+
+                _, obs_n, dict_results = self.env.step(action_dict)
+                obs, _ = self.get_observations()
+                self.num_steps += 1
+                reward, done, info = self.reward()
+                dict_results['finished'] = done
+                reward = reward# - 0.01
+                reward = torch.Tensor([reward])
+                if self.num_steps >= self.max_episode_length:
+                    done = True
+                done = np.array([done])
+
+            self.last_action = action_str
+            self.step_count +=  1
+            return obs, reward, done, dict_results
 
     def step_2agents_python(self, action_dict):
         _, obs_n, info_n = self.env.step(action_dict)
@@ -1438,6 +1487,7 @@ class UnityEnv:
                 print('OBJECT INTERACITON', object_interact, action_str)
                 pdb.set_trace()
 
+            self.graph_helper.obj1_affordance[:] = 1.
             current_obs.update(
                 {
                     'affordance_matrix': self.graph_helper.obj1_affordance,

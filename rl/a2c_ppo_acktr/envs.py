@@ -62,7 +62,6 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             _, domain, task = env_id.split('.')
             env = dm_control2gym.make(domain_name=domain, task_name=task)
         elif env_id == 'virtualhome':
-            pdb.set_trace()
             data = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/init1_10_same_room_simple.p', 'rb'))
             init_graph = data[0]['init_graph']
 
@@ -71,18 +70,8 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             # print([(id2node[edge['from_id']]['class_name'], edge['from_id'], id2node[edge['to_id']]['class_name'], edge['to_id']) for edge in init_graph['edges'] if edge['from_id'] == 115])
             # ipdb.set_trace()
 
-            # env_task_set = [{
-            #     'env_id': 0,
-            #     'task_id': 0,
-            #     'task_name': 'setup_table',
-            #     'init_graph': init_graph,
-            #     'init_rooms': [76, 210],
-            #     'level': 0,
-            #     'task_goal': {agent_id: {'on_wineglass_235': 1} for agent_id in range(2)}
-            # }]
-
-            env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
-
+            env_task_set = pickle.load(
+                open(home_path + '/vh_multiagent_models/initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
             # Only add graphics to the first instance
             simulator_args = {
                 'file_name': env_info['executable_file'],
@@ -92,6 +81,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             }
             print(simulator_type)
             env = UnityEnv(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=True, env_task_set=env_task_set,
+                           test_mode=env_info['testing'],
                            task_type=env_info['task'], simulator_type=simulator_type, base_port=env_info['base_port'],
                            observation_type=env_info['observation_type'],
                            simulator_args=simulator_args,
@@ -108,6 +98,7 @@ def make_env(env_info, num_steps, simulator_type, seed, rank, log_dir, allow_ear
             }
             env = UnityEnvBC(num_agents=2, env_copy_id=rank, seed=rank, enable_alice=True,
                            env_task_set_file=env_info['behavior_cloning_train_file'],
+                            testing=env_info['testing'],
                            simulator_type=simulator_type, base_port=env_info['base_port'],
                            observation_type=env_info['observation_type'],
                            simulator_args=simulator_args,

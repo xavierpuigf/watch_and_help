@@ -56,6 +56,7 @@ def main():
             'env_name': args.env_name,
             'simulator_type': args.simulator_type,
             'task': args.task_type,
+            'testing': False,
             'task': args.task_type,
             'base_port': args.base_port,
             'display': args.display,

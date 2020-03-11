@@ -490,7 +490,7 @@ class UnityEnv:
         {predicate: number}
         predicate format:
             on_objclass_id
-            inside_objclass_id
+            inside_objclass_id 
         '''
 
         # Low level policy reward

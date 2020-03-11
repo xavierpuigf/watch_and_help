@@ -1,0 +1,608 @@
+[
+    [
+        true,
+        200,
+        [
+            [
+                "<char0> [walktowards] <pudding> (378)"
+            ],
+            [
+                "<char0> [walktowards] <pudding> (378)|<char1> [walkto]  <bedroom> (207)"
+            ],
+            [
+                "<char0> [grab] <pudding> (378)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <kitchentable> (73)"
+            ],
+            [
+                "<char0> [walktowards] <kitchentable> (73)"
+            ],
+            [
+                "<char0> [putback] <pudding> (378) <kitchentable> (73)"
+            ],
+            [
+                "<char0> [walktowards] <stove> (100)"
+            ],
+            [
+                "<char0> [open] <stove> (100)"
+            ],
+            [
+                "<char0> [close] <stove> (100)"
+            ],
+            [
+                "<char0> [walktowards] <dishwasher> (99)"
+            ],
+            [
+                "<char0> [open] <dishwasher> (99)"
+            ],
+            [
+                "<char0> [close] <dishwasher> (99)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <bathroom> (167)"
+            ],
+            [
+                "<char0> [walktowards] <kitchen> (11)"
+            ],
+            [
+                "<char0> [walktowards] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [walktowards] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [walktowards] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [walktowards] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [walktowards] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [open] <kitchencabinets> (74)"
+            ],
+            [
+                "<char0> [grab] <pudding> (372)"
+            ],
+            [
+                "<char0> [walktowards] <kitchentable> (73)"
+            ],
+            [
+                "<char0> [putback] <pudding> (372) <kitchentable> (73)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ],
+            [
+                "<char0> [walktowards] <wine> (370)"
+            ]
+        ]
+    ]
+]
