@@ -452,12 +452,16 @@ class MCTS:
         if opponent_subgoal is not None:
             elements = opponent_subgoal.split('_')
             if elements[0] in ['put', 'putIn']:
+                obj1_class = None
                 for node in state['nodes']:
                     if node['id'] == int(elements[1]):
                         obj1_class = node['class_name']
                         break
-                opponent_predciate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
-                opponent_predciate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
+                if obj1_class is None:
+                    opponent_subgoal = None
+                else:
+                    opponent_predciate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
+                    opponent_predciate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
 
         subgoal_space, obsed_subgoal_space= [], []
         for predicate, count in unsatisfied.items():

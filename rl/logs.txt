@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 Found path: /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/rl/../../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64
 Mono path[0] = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/rl/../../executables/exec_linux03.03/exec_linux03.3multiagent_Data/Managed'
 Mono config path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/rl/../../executables/exec_linux03.03/exec_linux03.3multiagent_Data/MonoBleedingEdge/etc'
+=======
+Found path: /data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent.x86_64
+Mono path[0] = '/data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent_Data/Managed'
+Mono config path = '/data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent_Data/MonoBleedingEdge/etc'
+>>>>>>> 4db5b685b87c390404b7b6f1451e62d878257584
 Preloaded 'ScreenSelector.so'
 Display 0 '0': 1280x1024 (primary device).
 Display 1 '1': 1280x1024 (secondary device).

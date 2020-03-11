@@ -102,57 +102,67 @@ parser.add_argument('--recording', action='store_true', default=False, help='Tru
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--mode', type=str, default='simple', help='Task name')
-parser.add_argument('--port', type=int, default=8093, help='port')
+parser.add_argument('--port', type=int, default=8095, help='port')
 parser.add_argument('--display', type=str, default='2', help='display')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
+parser.add_argument('--num-per-task', type=int, default=30, help='Maximum #episodes/taks')
 
 
 if __name__ == '__main__':
-        args = parser.parse_args()
-        print (' ' * 26 + 'Options')
-        for k, v in vars(args).items():
-                print(' ' * 26 + k + ': ' + str(v))
-        env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
-        args.record_dir = '../record/init7_Bob_train_set'
+    args = parser.parse_args()
+    print (' ' * 26 + 'Options')
+    for k, v in vars(args).items():
+            print(' ' * 26 + k + ': ' + str(v))
+    env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/test_env_set_{}.pik'.format(args.num_per_task), 'rb'))
+    # env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
+    args.record_dir = '../record/init7_BobNoRec_test_set_{}'.format(args.num_per_task)
 
-        num_agents = 2
+    num_agents = 2
 
-        if args.use_editor:
-            unity_env = UnityEnv(num_agents=num_agents, 
-                                 max_episode_length=args.max_episode_length,
-                                 simulator_type=args.simulator_type,
-                                 env_task_set=env_task_set,
-                                 logging=True,
-                                 logging_graphs=True,
-                                 recording=args.recording,
-                                 record_dir=args.record_dir,
-                                 base_port=None,
-                                 simulator_args={})
-        else:
-            unity_env = UnityEnv(num_agents=num_agents, 
-                                 max_episode_length=args.max_episode_length,
-                                 simulator_type=args.simulator_type,
-                                 env_task_set=env_task_set,
-                                 logging=True,
-                                 logging_graphs=True,
-                                 recording=args.recording,
-                                 record_dir=args.record_dir,
-                                 base_port=args.port,
-                                 simulator_args={
-                                   'file_name': '/data/vision/torralba//frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent.x86_64',
-                                   'x_display': args.display,
-                                   'no_graphics': False
-                                })
-        
+    if args.use_editor:
+        unity_env = UnityEnv(num_agents=num_agents, 
+                             max_episode_length=args.max_episode_length,
+                             simulator_type=args.simulator_type,
+                             env_task_set=env_task_set,
+                             logging=True,
+                             logging_graphs=False,
+                             recording=args.recording,
+                             record_dir=args.record_dir,
+                             base_port=None,
+                             simulator_args={})
+    else:
+        unity_env = UnityEnv(num_agents=num_agents, 
+                             max_episode_length=args.max_episode_length,
+                             simulator_type=args.simulator_type,
+                             env_task_set=env_task_set,
+                             logging=True,
+                             logging_graphs=False,
+                             recording=args.recording,
+                             record_dir=args.record_dir,
+                             base_port=args.port,
+                             simulator_args={
+                               'file_name': '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux03.03/exec_linux03.3multiagent.x86_64',
+                               'x_display': args.display,
+                               'no_graphics': False
+                            })
+
+    episode_ids = list(range(len(env_task_set)))
+    random.shuffle(episode_ids)
+    S = [0] * len(episode_ids)
+    L = [200] * len(episode_ids)
+    test_results = {}
+
+    for iter_id in range(10):
+        if iter_id > 0:
+            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
+        cnt = 0
         steps_list, failed_tasks = [], []
-        episode_ids = list(range(len(env_task_set)))
-        random.shuffle(episode_ids)
         for episode_id in episode_ids:
+            if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
             print('episode:', episode_id)
-            # if episode_id != 10: continue
             try:
                 #if True:
-                unity_env.reset_MCTS(task_id=episode_id, mode='basic')
+                unity_env.reset_MCTS(task_id=episode_id)
 
                 graph = unity_env.get_graph()
 
@@ -162,7 +172,11 @@ if __name__ == '__main__':
                         failed_tasks.append(episode_id)
                     else:
                         steps_list.append(steps)
-
+                    is_finished = 1 if finished else 0
+                    S[episode_id] = is_finished
+                    L[episode_id] = steps
+                    test_results[episode_id] = {'S': is_finished, 
+                                                'L': steps}
                 else:
                     ## ------------------------------------------------------------------------------
                     ## your agent, add your code here
@@ -179,13 +193,32 @@ if __name__ == '__main__':
                                          num_samples=1,
                                          num_processes=1,
                                          logging=True,
-                                         logging_graphs=True)
+                                         logging_graphs=False)
 
                     ## ------------------------------------------------------------------------------
                     ## run your agent
                     ## ------------------------------------------------------------------------------
-                    my_agent.run()
+                    steps, finished = my_agent.run(rec=False)
+                    if not finished:
+                        failed_tasks.append(episode_id)
+                    else:
+                        steps_list.append(steps)
+                    is_finished = 1 if finished else 0
+                    S[episode_id] = is_finished
+                    L[episode_id] = steps
+                    test_results[episode_id] = {'S': is_finished, 
+                                                'L': steps}
+                print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
+                print('failed_tasks:', failed_tasks)
+                print('AL:', np.array(L).mean())
+                print('SR:', np.array(S).mean())
+                cnt += 1
+                print('episodes:', cnt)
             except:
                 pass
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
+        print('AL:', np.array(L).mean())
+        print('SR:', np.array(S).mean())
+        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
+

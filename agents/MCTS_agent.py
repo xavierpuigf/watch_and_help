@@ -581,9 +581,17 @@ class MCTS_agent:
 
 
 
-    def run(self, single_agent=False):
+    def run(self, single_agent=False, rec=True, random_goal=False, predicted_task_goal=None):
         graph = self.env.state
-        task_goal = self.unity_env.task_goal
+        if predicted_task_goal is not None:
+            task_goal = copy.deepcopy(predicted_task_goal)
+        else:
+            task_goal = copy.deepcopy(self.unity_env.task_goal)
+            if random_goal:
+                for predicate in task_goal[0]:
+                    u = random.choice([0, 1, 2])
+                    task_goal[0][predicate] = u
+                    task_goal[1][predicate] = u
         ## --------------------------------------------------------
         # graph = self.unity_env.inside_not_trans(graph)
         all_agent_id = self.unity_env.get_all_agent_id()
@@ -602,6 +610,7 @@ class MCTS_agent:
         saved_info = {'task_id': self.unity_env.task_id,
                       'env_id': self.unity_env.env_id,
                       'task_name': self.unity_env.task_name,
+                      'gt_goals': self.unity_env.task_goal[0],
                       'goals': task_goal[0],
                       'action': {0: [], 1: []}, 
                       'plan': {0: [], 1: []},
@@ -662,7 +671,7 @@ class MCTS_agent:
 
 
             ## --------------------------------------------------------
-            system_agent_action, system_agent_info = self.unity_env.get_system_agent_action(task_goal, last_actions[0], last_subgoals[0])
+            system_agent_action, system_agent_info = self.unity_env.get_system_agent_action(self.unity_env.task_goal, last_actions[0], last_subgoals[0])
             ## --------------------------------------------------------
 
             last_actions[0] = system_agent_action
@@ -683,7 +692,10 @@ class MCTS_agent:
                 observations = self.env.get_observations(char_index=1)
                 graph_belief = self.sample_belief(observations)
                 self.sim_env.reset(graph_belief, task_goal)
-                my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
+                if rec:
+                    my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], last_subgoals[0])
+                else:
+                    my_agent_action, my_agent_info = self.get_action(task_goal[1], last_actions[1], last_subgoals[1], None)
 
                 last_actions[1] = my_agent_action
                 print('bob subgoal:', my_agent_info['subgoals'])
@@ -737,10 +749,10 @@ class MCTS_agent:
             obs, reward, done, infos = self.unity_env.step_alice()
             saved_info['finished'] = infos['finished']
             
-            if system_agent_action.startswith('[sit]'):
+            if system_agent_action is not None and system_agent_action.startswith('[sit]'):
                 done[0] = True
                 saved_info['finished'] = True
-            if system_agent_action.startswith('[switchon]'):
+            if system_agent_action is not None and system_agent_action.startswith('[switchon]'):
                 ipdb.set_trace()
 
             if self.logging and not self.logging_graphs:
