@@ -84,7 +84,7 @@ class ActorCritic(nn.Module):
         indices = [1, 0] # object1, action
 
         actions = [None] * len(indices)
-        actions_log_probs = [None] * len(indices)
+        actions_probs = [None] * len(indices)
         for i in indices:
             distr = self.dist[i]
             if i == 0:
@@ -93,6 +93,8 @@ class ActorCritic(nn.Module):
                 dist = distr(context_goal, object_goal)
 
             new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
+            if i == 0:
+                print(new_log_probs)
             dist = distr.update_logs(new_log_probs)
             # if i == 1:
             # if i == 1:
@@ -112,17 +114,16 @@ class ActorCritic(nn.Module):
                     if deterministic:
                         action = dist.mode()
                     else:
-                        try:
-                            action = dist.sample()
-                        except:
-                            pdb.set_trace()
+                        action = dist.sample()
             else:
                 action = action_indices[i][0].long()
 
             actions[i] = action
-            actions_log_probs[i] = dist.log_probs(action)
+            actions_probs[i] = dist.probs #dist.log_probs(action)
 
-        return value, actions, actions_log_probs, rnn_hxs
+            #pdb.set_trace()
+            #print('PROBABILITY', actions_probs[action])
+        return value, actions, actions_probs, rnn_hxs
 
     def get_value(self, inputs, rnn_hxs, masks):
 

@@ -130,9 +130,9 @@ class Policy(nn.Module):
 
             actions[i] = action
             # print(new_log_probs.shape)
-            actions_log_probs[i] = dist.log_probs(action)
-
-            dist_entropy = dist.entropy().mean()
+            actions_log_probs[i] = dist.logits #log_probs(action)
+            pdb.set_trace()
+            #dist_entropy = dist.entropy().mean()
         return value, actions, actions_log_probs, rnn_hxs
 
     def get_value(self, inputs, rnn_hxs, masks):
@@ -140,26 +140,7 @@ class Policy(nn.Module):
         outputs_model = self.base(inputs, rnn_hxs, masks)
         return outputs_model[0]
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        outputs_model = self.base(inputs, rnn_hxs, masks)
-        if len(outputs_model) == 3:
-            value, actor_features, rnn_hxs = outputs_model
-            summary_nodes = actor_features
-        else:
-            value, summary_nodes, actor_features, rnn_hxs = outputs_model
-        
-        action_log_probs = []
-        dist_entropy = []
-        for i, distr in enumerate(self.dist):
-            if i == 0:
-                dist = distr(summary_nodes)
-            else:
-                dist = distr(summary_nodes, actor_features)
 
-            action_log_probs.append(dist.log_probs(action[i]))
-            dist_entropy.append(dist.entropy().mean())
-
-        return value, action_log_probs, dist_entropy, rnn_hxs
 
 
 class NNBase(nn.Module):

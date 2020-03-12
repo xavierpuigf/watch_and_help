@@ -66,6 +66,11 @@ class GraphHelper():
                 'grab',
                 'no_action'
             ]
+            self.actions_no_args = [
+                'turnleft',
+                'walkforward',
+                'turnright'
+            ]
         else:
             self.actions = [
                 'walk',
@@ -148,13 +153,17 @@ class GraphHelper():
                                       current_task[0].keys() if t.split('_')[0] not in ['holds', 'sit', 'turnOn']]
                         ids_goal2 = np.array([self.object_dict.get_id(obj_name) for obj_name in obj_names2])
                         self.obj1_affordance[action_id, ids_goal2] = 1
+
         # self.obj1_affordance[:,self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('open'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('close'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
-        self.obj1_affordance[:,id_no_obj] = 0
+        self.obj1_affordance[:, id_no_obj] = 0
 
+        if self.simulaor_type == 'unity':
+            for action_no_args in self.actions_no_args:
+                self.obj1_affordance[self.action_dict.get_id(action_no_args), id_no_obj] = 1
 
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -202,8 +211,12 @@ class GraphHelper():
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
         class_names_str = [node['class_name'] for node in nodes]
-        visible_nodes = [(node['class_name'], node['id']) for node in nodes]
         node_ids = [node['id'] for node in nodes]
+
+        # The self agent is equal to no_obj
+        class_names_str[0] = 'no_obj'
+
+        visible_nodes = [(class_name, node_id) for class_name, node_id in zip(class_names_str, node_ids)]
 
         class_names = np.array([self.object_dict.get_id(class_name) for class_name in class_names_str])
         node_states = np.array([self.one_hot(node['states']) for node in nodes])
@@ -360,7 +373,7 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
     if i == 1:
         # Deciding on the object
         mask_and_class = mask_observations * (object_classes > 0)
-        log_probs =  log_probs * mask_observations + (1.-mask_and_class) * -inf_val
+        log_probs =  log_probs * mask_and_class + (1.-mask_and_class) * -inf_val
         # check if an object cannot in no class
 
         # b x num_classes
@@ -374,6 +387,7 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
         #mask_nodes = ((mask_object_class * target_one_hot).sum(-1) > 0)[:, :log_probs.shape[1]]
         #mask = mask_nodes.to(log_probs.device).float()
         #log_probs = log_probs * mask + (1. - mask) * -inf_val
+
         return log_probs
 
     elif i == 0:
@@ -382,6 +396,9 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
 
         mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1).long()).squeeze(-1).float().to(log_probs.device)
         # mask[action_dict.get_id('open'),object_dict.get_id('kitchencounterdrawer') ]= 0
+
+        if mask.sum() == 0:
+            pdb.set_trace()
         log_probs = log_probs * mask + (1.-mask) * -inf_val
         
         #print("CLASS OBJ")

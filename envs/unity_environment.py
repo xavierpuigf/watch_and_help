@@ -133,6 +133,8 @@ class UnityEnvironment(BaseEnvironment):
             env_task = self.env_task_set[self.count_test]
         else:
             env_task = random.choice(self.env_task_set)
+
+
         self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
         self.init_rooms = env_task['init_rooms']

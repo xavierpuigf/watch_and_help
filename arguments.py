@@ -250,6 +250,12 @@ def get_args():
         help='batch size for replay buffer')
 
     parser.add_argument(
+        '--t_max',
+        type=int,
+        default=100,
+        help='number of episodes')
+
+    parser.add_argument(
         '--max_episode_length',
         type=int,
         default=200,
@@ -280,7 +286,13 @@ def get_args():
         '--display', type=str, default="2")
 
     parser.add_argument(
+        '--max_gradient_norm', type=int, default=10)
+
+    parser.add_argument(
         '--memory-capacity-episodes', type=int, default=10000)
+
+    parser.add_argument('--no-time-normalization', action='store_true', default=False,
+                        help='whether to run on or off policy')
 
     parser.add_argument('--on-policy', action='store_true', default=False,
                         help='whether to run on or off policy')

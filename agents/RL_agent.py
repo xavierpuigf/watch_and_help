@@ -105,7 +105,7 @@ class RL_agent:
         info_model['log_probs'] = action_log_probs
         info_model['value'] = value
         info_model['actions'] = action
-        info_model['state_inputs'] = copy.deepcopy(inputs)
+        info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
 
 
         visible_objects = info[-1]
