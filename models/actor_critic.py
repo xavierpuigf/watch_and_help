@@ -31,6 +31,8 @@ class ActorCritic(nn.Module):
     def __init__(self, action_space, base_name, base_kwargs=None, seed=0):
         np.random.seed(seed)
         torch.manual_seed(seed)
+
+
         super(ActorCritic, self).__init__()
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -95,8 +97,8 @@ class ActorCritic(nn.Module):
                 dist = distr(context_goal, object_goal)
 
             new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
-            if i == 0:
-                print(new_log_probs)
+            # if i == 0:
+            #   print(new_log_probs)
             dist = distr.update_logs(new_log_probs)
             # if i == 1:
             # if i == 1:
@@ -118,7 +120,7 @@ class ActorCritic(nn.Module):
                     else:
                         action = dist.sample()
             else:
-                action = action_indices[i][0].long()
+                action = action_indices[i].long()
 
             actions[i] = action
             actions_probs[i] = dist.probs

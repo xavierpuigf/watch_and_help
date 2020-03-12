@@ -13,6 +13,7 @@ import numpy as np
 
 class UnityEnvironment(BaseEnvironment):
 
+
     def __init__(self,
                  env_id,
                  apartment_id,
@@ -154,7 +155,7 @@ class UnityEnvironment(BaseEnvironment):
             self.comm.expand_scene(updated_graph)
         else:
             self.comm.expand_scene(env_task['init_graph'])
-        
+
         self.offset_cameras = self.comm.camera_count()[1]
         for i in range(self.num_agents):
             if i in self.agent_info:

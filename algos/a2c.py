@@ -3,6 +3,7 @@ from utils.memory import MemoryMask
 import torch
 import numpy as np
 import pdb
+import copy
 from torch import optim, nn
 
 class A2C(Arena):
@@ -32,7 +33,6 @@ class A2C(Arena):
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             action_dict = {}
             nb_steps += 1
-            print(nb_steps)
             for agent_index in agent_info.keys():
                 # currently single reward for both agents
                 c_r_all[agent_index] += reward
@@ -60,13 +60,12 @@ class A2C(Arena):
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if self.agents[agent_id].agent_type == 'RL':
-                    state = state = agent_info[agent_id]['state_inputs']
+                    state = agent_info[agent_id]['state_inputs']
                     if 'edges' in obs.keys():
                         pdb.set_trace()
                     policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
                     action = agent_info[agent_id]['actions']
                     rewards = reward
-                    print('SAVING', action)
                     self.memory_all[agent_id].append(state, policy, action, 0, 0)
 
         if not self.args.on_policy:
@@ -118,14 +117,17 @@ class A2C(Arena):
                             [], [], [], [], [], [], []
 
                         hx = torch.zeros(N, self.agents[agent_id].hidden_size).to(self.device)
+
+                        state_keys = trajs[0][0].state.keys()
                         for t in range(len(trajs) - 1):
 
                             # TODO: decompose here
-                            state_keys = trajs[t][0].state.keys()
                             inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]) for state_key in state_keys}
 
                             action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
                                                 for i in range(N)]) for action_index in range(2)]
+
+
                             old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
                                                     for i in range(N)]) for policy_index in range(2)]
                             done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
@@ -136,8 +138,8 @@ class A2C(Arena):
                             reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
 
                             # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
-                            print('FORWARD', hx.shape, mask.shape)
-                            v, _, policy, hx = self.agents[agent_id].actor_critic.act(inputs, hx, mask)
+                            v, _, policy, hx = self.agents[agent_id].actor_critic.act(inputs, hx, mask, action_indices=action)
+
 
                             [array.append(element) for array, element in
                              zip((policies, actions, rewards, Vs, old_policies, dones, masks),
@@ -192,11 +194,6 @@ class A2C(Arena):
             Vret = torch.from_numpy(rewards[i]).float() + args.gamma * Vret
             A = Vret.to(self.device) - Vs[i]
 
-
-            print('ACTION', policies[i][0].gather(1, actions[i][0]))
-            if (policies[i][0].gather(1, actions[i][0]).min() == 0):
-                pdb.set_trace()
-            #print('OBJECTS', policies[i][1].gather(1, actions[i][1]))
             log_prob_action = policies[i][0].gather(1, actions[i][0]).log()
             log_prob_object = policies[i][1].gather(1, actions[i][1]).log()
             log_prob = log_prob_action + log_prob_object
@@ -233,8 +230,8 @@ class A2C(Arena):
             value_loss += (A ** 2 / 2 * masks[i]).sum(0) / max(1.0, num_masks)
 
             # Entropy for object and action
-            entropy_loss += ((policies[i][0]).log() * policies[i][0]).sum(1).mean(0)
-            entropy_loss += ((policies[i][1]).log() * policies[i][1]).sum(1).mean(0)
+            entropy_loss += ((policies[i][0]+1e-9).log() * policies[i][0]).sum(1).mean(0)
+            entropy_loss += ((policies[i][1]+1e-9).log() * policies[i][1]).sum(1).mean(0)
 
         if not args.no_time_normalization:
             policy_loss /= episode_length

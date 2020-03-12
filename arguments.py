@@ -253,7 +253,7 @@ def get_args():
         '--t_max',
         type=int,
         default=100,
-        help='number of episodes')
+        help='number of steps until breaking bptt')
 
     parser.add_argument(
         '--max_episode_length',

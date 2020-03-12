@@ -94,7 +94,6 @@ class RL_agent:
 
 
         masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
-        print('FORWARD2', rnn_hxs.shape, masks.shape)
         value, action, action_probs, rnn_state = self.actor_critic.act(inputs_tensor,
                                                                            rnn_hxs,
                                                                            masks,
@@ -113,7 +112,8 @@ class RL_agent:
 
         action_str = self.get_action_instr(action, visible_objects, observation)
 
-        print('ACTIONS', info_model['actions'], action_str, action_probs[0][0, action[0]])
+        # print('ACTIONS', info_model['actions'], action_str, action_probs[0],
+        #       'IDS', inputs_tensor['node_ids'][0, :4])
         return action_str, info_model
 
 
