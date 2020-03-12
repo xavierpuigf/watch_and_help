@@ -28,7 +28,9 @@ class Flatten(nn.Module):
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, action_space, base_name, base_kwargs=None):
+    def __init__(self, action_space, base_name, base_kwargs=None, seed=0):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
         super(ActorCritic, self).__init__()
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -119,7 +121,9 @@ class ActorCritic(nn.Module):
                 action = action_indices[i][0].long()
 
             actions[i] = action
-            actions_probs[i] = dist.probs #dist.log_probs(action)
+            actions_probs[i] = dist.probs
+
+
 
             #pdb.set_trace()
             #print('PROBABILITY', actions_probs[action])

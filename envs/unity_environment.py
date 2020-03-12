@@ -118,6 +118,8 @@ class UnityEnvironment(BaseEnvironment):
         graph = self.get_graph()
         self.python_graph_reset(graph)
         self.steps += 1
+        if done:
+            pdb.set_trace()
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):
@@ -149,8 +151,10 @@ class UnityEnvironment(BaseEnvironment):
         if environment_graph is not None:
             # TODO: this should be modified to extend well
             updated_graph = environment_graph
-            self.expand_scene(updated_graph)
-
+            self.comm.expand_scene(updated_graph)
+        else:
+            self.comm.expand_scene(env_task['init_graph'])
+        
         self.offset_cameras = self.comm.camera_count()[1]
         for i in range(self.num_agents):
             if i in self.agent_info:

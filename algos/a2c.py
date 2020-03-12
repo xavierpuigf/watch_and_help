@@ -47,7 +47,7 @@ class A2C(Arena):
                 for agent_id in range(self.num_agents):
                     if self.agents[agent_id].agent_type == 'RL':
                         state = agent_info[agent_id]['state_inputs']
-                        policy = [log_prob.data for log_prob in agent_info[agent_id]['log_probs']]
+                        policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
                         action = agent_info[agent_id]['actions']
                         rewards = reward
 
@@ -56,11 +56,14 @@ class A2C(Arena):
         # padding
         # TODO: is this correct? Padding that is valid?
         while nb_steps < self.args.max_episode_length:
+            pdb.set_trace()
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if self.agents[agent_id].agent_type == 'RL':
-                    state = obs[agent_id]
-                    policy = [log_prob.data for log_prob in agent_info[agent_id]['log_probs']]
+                    state = state = agent_info[agent_id]['state_inputs']
+                    if 'edges' in obs.keys():
+                        pdb.set_trace()
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
                     action = agent_info[agent_id]['actions']
                     rewards = reward
                     print('SAVING', action)
@@ -133,6 +136,7 @@ class A2C(Arena):
                             reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
 
                             # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
+                            print('FORWARD', hx.shape, mask.shape)
                             v, _, policy, hx = self.agents[agent_id].actor_critic.act(inputs, hx, mask)
 
                             [array.append(element) for array, element in
@@ -188,9 +192,16 @@ class A2C(Arena):
             Vret = torch.from_numpy(rewards[i]).float() + args.gamma * Vret
             A = Vret.to(self.device) - Vs[i]
 
+
+            print('ACTION', policies[i][0].gather(1, actions[i][0]))
+            if (policies[i][0].gather(1, actions[i][0]).min() == 0):
+                pdb.set_trace()
+            #print('OBJECTS', policies[i][1].gather(1, actions[i][1]))
             log_prob_action = policies[i][0].gather(1, actions[i][0]).log()
             log_prob_object = policies[i][1].gather(1, actions[i][1]).log()
             log_prob = log_prob_action + log_prob_object
+
+
             #print(log_prob_action, log_prob_object)
             if off_policy:
                 log_prob_action_old = old_policies[i][0].gather(1, actions[i][0]).log()

@@ -94,7 +94,8 @@ class RL_agent:
 
 
         masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
-        value, action, action_log_probs, rnn_state = self.actor_critic.act(inputs_tensor,
+        print('FORWARD2', rnn_hxs.shape, masks.shape)
+        value, action, action_probs, rnn_state = self.actor_critic.act(inputs_tensor,
                                                                            rnn_hxs,
                                                                            masks,
                                                                            deterministic=self.deterministic,
@@ -102,7 +103,7 @@ class RL_agent:
                                                                            action_indices=action_indices)
         self.hidden_state = rnn_state
         info_model = {}
-        info_model['log_probs'] = action_log_probs
+        info_model['probs'] = action_probs
         info_model['value'] = value
         info_model['actions'] = action
         info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
@@ -111,6 +112,8 @@ class RL_agent:
         visible_objects = info[-1]
 
         action_str = self.get_action_instr(action, visible_objects, observation)
+
+        print('ACTIONS', info_model['actions'], action_str, action_probs[0][0, action[0]])
         return action_str, info_model
 
 

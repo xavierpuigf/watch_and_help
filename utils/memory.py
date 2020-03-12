@@ -11,7 +11,7 @@ Transition = namedtuple('Transition',
 
 
 class MemoryMask():
-    def __init__(self, max_episodes):
+    def __init__(self, max_episodes, seed=0):
         self.num_episodes = max_episodes
         self.memory = deque(maxlen=self.num_episodes)
         self.memory.append([])
@@ -19,6 +19,7 @@ class MemoryMask():
         self.max_reward = [-10]
         self.c_reward = [0]
         self.episode_counts = 0
+        random.seed(seed)
 
 
     def reset(self):
