@@ -20,7 +20,6 @@ class RL_agent:
         # TODO: encode states
         base_kwargs = {
             'hidden_size': args.hidden_size,
-            'recurrent': True,
             'max_nodes': self.max_num_objects,
             'num_classes': self.num_object_classes
 

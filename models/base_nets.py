@@ -93,34 +93,19 @@ class NNBase(nn.Module):
         return x, hxs
 
 
-class GraphEncoder(nn.Module):
-    def __init__(self, hidden_size=512, num_nodes=100, num_rels=5, num_classes=150):
-        super(GraphEncoder, self).__init__()
-        self.hidden_size = hidden_size
-        self.graph_encoder = GraphModel(
-            num_classes=num_classes,
-            num_nodes=num_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, max_nodes=num_nodes)
-
-    def forward(self, inputs):
-        # Build the graph
-        hidden_feats = self.graph_encoder(inputs)
-        return hidden_feats
-
-
-class TransformerBase(NNBase):
-
-    def __init__(self, recurrent=False, hidden_size=128, max_nodes=150, num_classes=100):
-        super(TransformerBase, self).__init__(recurrent, hidden_size, hidden_size)
+class GoalAttentionModel(NNBase):
+    def __init__(self, recurrent=False, hidden_size=128, num_classes=100, node_encoder=None):
+        super(GoalAttentionModel, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
-        self.main = Transformer(num_classes=num_classes, num_nodes=max_nodes, in_feat=hidden_size, out_feat=hidden_size)
 
+
+        self.main = node_encoder
         self.context_size = hidden_size
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.object_context_combine = self.mlp2l(2 * hidden_size, hidden_size)
-        self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
         self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
 
         self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
@@ -133,9 +118,8 @@ class TransformerBase(NNBase):
     def forward(self, inputs, rnn_hxs, masks):
         # Use transformer to get feats for every object
         mask_visible = inputs['mask_object']
-        input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(),
-                                                           inputs['object_coords']).squeeze(1)
-        features_obj = self.main(input_node_embedding, mask_visible)
+
+        features_obj = self.main(inputs)
 
         # 1 x ndim. Avg pool the features for the context vec
         mask_visible = mask_visible.unsqueeze(-1)
@@ -144,8 +128,8 @@ class TransformerBase(NNBase):
         context_vec = (features_obj * mask_visible).sum(1) / (1e-9 + mask_visible.sum(1))
 
         # Goal embedding
-        obj_class_name = inputs['target_obj_class'] #[:, 0].long()
-        loc_class_name = inputs['target_loc_class'] #[:, 0].long()
+        obj_class_name = inputs['target_obj_class']  # [:, 0].long()
+        loc_class_name = inputs['target_loc_class']  # [:, 0].long()
 
         goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
         goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
@@ -158,7 +142,6 @@ class TransformerBase(NNBase):
             r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
         else:
             r_context_vec = context_vec
-
 
         # h' = GA . h [bs, h]
         context_goal = goal_mask_action * r_context_vec
@@ -176,59 +159,39 @@ class TransformerBase(NNBase):
         return context_goal, object_goal, rnn_hxs
 
 
-class GraphBase(NNBase):
-    def __init__(self, recurrent=False, hidden_size=128, max_nodes=150, num_classes=50):
-        super(GraphBase, self).__init__(recurrent, hidden_size, hidden_size)
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
+class GraphEncoder(nn.Module):
+    def __init__(self, hidden_size=128, max_nodes=100, num_rels=5, num_classes=100):
+        super(GraphEncoder, self).__init__()
+        self.hidden_size = hidden_size
+        self.graph_encoder = GraphModel(
+            num_classes=num_classes, num_nodes=max_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels)
 
-        self.main = GraphEncoder(hidden_size, num_nodes=max_nodes, num_classes=num_classes)
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+    def forward(self, inputs):
+        # Build the graph
+        hidden_feats = self.graph_encoder(inputs)
+        return hidden_feats
 
+
+class TransformerBase(nn.Module):
+
+    def __init__(self, hidden_size=128, max_nodes=150, num_classes=100):
+        super(TransformerBase, self).__init__()
+
+        self.main = Transformer(num_classes=num_classes, num_nodes=max_nodes, in_feat=hidden_size, out_feat=hidden_size)
+        self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
         self.train()
 
-    def forward(self, inputs, rnn_hxs, masks):
-
-        if inputs[0].ndim > 3:
-            # first element is an image
-            # x: [bs, num_objects, dim] (x[:, 0, :] always character)
-            x = self.main(inputs)
-        else:
-            x = self.main(inputs)
-
-        char_node = x[:, 0]
-        if self.is_recurrent:
-            char_node, rnn_hxs = self._forward_gru(char_node, rnn_hxs, masks)
-        return self.critic_linear(char_node), char_node, x, rnn_hxs
+    def forward(self, inputs):
+        # Use transformer to get feats for every object
+        mask_visible = inputs['mask_object']
+        input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(),
+                                                           inputs['object_coords']).squeeze(1)
+        node_embedding = self.main(input_node_embedding, mask_visible)
+        return node_embedding
 
 
-class CNNBaseResnetDist(NNBase):
-    def __init__(self, recurrent=False, hidden_size=512, dist_size=10):
-        super(CNNBaseResnetDist, self).__init__(recurrent, hidden_size, hidden_size)
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
 
-        self.main = torch.nn.Sequential(
-            *(list(models.resnet50(pretrained=True).children())[:-1]),
-            nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
-            nn.ReLU(),
-            Flatten())
 
-        self.base_dist = torch.nn.Sequential(nn.Linear(2, dist_size), nn.ReLU())
-        self.combine = nn.Sequential(
-            init_(nn.Linear(hidden_size + dist_size, hidden_size)), nn.ReLU(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-        self.train()
-
-    def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs['image'])
-        y = self.base_dist(inputs['rel_dist'])
-        x = self.combine(torch.cat([x, y], dim=1))
-        if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-        return self.critic_linear(x), x, rnn_hxs
 
 
 class ObjNameCoordEncode(nn.Module):
@@ -248,93 +211,149 @@ class ObjNameCoordEncode(nn.Module):
         return torch.cat([class_embedding, coord_embedding], dim=2)
 
 
-class CNNBaseResnet(NNBase):
-    def __init__(self, recurrent=False, hidden_size=128, num_classes=50):
-        super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
-
-        self.main = torch.nn.Sequential(
-            *(list(models.resnet50(pretrained=True).children())[:-1]),
-            nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
-            Flatten())
-
-        self.context_size = 10
-        self.class_embedding = nn.Embedding(num_classes, self.context_size)
-
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-        self.train()
-
-    def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs['image'])
-
-        if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
-        context = self.class_embedding(inputs['class_objects'].long())
-        return self.critic_linear(x), x, context, rnn_hxs
 
 
-class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
-        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
-
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), nn.init.calculate_gain('relu'))
-
-        self.main = nn.Sequential(
-            init_(nn.Conv2d(num_inputs, 32, 8, stride=4)), nn.ReLU(),
-            init_(nn.Conv2d(32, 64, 4, stride=2)), nn.ReLU(),
-            init_(nn.Conv2d(64, 32, 3, stride=1)), nn.ReLU(),
-            init_(nn.Conv2d(32, 32, 3, stride=1)), nn.ReLU(), Flatten(),
-            init_(nn.Linear(32 * 10 * 10, hidden_size)), nn.ReLU())
-
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0))
-
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-        self.train()
-
-    def forward(self, inputs, rnn_hxs, masks):
-        x = self.main(inputs)
-
-        if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
-        return self.critic_linear(x), x, rnn_hxs
 
 
-class MLPBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=64):
-        super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
 
-        if recurrent:
-            num_inputs = hidden_size
 
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), np.sqrt(2))
 
-        self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-        self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-        self.train()
-
-    def forward(self, inputs, rnn_hxs, masks):
-        x = inputs
-
-        if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
-        hidden_critic = self.critic(x)
-        hidden_actor = self.actor(x)
-
-        return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+#
+#
+#
+# class CNNBaseResnetDist(NNBase):
+#     def __init__(self, recurrent=False, hidden_size=512, dist_size=10):
+#         super(CNNBaseResnetDist, self).__init__(recurrent, hidden_size, hidden_size)
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0), nn.init.calculate_gain('relu'))
+#
+#         self.main = torch.nn.Sequential(
+#             *(list(models.resnet50(pretrained=True).children())[:-1]),
+#             nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
+#             nn.ReLU(),
+#             Flatten())
+#
+#         self.base_dist = torch.nn.Sequential(nn.Linear(2, dist_size), nn.ReLU())
+#         self.combine = nn.Sequential(
+#             init_(nn.Linear(hidden_size + dist_size, hidden_size)), nn.ReLU(),
+#             init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#
+#         self.train()
+#
+#     def forward(self, inputs, rnn_hxs, masks):
+#         x = self.main(inputs['image'])
+#         y = self.base_dist(inputs['rel_dist'])
+#         x = self.combine(torch.cat([x, y], dim=1))
+#         if self.is_recurrent:
+#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+#         return self.critic_linear(x), x, rnn_hxs
+#
+#
+# class ObjNameCoordEncode(nn.Module):
+#     def __init__(self, output_dim=128, num_classes=50):
+#         super(ObjNameCoordEncode, self).__init__()
+#         self.output_dim = output_dim
+#         self.num_classes = num_classes
+#
+#         self.class_embedding = nn.Embedding(num_classes, int(output_dim / 2))
+#         self.coord_embedding = nn.Sequential(nn.Linear(3, int(output_dim / 2)),
+#                                              nn.ReLU(),
+#                                              nn.Linear(int(output_dim / 2), int(output_dim / 2)))
+#
+#     def forward(self, class_ids, coords):
+#         class_embedding = self.class_embedding(class_ids)
+#         coord_embedding = self.coord_embedding(coords)
+#         return torch.cat([class_embedding, coord_embedding], dim=2)
+#
+#
+# class CNNBaseResnet(NNBase):
+#     def __init__(self, recurrent=False, hidden_size=128, num_classes=50):
+#         super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0), nn.init.calculate_gain('relu'))
+#
+#         self.main = torch.nn.Sequential(
+#             *(list(models.resnet50(pretrained=True).children())[:-1]),
+#             nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
+#             Flatten())
+#
+#         self.context_size = 10
+#         self.class_embedding = nn.Embedding(num_classes, self.context_size)
+#
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#
+#         self.train()
+#
+#     def forward(self, inputs, rnn_hxs, masks):
+#         x = self.main(inputs['image'])
+#
+#         if self.is_recurrent:
+#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+#
+#         context = self.class_embedding(inputs['class_objects'].long())
+#         return self.critic_linear(x), x, context, rnn_hxs
+#
+#
+# class CNNBase(NNBase):
+#     def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+#         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
+#
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0), nn.init.calculate_gain('relu'))
+#
+#         self.main = nn.Sequential(
+#             init_(nn.Conv2d(num_inputs, 32, 8, stride=4)), nn.ReLU(),
+#             init_(nn.Conv2d(32, 64, 4, stride=2)), nn.ReLU(),
+#             init_(nn.Conv2d(64, 32, 3, stride=1)), nn.ReLU(),
+#             init_(nn.Conv2d(32, 32, 3, stride=1)), nn.ReLU(), Flatten(),
+#             init_(nn.Linear(32 * 10 * 10, hidden_size)), nn.ReLU())
+#
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0))
+#
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#
+#         self.train()
+#
+#     def forward(self, inputs, rnn_hxs, masks):
+#         x = self.main(inputs)
+#
+#         if self.is_recurrent:
+#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+#
+#         return self.critic_linear(x), x, rnn_hxs
+#
+#
+# class MLPBase(NNBase):
+#     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
+#         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
+#
+#         if recurrent:
+#             num_inputs = hidden_size
+#
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0), np.sqrt(2))
+#
+#         self.actor = nn.Sequential(
+#             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+#             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+#
+#         self.critic = nn.Sequential(
+#             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+#             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+#
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+#
+#         self.train()
+#
+#     def forward(self, inputs, rnn_hxs, masks):
+#         x = inputs
+#
+#         if self.is_recurrent:
+#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+#
+#         hidden_critic = self.critic(x)
+#         hidden_actor = self.actor(x)
+#
+#         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs

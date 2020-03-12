@@ -41,10 +41,16 @@ class ActorCritic(nn.Module):
 
         if base_name == 'TF':
             base = base_nets.TransformerBase
+        elif base_name == 'GNN':
+            base = base_nets.GraphEncoder
         else:
             raise NotImplementedError
 
-        self.base = base(**base_kwargs)
+        node_encoder = base(**base_kwargs)
+        self.base = base_nets.GoalAttentionModel(hidden_size=base_kwargs['hidden_size'],
+                                                   recurrent=True,
+                                                   num_classes=base_kwargs['num_classes'],
+                                                   node_encoder=node_encoder)
         self.critic_linear = init_(nn.Linear(base_kwargs['hidden_size'], 1))
 
         # Distribution for the actions
