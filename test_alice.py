@@ -25,13 +25,14 @@ if __name__ == '__main__':
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
-    args.record_dir = 'record/Alice_test_set_30'
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
+    # args.record_dir = 'record/Alice_test_set_30'
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    args.record_dir = 'record/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
                     'no_graphics': True
-
     }
 
     # env_task_set = []

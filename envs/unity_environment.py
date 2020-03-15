@@ -188,7 +188,10 @@ class UnityEnvironment(BaseEnvironment):
 
         self.offset_cameras = self.comm.camera_count()[1]
 
-        rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
+        if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
+            rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
+        else:
+            rooms = list(self.init_rooms)
 
         for i in range(self.num_agents):
             if i in self.agent_info:
