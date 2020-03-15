@@ -92,33 +92,33 @@ if __name__ == '__main__':
             test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
         cnt = 0
         steps_list, failed_tasks = [], []
-        for episode_id in episode_ids[:2]:
+        for episode_id in episode_ids:
             if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
             print('episode:', episode_id)
-            # try:
-            arena.reset(episode_id)
-            success, steps, saved_info = arena.run()
-            print('-------------------------------------')
-            print('success' if success else 'failure')
-            print('steps:', steps)
-            print('-------------------------------------')
-            if not success:
-                failed_tasks.append(episode_id)
-            else:
-                steps_list.append(steps)
-            is_finished = 1 if success else 0
-            S[episode_id] = is_finished
-            L[episode_id] = steps
-            test_results[episode_id] = {'S': is_finished, 
-                                        'L': steps}
-            Path(args.record_dir).mkdir(parents=True, exist_ok=True)
-            if len(saved_info['obs']) > 0:
-                pickle.dump(saved_info, open(args.record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
-            else:
-                with open(args.record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
-                    f.write(json.dumps(saved_info, indent=4))
-            # except:
-            #     pass
+            try:
+                arena.reset(episode_id)
+                success, steps, saved_info = arena.run()
+                print('-------------------------------------')
+                print('success' if success else 'failure')
+                print('steps:', steps)
+                print('-------------------------------------')
+                if not success:
+                    failed_tasks.append(episode_id)
+                else:
+                    steps_list.append(steps)
+                is_finished = 1 if success else 0
+                S[episode_id] = is_finished
+                L[episode_id] = steps
+                test_results[episode_id] = {'S': is_finished, 
+                                            'L': steps}
+                Path(args.record_dir).mkdir(parents=True, exist_ok=True)
+                if len(saved_info['obs']) > 0:
+                    pickle.dump(saved_info, open(args.record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
+                else:
+                    with open(args.record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
+                        f.write(json.dumps(saved_info, indent=4))
+            except:
+                pass
 
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
