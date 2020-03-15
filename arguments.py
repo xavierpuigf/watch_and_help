@@ -7,6 +7,8 @@ import pdb
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
+    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Environment type')
+    parser.add_argument('--num-per-apartment', type=int, default=50, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
