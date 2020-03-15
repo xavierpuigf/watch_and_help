@@ -473,10 +473,10 @@ class MCTS_agent:
         print('---')
 
 
-    def get_action(self, obs, task_goal, opponent_subgoal=None):
+    def get_action(self, obs, goal_spec, opponent_subgoal=None):
 
         self.sample_belief(obs)
-        self.sim_env.reset(self.previous_belief_graph, task_goal)
+        self.sim_env.reset(self.previous_belief_graph, {0: goal_spec, 1: goal_spec})
 
         last_action = self.last_action
         last_subgoal = self.last_subgoal
@@ -498,22 +498,27 @@ class MCTS_agent:
 
 
 
-        plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, task_goal, None, last_subgoal, last_action, opponent_subgoal)
+        plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_spec, None, last_subgoal, last_action, opponent_subgoal)
 
         if len(plan) > 0:
             action = plan[0]
         else:
             action = None
-        info = {
-            'plan': plan,
-            'action': action,
-            'subgoals': subgoals
-            # 'belief': copy.deepcopy(self.belief.edge_belief),
-            # 'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
-        }
+        if self.logging:
+            info = {
+                'plan': plan,
+                'subgoals': subgoals
+                # 'belief': copy.deepcopy(self.belief.edge_belief),
+                # 'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
+            }
+            if self.logging_graphs:
+                info.update(
+                    {'obs': obs['nodes']})
+        else:
+            info = {}
 
         self.last_action = action
-        self.last_subgoal = info['subgoals'][0]
+        self.last_subgoal = subgoals[0] if len(subgoals) > 0 else None
         return action, info
 
     def reset(self, graph, task_goal, seed=0, simulator_type='python', is_alice=False):

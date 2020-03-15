@@ -92,7 +92,7 @@ def convert_action(action_dict):
     agent_do = [item for item, action in action_dict.items() if action is not None]
     # Make sure only one agent interact with the same object
     if len(action_dict.keys()) > 1:
-        if sum(['walk' in x for x in action_dict.values()]) == 0:
+        if None not in list(action_dict.values()) and sum(['walk' in x for x in action_dict.values()]) == 0:
             # continue
             objects_interaction = [x.split('(')[1].split(')')[0] for x in action_dict.values()]
             if len(set(objects_interaction)) == 1:
@@ -102,7 +102,8 @@ def convert_action(action_dict):
 
     for agent_id in agent_do:
         script = action_dict[agent_id]
-
+        if script is None:
+            continue
         current_script = ['<char{}> {}'.format(agent_id, script)]
 
         script_list = [x + '|' + y if len(x) > 0 else y for x, y in zip(script_list, current_script)]

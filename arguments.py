@@ -6,27 +6,11 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
         '--task_type', default='find', choices=['find', 'complex', 'open'], help='algorithm to use: find | complex')
-
-    parser.add_argument(
-        '--gail',
-        action='store_true',
-        default=False,
-        help='do imitation learning with gail')
-    parser.add_argument(
-        '--gail-experts-dir',
-        default='./gail_experts',
-        help='directory that contains expert demonstrations for gail')
-    parser.add_argument(
-        '--gail-batch-size',
-        type=int,
-        default=128,
-        help='gail batch size (default: 128)')
-    parser.add_argument(
-        '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
@@ -256,7 +240,7 @@ def get_args():
         help='number of steps until breaking bptt')
 
     parser.add_argument(
-        '--max_episode_length',
+        '--max-episode-length',
         type=int,
         default=200,
         help='number of episodes')
@@ -280,7 +264,7 @@ def get_args():
         help='how many objects in observation space')
 
     parser.add_argument(
-        '--base_port', type=int, default=8080)
+        '--base-port', type=int, default=8080)
 
     parser.add_argument(
         '--display', type=str, default="2")
