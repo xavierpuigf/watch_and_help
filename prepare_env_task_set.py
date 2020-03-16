@@ -19,7 +19,7 @@ from utils import utils_goals
 if __name__ == '__main__':
     args = get_args()
     
-    home_dir = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models'
+    home_dir = '.'#'/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models'
 
     random.seed(1)
 

@@ -197,7 +197,7 @@ def get_args():
         help='use a linear schedule on the learning rate')
 
     parser.add_argument(
-        '--executable_file', type=str, default='../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64')
+        '--executable_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.15.2.x86_64')
 
     parser.add_argument(
         '--train_mode',
