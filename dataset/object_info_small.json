@@ -25,6 +25,7 @@
                      "waterglass",
                      "whippedcream",
                      "wine",
-                     "wineglass"]
+                     "wineglass"],
+    "others": ["character"]
 
 }

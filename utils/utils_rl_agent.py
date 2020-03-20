@@ -25,6 +25,9 @@ class DictObjId:
         else:
             return self.id2el[id]
 
+    def valid_el(self, el):
+        return el in self.el2id.keys()
+
     def get_id(self, el):
         el = el.lower()
         if el in self.el2id.keys():
@@ -33,7 +36,7 @@ class DictObjId:
             if self.include_other:
                 return 0
             else:
-                return self.el2id[el]
+                raise Exception
 
     def add(self, el):
         el = el.lower()
@@ -92,7 +95,7 @@ class GraphHelper():
         self.num_edge_types = len(self.relation_dict)
         self.num_classes = len(self.object_dict)
         self.num_states = len(self.state_dict)
-
+        self.num_states = len(self.states)
 
         
         self.obj1_affordance = None
@@ -158,12 +161,16 @@ class GraphHelper():
         self.obj1_affordance[self.action_dict.get_id('open'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('close'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('kitchencounterdrawer')] = 0
-        self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
-        self.obj1_affordance[:, id_no_obj] = 0
+        #self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
+        #self.obj1_affordance[:, id_no_obj] = 0
+
 
         if self.simulaor_type == 'unity':
             for action_no_args in self.actions_no_args:
                 self.obj1_affordance[self.action_dict.get_id(action_no_args), id_no_obj] = 1
+
+        # if np.sum(self.obj1_affordance.sum(0) == 0) > 0:
+        #     pdb.set_trace()
 
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -178,14 +185,16 @@ class GraphHelper():
 
     
     def one_hot(self, states):
-        one_hot = np.zeros(len(self.state_dict))
+        one_hot = np.zeros(len(self.state_dict) - 1)
         for state in states:
-            one_hot[self.state_dict.get_id(state)] = 1
+            if self.state_dict.valid_el(state):
+                one_hot[self.state_dict.get_id(state) - 1] = 1
         return one_hot
 
-    def build_graph(self, graph, character_id, ids=None, plot_graph=False, level=1):
+    def build_graph(self, graph, character_id, ids=None, plot_graph=False, action_space_ids=None, level=1):
         if ids is None:
-            ids = [node['id'] for node in graph['nodes'] if node['class_name'].lower() not in self.removed_categories]
+            ids = [node['id'] for node in graph['nodes'] if self.object_dict.valid_el(node['class_name'])]
+
         for node in graph['nodes']:
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
@@ -214,7 +223,7 @@ class GraphHelper():
         node_ids = [node['id'] for node in nodes]
 
         # The self agent is equal to no_obj
-        class_names_str[0] = 'no_obj'
+        #class_names_str[0] = 'no_obj'
 
         visible_nodes = [(class_name, node_id) for class_name, node_id in zip(class_names_str, node_ids)]
 
@@ -237,8 +246,9 @@ class GraphHelper():
         all_edge_types = np.zeros((max_edges))
 
         mask_nodes = np.zeros((max_nodes))
+        mask_action_nodes = np.zeros((max_nodes))
         all_class_names = np.zeros((max_nodes)).astype(np.int32)
-        all_node_states = np.zeros((max_nodes, len(self.state_dict)))
+        all_node_states = np.zeros((max_nodes, len(self.states)))
         all_node_ids = np.zeros((max_nodes)).astype(np.int32)
 
         if len(edges) > 0:
@@ -246,6 +256,7 @@ class GraphHelper():
             all_edge_ids[:len(edges), :] = edge_ids
             all_edge_types[:len(edges)] = edge_types
 
+        mask_action_nodes[:len(nodes)] = np.array([1 if node_id in action_space_ids else 0 for node_id in node_ids])
         mask_nodes[:len(nodes)] = 1.
         all_class_names[:len(nodes)] = class_names
         all_node_states[:len(nodes)] = node_states
@@ -270,6 +281,7 @@ class GraphHelper():
             'edge_classes': all_edge_types,
             'mask_object': mask_nodes,
             'mask_edge': mask_edges,
+            'mask_action_node': mask_action_nodes,
             'object_coords': obj_coords,
             'node_ids': all_node_ids
         }
@@ -295,18 +307,27 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     #     return None
     close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1_id and edge['relation_type'] == 'CLOSE']) > 0
     if action == 'grab':
-        print(agent_id, o1_id, close_edge)
+        if len(grabbed_objects) > 0:
+            return None
+
+    if action.startswith('walk'):
+        if o1_id in grabbed_objects:
+            return None
+        # print(agent_id, o1_id, close_edge)
+
+    if o1_id == agent_id:
+        return None
 
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
 
     if action == 'open':
-        print(o1_id, id2node[o1_id]['states'])
+        # print(o1_id, id2node[o1_id]['states'])
         if 'OPEN' in id2node[o1_id]['states'] or 'CLOSED' not in id2node[o1_id]['states']:
             return None
 
     if action == 'close':
-        print(o1_id, id2node[o1_id]['states'])
+        #print(o1_id, id2node[o1_id]['states'])
         if 'CLOSED' in id2node[o1_id]['states'] or 'OPEN' not in id2node[o1_id]['states']:
             return None
 
@@ -325,6 +346,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     if o1_id in id2node.keys():
         if id2node[o1_id]['class_name'] == 'character':
             return None
+
     if action.startswith('put'):
 
         if 'CONTAINERS' in id2node[o1_id]['properties']:

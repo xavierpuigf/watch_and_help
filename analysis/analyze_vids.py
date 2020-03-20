@@ -40,7 +40,7 @@ def add_to_stats(dict_apartments, content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='analysis vids')
-    parser.add_argument('--record_dir', default='../record/', type=str)
+    parser.add_argument('--record_dir', default='../../../tshu/vh_multiagent_models/record/debug_Alice_env_task_set_3_full/', type=str) 
     args = parser.parse_args()
 
     dir_files = sorted(glob.glob('{}/init*50*'.format(args.record_dir)))
@@ -200,5 +200,5 @@ if __name__ == '__main__':
             'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
     pdb.set_trace()
 
-    with open('info_demo_scenes_2.json', 'w+') as f:
-        f.write(json.dumps(dict_info, indent=4))
+    #with open('info_demo_scenes_2.json', 'w+') as f:
+    #    f.write(json.dumps(dict_info, indent=4))

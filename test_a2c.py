@@ -15,50 +15,52 @@ from utils import utils_goals, utils_rl_agent
 
 if __name__ == '__main__':
     args = get_args()
-    args.task = 'setup_table'
-    args.num_per_apartment = '50'
+    #args.task = 'setup_table'
+    #args.num_per_apartment = '50'
     args.mode = 'full'
-    args.use_editor = True
     num_agents = 1
-    args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
-                                                                                        args.num_per_apartment,
-                                                                                        args.mode)
+    args.dataset_path = 'initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode)
+    print(args.dataset_path)
     data = pickle.load(open(args.dataset_path, 'rb'))
     executable_args = {
             'file_name': args.executable_file,
             'x_display': 0,
             'no_graphics': True
-
     }
 
-    env_task_set = []
-    for task_id, problem_setup in enumerate(data):
-        env_id = problem_setup['apartment'] - 1
-        task_name = problem_setup['task_name']
-        init_graph = problem_setup['init_graph']
-        goal = problem_setup['goal'][task_name]
+    with open(args.dataset_path, 'rb') as f:
+        env_task_set = pickle.load(f)
 
-        goals = utils_goals.convert_goal_spec(task_name, goal, init_graph,
-                                              exclude=['cutleryknife'])
-        print('env_id:', env_id)
-        print('task_name:', task_name)
-        print('goals:', goals)
+    if args.debug:
+        env_task_set = env_task_set[0]
+        single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
 
-        task_goal = {}
-        for i in range(2):
-            task_goal[i] = goals
+        if args.obs_type == 'mcts':
+            env_task_set['init_rooms'] = ['kitchen']
+        env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
+        env_task_set = [env_task_set]
 
-        env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph,
-                             'task_goal': task_goal,
-                             'level': 0, 'init_rooms': [0, 0]})
+    if args.task_set != 'full':
+        env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
-    episode_ids = list(range(len(env_task_set)))
-    random.shuffle(episode_ids)
+    # env_task_set = [env_task for env_task in env_task_set if env_task['env_id'] == 0]
 
+    # episode_ids = list(range(len(env_task_set)))
+    # random.shuffle(episode_ids)
 
+    print('Number of episides: {}'.format(len(env_task_set)))
 
-    env = UnityEnvironment(0, 0, num_agents, env_task_set, use_editor=args.use_editor,
-                           executable_args=executable_args)
+    agent_goal = 'grab'
+    if args.task_type == 'put':
+        agent_goal = 'put'
+
+    env = UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+                           env_task_set=env_task_set,
+                           agent_goals=[agent_goal],
+                           observation_types=[args.obs_type],
+                           use_editor=args.use_editor,
+                           executable_args=executable_args,
+                           base_port=args.base_port)
 
     args_mcts = dict(unity_env=env,
                        recursive=True,
@@ -76,10 +78,11 @@ if __name__ == '__main__':
                                               max_num_edges=args.max_num_edges, current_task=None, simulator_type='unity')
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
-    args_agent2 = {'agent_id': 1, 'char_index': 0, 'args': args, 'graph_helper': graph_helper}
+    args_agent2 = {'agent_id': 1, 'char_index': 0,
+                   'args': args, 'graph_helper': graph_helper}
     args_agent1.update(args_mcts)
     #args_agent2.update(args_common)
-    agents = [MCTS_agent(**args_agent1), RL_agent(**args_agent2)]
+    #agents = [MCTS_agent(**args_agent1), RL_agent(**args_agent2)]
     agents = [RL_agent(**args_agent2)]
     arena = A2C(agents, env, args)
     arena.train()

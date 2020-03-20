@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 def inside_not_trans(graph):
     id2node = {node['id']: node for node in graph['nodes']}
@@ -92,7 +93,7 @@ def convert_action(action_dict):
     agent_do = [item for item, action in action_dict.items() if action is not None]
     # Make sure only one agent interact with the same object
     if len(action_dict.keys()) > 1:
-        if sum(['walk' in x for x in action_dict.values()]) == 0:
+        if None not in list(action_dict.values()) and sum(['walk' in x for x in action_dict.values()]) == 0:
             # continue
             objects_interaction = [x.split('(')[1].split(')')[0] for x in action_dict.values()]
             if len(set(objects_interaction)) == 1:
@@ -102,7 +103,8 @@ def convert_action(action_dict):
 
     for agent_id in agent_do:
         script = action_dict[agent_id]
-
+        if script is None:
+            continue
         current_script = ['<char{}> {}'.format(agent_id, script)]
 
         script_list = [x + '|' + y if len(x) > 0 else y for x, y in zip(script_list, current_script)]
@@ -113,19 +115,38 @@ def convert_action(action_dict):
     return script_list
 
 
+def separate_new_ids_graph(graph, max_id):
+    new_graph = copy.deepcopy(graph)
+    for node in new_graph['nodes']:
+        if node['id'] > max_id:
+            node['id'] = node['id'] - max_id + 1000
+    for edge in new_graph['edges']:
+        if edge['from_id'] > max_id:
+            edge['from_id'] = edge['from_id'] - max_id + 1000
+        if edge['to_id'] > max_id:
+            edge['to_id'] = edge['to_id'] - max_id + 1000
+    return new_graph
 
 def check_progress(state, goal_spec):
     """TODO: add more predicate checkers; currently only ON"""
     unsatisfied = {}
     satisfied = {}
+    reward = 0.
     id2node = {node['id']: node for node in state['nodes']}
+
     for key, value in goal_spec.items():
+
         elements = key.split('_')
-        unsatisfied[key] = value if elements[0] not in ['offOn', 'offInside'] else 0
+        unsatisfied[key] = value[0] if elements[0] not in ['offOn', 'offInside'] else 0
         satisfied[key] = [None] * 2
         satisfied[key]
         satisfied[key] = []
         for edge in state['edges']:
+            if elements[0] in 'close':
+                if edge['relation_type'].lower().startswith('close') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
             if elements[0] in ['on', 'inside']:
                 if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])

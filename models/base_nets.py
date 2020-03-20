@@ -93,6 +93,32 @@ class NNBase(nn.Module):
         return x, hxs
 
 
+class GoalEncoder(nn.Module):
+    def __init__(self, num_classes, output_dim):
+        super(GoalEncoder, self).__init__()
+        inp_dim = int(output_dim / 2)
+        self.object_embedding = nn.Embedding(num_classes, inp_dim)
+        self.combine_obj_loc = nn.Sequential(
+            nn.Linear(output_dim, output_dim),
+            nn.ReLU(),
+            nn.Linear(output_dim, output_dim),
+            nn.ReLU()
+        )
+
+    def forward(self, object_class_name, loc_class_name, mask_goal_pred):
+        obj_embedding = self.object_embedding(object_class_name)
+        loc_embedding = self.object_embedding(loc_class_name)
+        obj_loc = torch.cat([obj_embedding, loc_embedding], axis=2)
+        object_location = self.combine_obj_loc(obj_loc)
+
+        num_preds = mask_goal_pred.sum(-1)
+        norm_mask = (mask_goal_pred/num_preds.unsqueeze(-1)).unsqueeze(-1)
+
+        average_pred = (object_location * norm_mask).sum(1)
+        if torch.isnan(average_pred).any():
+            pdb.set_trace()
+        return average_pred
+
 class GoalAttentionModel(NNBase):
     def __init__(self, recurrent=False, hidden_size=128, num_classes=100, node_encoder=None):
         super(GoalAttentionModel, self).__init__(recurrent, hidden_size, hidden_size)
@@ -106,7 +132,9 @@ class GoalAttentionModel(NNBase):
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.object_context_combine = self.mlp2l(2 * hidden_size, hidden_size)
-        self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
+
+        self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size)
+        # self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
 
         self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
         self.fc_att_object = self.mlp2l(hidden_size * 2, hidden_size)
@@ -130,10 +158,15 @@ class GoalAttentionModel(NNBase):
         # Goal embedding
         obj_class_name = inputs['target_obj_class']  # [:, 0].long()
         loc_class_name = inputs['target_loc_class']  # [:, 0].long()
+        mask_goal = inputs['mask_goal_pred']
 
-        goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
-        goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
-        goal_encoding = torch.cat([goal_encoding_obj, goal_encoding_loc], dim=-1)
+        goal_encoding = self.goal_encoder(obj_class_name, loc_class_name, mask_goal)
+
+        # goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
+        # goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
+        # goal_encoding = torch.cat([goal_encoding_obj, goal_encoding_loc], dim=-1)
+
+
         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
         goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
 
@@ -174,24 +207,49 @@ class GraphEncoder(nn.Module):
 
 class TransformerBase(nn.Module):
 
-    def __init__(self, hidden_size=128, max_nodes=150, num_classes=100):
+    def __init__(self, hidden_size=128, max_nodes=150, num_classes=100, num_states=4):
         super(TransformerBase, self).__init__()
 
         self.main = Transformer(num_classes=num_classes, num_nodes=max_nodes, in_feat=hidden_size, out_feat=hidden_size)
-        self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
+        #self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
+        self.single_object_encoding = ObjNameCoordStateEncode(output_dim=hidden_size, num_classes=num_classes, num_states=num_states)
+
         self.train()
 
     def forward(self, inputs):
         # Use transformer to get feats for every object
         mask_visible = inputs['mask_object']
         input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(),
-                                                           inputs['object_coords']).squeeze(1)
+                                                           inputs['object_coords'],
+                                                           inputs['states_objects']).squeeze(1)
         node_embedding = self.main(input_node_embedding, mask_visible)
         return node_embedding
 
 
 
 
+class ObjNameCoordStateEncode(nn.Module):
+    def __init__(self, output_dim=128, num_classes=50, num_states=4):
+        super(ObjNameCoordStateEncode, self).__init__()
+        assert output_dim % 2 == 0
+        self.output_dim = output_dim
+        self.num_classes = num_classes
+
+        self.class_embedding = nn.Embedding(num_classes, int(output_dim / 2))
+        self.state_embedding = nn.Linear(num_states, int(output_dim / 2))
+        self.coord_embedding = nn.Sequential(nn.Linear(3, int(output_dim / 2)),
+                                             nn.ReLU(),
+                                             nn.Linear(int(output_dim / 2), int(output_dim / 2)))
+        inp_dim = int(output_dim + output_dim/2)
+        self.combine = nn.Sequential(nn.ReLU(), nn.Linear(inp_dim, output_dim))
+
+    def forward(self, class_ids, coords, state):
+        state_embedding = self.state_embedding(state)
+        class_embedding = self.class_embedding(class_ids)
+        coord_embedding = self.coord_embedding(coords)
+        inp = torch.cat([class_embedding, coord_embedding, state_embedding], dim=2)
+
+        return self.combine(inp)
 
 
 class ObjNameCoordEncode(nn.Module):

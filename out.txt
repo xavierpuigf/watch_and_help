@@ -1,0 +1,91 @@
+Fri Mar 27 19:59:22 2020       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 418.87.01    Driver Version: 418.87.01    CUDA Version: 10.1     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|===============================+======================+======================|
+|   0  GeForce GTX 1080    Off  | 00000000:04:00.0 Off |                  N/A |
+| 28%   35C    P8     7W / 180W |     67MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   1  GeForce GTX 1080    Off  | 00000000:05:00.0 Off |                  N/A |
+| 27%   39C    P8     7W / 180W |     66MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   2  GeForce GTX 1080    Off  | 00000000:08:00.0 Off |                  N/A |
+| 30%   43C    P8     8W / 180W |   5084MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   3  GeForce GTX 1080    Off  | 00000000:09:00.0 Off |                  N/A |
+| 28%   37C    P8     7W / 180W |   8093MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   4  GeForce GTX 1080    Off  | 00000000:84:00.0 Off |                  N/A |
+| 27%   37C    P8     7W / 180W |   3454MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   5  GeForce GTX 1080    Off  | 00000000:85:00.0 Off |                  N/A |
+| 28%   36C    P8     8W / 180W |     66MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   6  GeForce GTX 1080    Off  | 00000000:88:00.0 Off |                  N/A |
+| 27%   36C    P8     7W / 180W |   3460MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+|   7  GeForce GTX 1080    Off  | 00000000:89:00.0 Off |                  N/A |
+| 27%   36C    P8     8W / 180W |   3460MiB /  8119MiB |      0%      Default |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                       GPU Memory |
+|  GPU       PID   Type   Process name                             Usage      |
+|=============================================================================|
+|    0      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    0      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    0      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    0      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    0     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    0     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    1     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    2     40721      C   python3                                     5009MiB |
+|    2     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3     18613      C   python                                      3615MiB |
+|    3     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    3     40721      C   python3                                     4403MiB |
+|    3     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4     18613      C   python                                      3379MiB |
+|    4     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    4     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    5     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6     18613      C   python                                      3385MiB |
+|    6     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    6     44064      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7      3456      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7      5370      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7      6469      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7      9887      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7     18613      C   python                                      3385MiB |
+|    7     27069      G   /usr/lib/xorg/Xorg                            10MiB |
+|    7     44064      G   /usr/lib/xorg/Xorg                            10MiB |
++-----------------------------------------------------------------------------+

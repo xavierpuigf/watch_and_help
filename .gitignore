@@ -1,7 +1,9 @@
 .DS_Store
+trained_models/*
 *.png
 logs/*
 logs_test/*
+log_tb/*
 record/*
 *.gv
 *.pdf

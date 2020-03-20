@@ -6,34 +6,15 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Environment type')
+    parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
-        '--task_type', default='find', choices=['find', 'complex', 'open'], help='algorithm to use: find | complex')
-
-    parser.add_argument(
-        '--gail',
-        action='store_true',
-        default=False,
-        help='do imitation learning with gail')
-    parser.add_argument(
-        '--gail-experts-dir',
-        default='./gail_experts',
-        help='directory that contains expert demonstrations for gail')
-    parser.add_argument(
-        '--gail-batch-size',
-        type=int,
-        default=128,
-        help='gail batch size (default: 128)')
-    parser.add_argument(
-        '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
+        '--task_type', default='find', choices=['find', 'complex', 'open', 'put'], help='algorithm to use: find | complex')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
-    parser.add_argument(
-        '--eps',
-        type=float,
-        default=1e-5,
-        help='RMSprop optimizer epsilon (default: 1e-5)')
+
     parser.add_argument(
         '--alpha',
         type=float,
@@ -88,48 +69,15 @@ def get_args():
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
 
-    parser.add_argument(
-        '--env-name',
-        default='virtualhome',
-        help='environment to train on (default: PongNoFrameskip-v4)')
 
-    parser.add_argument(
-        '--simulator-type',
-        default='unity',
-        choices=['unity', 'python'],
-        help='whether to use unity or python sim')
 
-    parser.add_argument(
-        '--num-processes',
-        type=int,
-        default=1,
-        help='how many training CPU processes to use (default: 16)')
-
-    parser.add_argument(
-        '--num-steps',
-        type=int,
-        default=100,
-        help='number of forward steps in A2C (default: 100)')
     parser.add_argument(
         '--t-max',
         type=int,
         default=20,
         help='number of bptt steps (default: 20)')
-    parser.add_argument(
-        '--ppo-epoch',
-        type=int,
-        default=4,
-        help='number of ppo epochs (default: 4)')
-    parser.add_argument(
-        '--num-mini-batch',
-        type=int,
-        default=32,
-        help='number of batches for ppo (default: 32)')
-    parser.add_argument(
-        '--clip-param',
-        type=float,
-        default=0.2,
-        help='ppo clip parameter (default: 0.2)')
+
+
     parser.add_argument(
         '--log-interval',
         type=int,
@@ -138,7 +86,7 @@ def get_args():
     parser.add_argument(
         '--save-interval',
         type=int,
-        default=100,
+        default=50,
         help='save interval, one save per n updates (default: 100)')
     parser.add_argument(
         '--eval-interval',
@@ -206,19 +154,12 @@ def get_args():
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
-
-
     parser.add_argument(
         '--train_mode',
         default='RL',
         choices=['BC', 'RL']
     )
 
-    parser.add_argument(
-        '--epsilon',
-        type=float,
-        default=0.05,
-        help='epsilon for e-greedy')
 
     parser.add_argument(
         '--hidden-size',
@@ -229,7 +170,7 @@ def get_args():
     parser.add_argument(
         '--nb_episodes',
         type=int,
-        default=2000,
+        default=10000,
         help='number of episodes')
 
     parser.add_argument(
@@ -251,7 +192,7 @@ def get_args():
         help='number of steps until breaking bptt')
 
     parser.add_argument(
-        '--max_episode_length',
+        '--max-episode-length',
         type=int,
         default=200,
         help='number of episodes')
@@ -261,6 +202,12 @@ def get_args():
         action='store_true',
         default=False,
         help='what')
+
+    parser.add_argument(
+        '--neg_ratio',
+        type=float,
+        default=0.5,
+        help='ratio with 0 reward')
 
     parser.add_argument(
         '--max-num-edges',
@@ -274,11 +221,12 @@ def get_args():
         default=150,
         help='how many objects in observation space')
 
-    parser.add_argument(
-        '--base_port', type=int, default=8080)
 
     parser.add_argument(
-        '--display', type=str, default="2")
+        '--task-set',
+        type=str,
+        default='all',
+    )
 
     parser.add_argument(
         '--max_gradient_norm', type=int, default=10)
@@ -287,7 +235,7 @@ def get_args():
         '--memory-capacity-episodes', type=int, default=10000)
 
     parser.add_argument('--no-time-normalization', action='store_true', default=False,
-                        help='whether to run on or off policy')
+                        help='whether to normalize loss on time')
 
     parser.add_argument('--on-policy', action='store_true', default=False,
                         help='whether to run on or off policy')
@@ -301,10 +249,46 @@ def get_args():
 
     # Exec args
     parser.add_argument(
-        '--executable_file', type=str, default='../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64')
+        '--executable_file', type=str,
+        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64')
+
+    # default = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.26.x86_64')
+    parser.add_argument(
+        '--base-port', type=int, default=8080)
+
+    parser.add_argument(
+        '--display', type=str, default="2")
+
+    parser.add_argument(
+        '--env-name',
+        default='virtualhome',
+        help='environment to train on (default: PongNoFrameskip-v4)')
+
+    parser.add_argument(
+        '--simulator-type',
+        default='unity',
+        choices=['unity', 'python'],
+        help='whether to use unity or python sim')
+
+    parser.add_argument(
+        '--num-processes',
+        type=int,
+        default=1,
+        help='how many training CPU processes to use (default: 16)')
+
 
     parser.add_argument('--use-editor', action='store_true', default=False,
                         help='whether to use an editor or executable')
+
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help='debugging mode')
+
+    parser.add_argument('--logging', action='store_true', default=False,
+                        help='debugging mode')
+
+    parser.add_argument('--use-gt-actions', action='store_true', default=False,
+                        help='debugging mode')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

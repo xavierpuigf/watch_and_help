@@ -15,34 +15,37 @@ class UnityEnvironment(BaseEnvironment):
 
 
     def __init__(self,
-                 env_id,
-                 apartment_id,
-                 num_agents,
+                 num_agents=2,
+                 max_episode_length=200,
                  env_task_set=None,
-                 test_mode=False,
                  observation_types=None,
+                 agent_goals=None,
                  use_editor=False,
                  base_port=8080,
+                 port_id=0,
                  recording=False,
                  output_folder=None,
                  file_name_prefix=None,
-                 executable_args={}):
+                 executable_args={},
+                 seed=123):
 
-        random.seed(env_id)
-        np.random.seed(env_id)
+        self.seed = seed
+        random.seed(seed)
+        np.random.seed(seed)
 
         self.steps = 0
+        self.env_id = None
+        self.max_ids = {}
 
         self.pythnon_graph = None
-        self.test_mode = test_mode
         self.env_task_set = env_task_set
 
-        self.env_id = env_id
-        self.apartment_id = apartment_id
         self.num_agents = num_agents
+        self.max_episode_length = max_episode_length
 
         self.recording = recording
         self.base_port = base_port
+        self.port_id = port_id
         self.output_folder = output_folder
         self.file_nem_prefix = file_name_prefix
 
@@ -54,8 +57,12 @@ class UnityEnvironment(BaseEnvironment):
         if observation_types is not None:
             self.observation_types = observation_types
         else:
-            self.observation_types = ['partial', 'partial']
+            self.observation_types = ['partial' for _ in range(num_agents)]
 
+        if agent_goals is not None:
+            self.agent_goals = agent_goals
+        else:
+            self.agent_goals = ['full' for _ in range(num_agents)]
         self.agent_info = {
             0: 'Chars/Female1',
             1: 'Chars/Male1'
@@ -72,7 +79,7 @@ class UnityEnvironment(BaseEnvironment):
             self.comm = comm_unity.UnityCommunication()
         else:
             # Launch the executable
-            self.port_number = self.base_port + env_id
+            self.port_number = self.base_port + port_id
 
 
             self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **executable_args)
@@ -82,45 +89,77 @@ class UnityEnvironment(BaseEnvironment):
         self.reset()
 
     def reward(self):
-        count = 0
+        reward = 0.
         done = True
         satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec)
         for key, value in satisfied.items():
-            count += min(len(value), self.goal_spec[key])
-            if unsatisfied[key] > 0:
+            preds_needed, mandatory, reward_per_pred = self.goal_spec[key]
+            # How many predicates achieved
+            value_pred = min(len(value), preds_needed)
+            reward += value_pred * reward_per_pred
+
+            if mandatory and unsatisfied[key] > 0:
                 done = False
-        return count, done, {}
+
+        # print(satisfied)
+        return reward, done, {}
 
     def step(self, action_dict):
         script_list = utils.convert_action(action_dict)
 
-        reward, done, info = self.reward()
-        if self.recording:
-            success, message = self.comm.render_script(script_list,
-                                                       recording=True,
-                                                       gen_vid=False,
-                                                       camera_mode='PERSON_TOP',
-                                                       output_folder=self.output_folder,
-                                                       file_name_prefix=self.file_name_prefix,
-                                                       image_synthesis=['normal', 'seg_inst', 'seg_class'])
-        else:
-            # try:
-            success, message = self.comm.render_script(script_list,
-                                                       recording=False,
-                                                       gen_vid=False,
-                                                       processing_time_limit=20,
-                                                       time_scale=10.)
-        if not success:
-            print(message)
-            pdb.set_trace()
+        if len(script_list[0]) > 0:
+            if self.recording:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=True,
+                                                           gen_vid=False,
+                                                           camera_mode='PERSON_TOP',
+                                                           output_folder=self.output_folder,
+                                                           file_name_prefix=self.file_name_prefix,
+                                                           image_synthesis=['normal', 'seg_inst', 'seg_class'])
+            else:
+                # try:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=False,
+                                                           gen_vid=False,
+                                                           processing_time_limit=20,
+                                                           time_scale=20.)
+            if not success:
+                print(message)
 
-        self.changed_graph = True
+                if self.num_agents  >  1:
+                    # pdb.set_trace()
+                    script_list = utils.convert_action({0: action_dict[0], 1: None})
+                    if self.recording:
+                        success, message = self.comm.render_script(script_list,
+                                                                   recording=True,
+                                                                   gen_vid=False,
+                                                                   camera_mode='PERSON_TOP',
+                                                                   output_folder=self.output_folder,
+                                                                   file_name_prefix=self.file_name_prefix,
+                                                                   image_synthesis=['normal', 'seg_inst', 'seg_class'])
+                    else:
+                        # try:
+                        success, message = self.comm.render_script(script_list,
+                                                                   recording=False,
+                                                                   gen_vid=False,
+                                                                   processing_time_limit=20,
+                                                                   time_scale=10.)
+                if not success:
+                    print(message)
+
+            self.changed_graph = True
+
+
+        reward, done, info = self.reward()
         obs = self.get_observations()
         graph = self.get_graph()
         self.python_graph_reset(graph)
         self.steps += 1
-        if done:
-            pdb.set_trace()
+        info['finished'] = done
+        if self.steps == self.max_episode_length:
+            done = True
+        # if done:
+        #     pdb.set_trace()
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):
@@ -129,39 +168,93 @@ class UnityEnvironment(BaseEnvironment):
         self.env.reset(new_graph, self.task_goal)
         self.env.to_pomdp()
 
-    def reset(self, environment_graph=None):
+    def get_goal(self, task_spec, agent_goal):
+        if agent_goal == 'full':
+            return task_spec
+        elif agent_goal == 'grab':
+            candidates = [x.split('_')[1] for x,y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
+            object_grab = random.choice(candidates)
+            # print('GOAL', candidates, object_grab)
+            return {'holds_'+object_grab+'_'+'1': [1, True, 10], 'close_'+object_grab+'_'+'1': [1, False, 0.1]}
+        elif agent_goal == 'put':
+            pred = random.choice([x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']])
+            object_grab = pred.split('_')[1]
+            return {
+                pred: [1, True, 60],
+                'holds_' + object_grab + '_' + '1': [1, False, 2],
+                'close_' + object_grab + '_' + '1': [1, False, 0.05]
+
+            }
+        else:
+            raise NotImplementedError
+
+    def reset(self, environment_graph=None, task_id=None):
 
         # Make sure that characters are out of graph, and ids are ok
-        if self.test_mode:
-            env_task = self.env_task_set[self.count_test]
-        else:
+        if task_id is None:
             env_task = random.choice(self.env_task_set)
-
+        else:
+            env_task = self.env_task_set[task_id]
 
         self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
         self.init_rooms = env_task['init_rooms']
         self.task_goal = env_task['task_goal']
+
         self.task_name = env_task['task_name']
+
+        old_env_id = self.env_id
         self.env_id = env_task['env_id']
 
-        # TODO: in the future we may want different goals
-        self.goal_spec = self.task_goal[0]
+        # seed = (self.seed + self.task_id * 101) % 10007
+        # random.seed(seed)
+        # np.random.seed(seed)
 
-        self.comm.reset(self.env_id)
+        # TODO: in the future we may want different goals
+        self.goal_spec = self.get_goal(self.task_goal[0], self.agent_goals[0])
+        print("Goal: ", self.goal_spec)
+
+        # pdb.set_trace()
+        if False: # old_env_id == self.env_id:
+
+            # pdb.set_trace()
+            self.comm.fast_reset()
+        else:
+            self.comm.reset(self.env_id)
+
+        s,g = self.comm.environment_graph()
+        if self.env_id not in self.max_ids.keys():
+            max_id = max([node['id'] for node in g['nodes']])
+            self.max_ids[self.env_id] = max_id
+
+        max_id = self.max_ids[self.env_id]
+        print(max_id)
         if environment_graph is not None:
             # TODO: this should be modified to extend well
-            updated_graph = environment_graph
-            self.comm.expand_scene(updated_graph)
+            updated_graph = utils.separate_new_ids_graph(environment_graph, max_id)
+            success, m = self.comm.expand_scene(updated_graph)
         else:
-            self.comm.expand_scene(env_task['init_graph'])
+            updated_graph = utils.separate_new_ids_graph(env_task['init_graph'], max_id)
+            success, m = self.comm.expand_scene(updated_graph)
 
+        if not success:
+            print("Error expanding scene")
+            pdb.set_trace()
+            return None
         self.offset_cameras = self.comm.camera_count()[1]
+
+        if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
+            rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
+        else:
+            rooms = list(self.init_rooms)
+
         for i in range(self.num_agents):
             if i in self.agent_info:
-                self.comm.add_character(self.agent_info[i])
+                self.comm.add_character(self.agent_info[i], initial_room=rooms[i])
             else:
                 self.comm.add_character()
+
+        _, self.init_unity_graph = self.comm.environment_graph()
 
 
         self.changed_graph = True
@@ -190,13 +283,22 @@ class UnityEnvironment(BaseEnvironment):
             dict_observations[agent_id] = self.get_observation(agent_id, obs_type)
         return dict_observations
 
+    def get_action_space(self):
+        dict_action_space = {}
+        for agent_id in range(self.num_agents):
+            if self.observation_types[agent_id] not in ['mcts', 'full']:
+                raise NotImplementedError
+            else:
+                obs_type = 'mcts'
+            visible_graph = self.get_observation(agent_id, obs_type)
+            dict_action_space[agent_id] = [node['id'] for node in visible_graph['nodes']]
+        return dict_action_space
 
     def get_observation(self, agent_id, obs_type, info={}):
-        if obs_type == 'partial':
+        if obs_type == 'mcts':
             return self.env.get_observations(char_index=agent_id)
 
         elif obs_type == 'full':
-            pdb.set_trace()
             return self.get_graph()
 
         elif obs_type == 'visible':
