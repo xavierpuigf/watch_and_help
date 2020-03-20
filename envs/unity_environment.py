@@ -15,21 +15,23 @@ class UnityEnvironment(BaseEnvironment):
 
 
     def __init__(self,
-                 env_id,
-                 apartment_id,
-                 num_agents,
+                 num_agents=2,
+                 max_episode_length=200,
                  env_task_set=None,
                  test_mode=False,
                  observation_types=None,
                  use_editor=False,
                  base_port=8080,
+                 port_id=0,
                  recording=False,
                  output_folder=None,
                  file_name_prefix=None,
-                 executable_args={}):
+                 executable_args={},
+                 seed=123):
 
-        random.seed(env_id)
-        np.random.seed(env_id)
+        self.seed = seed
+        random.seed(seed)
+        np.random.seed(seed)
 
         self.steps = 0
 
@@ -37,12 +39,12 @@ class UnityEnvironment(BaseEnvironment):
         self.test_mode = test_mode
         self.env_task_set = env_task_set
 
-        self.env_id = env_id
-        self.apartment_id = apartment_id
         self.num_agents = num_agents
+        self.max_episode_length = max_episode_length
 
         self.recording = recording
         self.base_port = base_port
+        self.port_id = port_id
         self.output_folder = output_folder
         self.file_nem_prefix = file_name_prefix
 
@@ -72,7 +74,7 @@ class UnityEnvironment(BaseEnvironment):
             self.comm = comm_unity.UnityCommunication()
         else:
             # Launch the executable
-            self.port_number = self.base_port + env_id
+            self.port_number = self.base_port + port_id
 
 
             self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **executable_args)
@@ -112,15 +114,37 @@ class UnityEnvironment(BaseEnvironment):
                                                        time_scale=10.)
         if not success:
             print(message)
-            pdb.set_trace()
+            # pdb.set_trace()
+            script_list = utils.convert_action({0: action_dict[0], 1: None})
+            if self.recording:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=True,
+                                                           gen_vid=False,
+                                                           camera_mode='PERSON_TOP',
+                                                           output_folder=self.output_folder,
+                                                           file_name_prefix=self.file_name_prefix,
+                                                           image_synthesis=['normal', 'seg_inst', 'seg_class'])
+            else:
+                # try:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=False,
+                                                           gen_vid=False,
+                                                           processing_time_limit=20,
+                                                           time_scale=10.)
+            if not success:
+                print(message)
+
 
         self.changed_graph = True
         obs = self.get_observations()
         graph = self.get_graph()
         self.python_graph_reset(graph)
         self.steps += 1
-        if done:
-            pdb.set_trace()
+        info['finished'] = done
+        if self.steps == self.max_episode_length:
+            done = True
+        # if done:
+        #     pdb.set_trace()
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):
@@ -129,14 +153,16 @@ class UnityEnvironment(BaseEnvironment):
         self.env.reset(new_graph, self.task_goal)
         self.env.to_pomdp()
 
-    def reset(self, environment_graph=None):
+    def reset(self, environment_graph=None, task_id=None):
 
         # Make sure that characters are out of graph, and ids are ok
-        if self.test_mode:
-            env_task = self.env_task_set[self.count_test]
+        if task_id is None:
+            if self.test_mode:
+                env_task = self.env_task_set[self.count_test]
+            else:
+                env_task = random.choice(self.env_task_set)
         else:
-            env_task = random.choice(self.env_task_set)
-
+            env_task = self.env_task_set[task_id]
 
         self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
@@ -144,6 +170,10 @@ class UnityEnvironment(BaseEnvironment):
         self.task_goal = env_task['task_goal']
         self.task_name = env_task['task_name']
         self.env_id = env_task['env_id']
+
+        seed = (self.seed + self.task_id * 101) % 10007
+        random.seed(seed)
+        np.random.seed(seed)
 
         # TODO: in the future we may want different goals
         self.goal_spec = self.task_goal[0]
@@ -157,11 +187,18 @@ class UnityEnvironment(BaseEnvironment):
             self.comm.expand_scene(env_task['init_graph'])
 
         self.offset_cameras = self.comm.camera_count()[1]
+
+        if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
+            rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
+        else:
+            rooms = list(self.init_rooms)
+
         for i in range(self.num_agents):
             if i in self.agent_info:
-                self.comm.add_character(self.agent_info[i])
+                self.comm.add_character(self.agent_info[i], initial_room=rooms[i])
             else:
                 self.comm.add_character()
+        _, self.init_unity_graph = self.comm.environment_graph()
 
 
         self.changed_graph = True

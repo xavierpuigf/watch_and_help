@@ -25,13 +25,14 @@ if __name__ == '__main__':
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
-    args.record_dir = 'record/init7_Bob_test_set_30'
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
+    # args.record_dir = 'record/Alice_test_set_30'
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    args.record_dir = 'record/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
                     'no_graphics': True
-
     }
 
     # env_task_set = []
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     L = [200] * len(episode_ids)
     test_results = {}
 
-    env = UnityEnvironment(num_agents=2,
+    env = UnityEnvironment(num_agents=1,
                          max_episode_length=args.max_episode_length,
                          env_task_set=env_task_set,
                          use_editor=args.use_editor,
@@ -80,14 +81,14 @@ if __name__ == '__main__':
                          logging_graphs=False)
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
-    args_agent2 = {'agent_id': 2, 'char_index': 1}
+    # args_agent2 = {'agent_id': 2, 'char_index': 1}
     args_agent1.update(args_common)
-    args_agent2.update(args_common)
-    args_agent2.update({'recursive': True})
-    agents = [MCTS_agent(**args_agent1), MCTS_agent(**args_agent2)]
+    # args_agent2.update(args_common)
+    # args_agent2.update({'recursive': True})
+    agents = [MCTS_agent(**args_agent1)]
     arena = Arena(agents, env)
 
-    for iter_id in range(10):
+    for iter_id in range(1):
         if iter_id > 0:
             test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
         cnt = 0

@@ -1,7 +1,6 @@
 import random
 import numpy as np
 from anytree import AnyNode as Node
-from anytree import RenderTree
 import copy
 import ipdb
 from profilehooks import profile
@@ -226,20 +225,20 @@ class MCTS:
         reached_terminal = False
 
         leaf_node_values = leaf_node.id[1]
-        curr_vh_state, curr_state, goal_spec, satisified, unsatisfied, num_steps, actions_parent = leaf_node_values
+        curr_vh_state, curr_state, goal_spec, satisfied, unsatisfied, num_steps, actions_parent = leaf_node_values
         sum_reward = 0
         last_reward = 0
-        satisified = copy.deepcopy(satisified)
+        satisfied = copy.deepcopy(satisfied)
         unsatisfied = copy.deepcopy(unsatisfied)
 
         # TODO: we should start with goals at random, or with all the goals
         # Probably not needed here since we already computed whern expanding node
 
-        subgoals = self.get_subgoal_space(curr_state, satisified, unsatisfied, self.opponent_subgoal)
+        subgoals = self.get_subgoal_space(curr_state, satisfied, unsatisfied, self.opponent_subgoal)
         list_goals = list(range(len(subgoals)))
         random.shuffle(list_goals)
         for rollout_step in range(min(len(list_goals), self.max_rollout_step)):#min(self.max_rollout_step, self.max_episode_length - t)):
-            # # subgoals = self.get_subgoal_space(curr_state, satisified, unsatisfied)
+            # # subgoals = self.get_subgoal_space(curr_state, satisfied, unsatisfied)
             # print(rollout_step)
             # print(len(list_goals))
             # print(list_goals[rollout_step])
@@ -353,7 +352,7 @@ class MCTS:
         actions = curr_root.children[selected_child_index].id[1][-1]
         return actions, children_visit, curr_root.children[selected_child_index]
 
-    def transition_subgoal(self, satisfied, unsatisified, subgoal):
+    def transition_subgoal(self, satisfied, unsatisfied, subgoal):
         """transition on predicate level"""
         elements = subgoal.split('_')
         if elements[0] == 'put':
@@ -419,13 +418,13 @@ class MCTS:
         objects_str = ' '.join(['<{}> ({})'.format(x[0], x[1]) for x in obj_args])
         return '[{}] {}'.format(action_tuple[0], objects_str)
 
-    def get_subgoal_space(self, state, satisified, unsatisfied, opponent_subgoal=None, verbose=0):
+    def get_subgoal_space(self, state, satisfied, unsatisfied, opponent_subgoal=None, verbose=0):
         """
         Get subgoal space
         Args:
             state: current state
             satisfied: satisfied predicates
-            unsatisified: # of unstatisified predciates
+            unsatisfied: # of unstatisified predicates
         Returns:
             subgoal space
         """
@@ -440,6 +439,11 @@ class MCTS:
             if edge['relation_type'].startswith('HOLDS') and \
                 edge['from_id'] == self.agent_id:
                 inhand_objects.append(edge['to_id'])
+        inhand_objects_opponent = []
+        for edge in state['edges']:
+            if edge['relation_type'].startswith('HOLDS') and \
+                edge['from_id'] == 3 - self.agent_id:
+                inhand_objects_opponent.append(edge['to_id'])
 
         # if verbose:
         #     print('inhand_objects:', inhand_objects)
@@ -447,8 +451,8 @@ class MCTS:
 
         id2node = {node['id']: node for node in state['nodes']}
 
-        opponent_predciate_1 = None
-        opponent_predciate_2 = None
+        opponent_predicate_1 = None
+        opponent_predicate_2 = None
         if opponent_subgoal is not None:
             elements = opponent_subgoal.split('_')
             if elements[0] in ['put', 'putIn']:
@@ -457,15 +461,15 @@ class MCTS:
                     if node['id'] == int(elements[1]):
                         obj1_class = node['class_name']
                         break
-                if obj1_class is None:
-                    opponent_subgoal = None
-                else:
-                    opponent_predciate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
-                    opponent_predciate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
+                # if obj1_class is None:
+                #     opponent_subgoal = None
+                # else:
+                opponent_predicate_1 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', obj1_class, elements[2])
+                opponent_predicate_2 = '{}_{}_{}'.format('on' if elements[0] == 'put' else 'inside', elements[1], elements[2])
 
-        subgoal_space, obsed_subgoal_space= [], []
+        subgoal_space, obsed_subgoal_space, overlapped_subgoal_space = [], [], []
         for predicate, count in unsatisfied.items():
-            if count > 1 or count > 0 and predicate not in [opponent_predciate_1, opponent_predciate_2]:
+            if count > 1 or count > 0 and predicate not in [opponent_predicate_1, opponent_predicate_2]:
                 elements = predicate.split('_')
                 # print(elements)
                 if elements[0] == 'on':
@@ -478,7 +482,7 @@ class MCTS:
                             # if verbose:
                             #     print(node)
                             tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 
-                            if tmp_predicate not in satisified[predicate]:
+                            if tmp_predicate not in satisfied[predicate]:
                                 tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
                                 if tmp_subgoal != opponent_subgoal:
                                     subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
@@ -495,7 +499,7 @@ class MCTS:
                             # if verbose:
                             #     print(node)
                             tmp_predicate = 'inside_{}_{}'.format(node['id'], surface) 
-                            if tmp_predicate not in satisified[predicate]:
+                            if tmp_predicate not in satisfied[predicate]:
                                 tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
                                 if tmp_subgoal != opponent_subgoal:
                                     subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
@@ -523,9 +527,37 @@ class MCTS:
                             container = random.choice(containers)
                             predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
                             goals[predicate] = 1
+            elif predicate in [opponent_predicate_1, opponent_predicate_2] and len(inhand_objects_opponent) == 0:
+                elements = predicate.split('_')
+                # print(elements)
+                if elements[0] == 'on':
+                    subgoal_type = 'put'
+                    obj = elements[1]
+                    surface = elements[2] # assuming it is a graph node id
+                    for node in state['nodes']:
+                        if node['class_name'] == obj or str(node['id']) == obj:
+                            tmp_predicate = 'on_{}_{}'.format(node['id'], surface) 
+                            if tmp_predicate not in satisfied[predicate]:
+                                tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
+                                overlapped_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])                        
+                elif elements[0] == 'inside':
+                    subgoal_type = 'putIn'
+                    obj = elements[1]
+                    surface = elements[2] # assuming it is a graph node id
+                    for node in state['nodes']:
+                        if node['class_name'] == obj or str(node['id']) == obj:
+                            tmp_predicate = 'inside_{}_{}'.format(node['id'], surface) 
+                            if tmp_predicate not in satisfied[predicate]:
+                                tmp_subgoal = '{}_{}_{}'.format(subgoal_type, node['id'], surface)
+                                overlapped_subgoal_space.append(['{}_{}_{}'.format(subgoal_type, node['id'], surface), predicate, tmp_predicate])
+                                    
         if len(obsed_subgoal_space) > 0:
             return obsed_subgoal_space
         if len(subgoal_space) == 0:
+            # if self.agent_id == 2 and verbose == 1:
+            #     ipdb.set_trace()
+            if len(overlapped_subgoal_space) > 0:
+                return overlapped_subgoal_space
             for predicate, count in unsatisfied.items():
                 if count == 1:
                     elements = predicate.split('_')
@@ -539,7 +571,7 @@ class MCTS:
                                 # if verbose:
                                 #     print(node)
                                 tmp_predicate = 'turnOn{}_{}'.format(node['id'], 1) 
-                                if tmp_predicate not in satisified[predicate]:
+                                if tmp_predicate not in satisfied[predicate]:
                                     subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
         if len(subgoal_space) == 0:
             for predicate, count in unsatisfied.items():
@@ -555,7 +587,7 @@ class MCTS:
                                 # if verbose:
                                 #     print(node)
                                 tmp_predicate = 'holds_{}_{}'.format(node['id'], 1) 
-                                if tmp_predicate not in satisified[predicate]:
+                                if tmp_predicate not in satisfied[predicate]:
                                     subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
         if len(subgoal_space) == 0:
             for predicate, count in unsatisfied.items():
@@ -571,7 +603,7 @@ class MCTS:
                                 # if verbose:
                                 #     print(node)
                                 tmp_predicate = 'sit_{}_{}'.format(1, node['id']) 
-                                if tmp_predicate not in satisified[predicate]:
+                                if tmp_predicate not in satisfied[predicate]:
                                     subgoal_space.append(['{}_{}'.format(subgoal_type, node['id']), predicate, tmp_predicate])
 
         return subgoal_space

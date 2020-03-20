@@ -6,27 +6,13 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
+    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Environment type')
+    parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
         '--task_type', default='find', choices=['find', 'complex', 'open'], help='algorithm to use: find | complex')
-
-    parser.add_argument(
-        '--gail',
-        action='store_true',
-        default=False,
-        help='do imitation learning with gail')
-    parser.add_argument(
-        '--gail-experts-dir',
-        default='./gail_experts',
-        help='directory that contains expert demonstrations for gail')
-    parser.add_argument(
-        '--gail-batch-size',
-        type=int,
-        default=128,
-        help='gail batch size (default: 128)')
-    parser.add_argument(
-        '--gail-epoch', type=int, default=5, help='gail epochs (default: 5)')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
     parser.add_argument(
@@ -206,8 +192,6 @@ def get_args():
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
-
-
     parser.add_argument(
         '--train_mode',
         default='RL',
@@ -251,7 +235,7 @@ def get_args():
         help='number of steps until breaking bptt')
 
     parser.add_argument(
-        '--max_episode_length',
+        '--max-episode-length',
         type=int,
         default=200,
         help='number of episodes')
@@ -275,7 +259,7 @@ def get_args():
         help='how many objects in observation space')
 
     parser.add_argument(
-        '--base_port', type=int, default=8080)
+        '--base-port', type=int, default=8080)
 
     parser.add_argument(
         '--display', type=str, default="2")
@@ -301,7 +285,8 @@ def get_args():
 
     # Exec args
     parser.add_argument(
-        '--executable_file', type=str, default='../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64')
+        '--executable_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.15.2.x86_64')
+
 
     parser.add_argument('--use-editor', action='store_true', default=False,
                         help='whether to use an editor or executable')
