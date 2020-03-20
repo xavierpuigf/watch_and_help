@@ -44,11 +44,7 @@ def get_args():
         type=float,
         default=0.99,
         help='discount factor for rewards (default: 0.99)')
-    parser.add_argument(
-        '--use-gae',
-        action='store_true',
-        default=False,
-        help='use generalized advantage estimation')
+
     parser.add_argument(
         '--gae-lambda',
         type=float,
@@ -210,8 +206,7 @@ def get_args():
         choices=['GNN', 'CNN', 'TF'],
         help='use a linear schedule on the learning rate')
 
-    parser.add_argument(
-        '--executable_file', type=str, default='../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64')
+
 
     parser.add_argument(
         '--train_mode',
@@ -302,6 +297,14 @@ def get_args():
 
     parser.add_argument('--tensorboard-logdir', default='log_tb',
                         help='logs to tensorboard in the specified directory')
+
+
+    # Exec args
+    parser.add_argument(
+        '--executable_file', type=str, default='../executables/exec_linux03.03/exec_linux03.3multiagent.x86_64')
+
+    parser.add_argument('--use-editor', action='store_true', default=False,
+                        help='whether to use an editor or executable')
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
