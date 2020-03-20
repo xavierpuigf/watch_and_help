@@ -6,7 +6,6 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
     parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Environment type')
     parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
@@ -74,48 +73,15 @@ def get_args():
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
 
-    parser.add_argument(
-        '--env-name',
-        default='virtualhome',
-        help='environment to train on (default: PongNoFrameskip-v4)')
 
-    parser.add_argument(
-        '--simulator-type',
-        default='unity',
-        choices=['unity', 'python'],
-        help='whether to use unity or python sim')
 
-    parser.add_argument(
-        '--num-processes',
-        type=int,
-        default=1,
-        help='how many training CPU processes to use (default: 16)')
-
-    parser.add_argument(
-        '--num-steps',
-        type=int,
-        default=100,
-        help='number of forward steps in A2C (default: 100)')
     parser.add_argument(
         '--t-max',
         type=int,
         default=20,
         help='number of bptt steps (default: 20)')
-    parser.add_argument(
-        '--ppo-epoch',
-        type=int,
-        default=4,
-        help='number of ppo epochs (default: 4)')
-    parser.add_argument(
-        '--num-mini-batch',
-        type=int,
-        default=32,
-        help='number of batches for ppo (default: 32)')
-    parser.add_argument(
-        '--clip-param',
-        type=float,
-        default=0.2,
-        help='ppo clip parameter (default: 0.2)')
+
+
     parser.add_argument(
         '--log-interval',
         type=int,
@@ -247,6 +213,12 @@ def get_args():
         help='what')
 
     parser.add_argument(
+        '--neg_ratio',
+        type=float,
+        default=0.5,
+        help='ratio with 0 reward')
+
+    parser.add_argument(
         '--max-num-edges',
         type=int,
         default=300,
@@ -258,11 +230,7 @@ def get_args():
         default=150,
         help='how many objects in observation space')
 
-    parser.add_argument(
-        '--base-port', type=int, default=8080)
 
-    parser.add_argument(
-        '--display', type=str, default="2")
 
     parser.add_argument(
         '--max_gradient_norm', type=int, default=10)
@@ -271,7 +239,7 @@ def get_args():
         '--memory-capacity-episodes', type=int, default=10000)
 
     parser.add_argument('--no-time-normalization', action='store_true', default=False,
-                        help='whether to run on or off policy')
+                        help='whether to normalize loss on time')
 
     parser.add_argument('--on-policy', action='store_true', default=False,
                         help='whether to run on or off policy')
@@ -285,11 +253,39 @@ def get_args():
 
     # Exec args
     parser.add_argument(
-        '--executable_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.15.2.x86_64')
+        '--executable_file', type=str,
+        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.15.2.x86_64')
+
+    parser.add_argument(
+        '--base-port', type=int, default=8080)
+
+    parser.add_argument(
+        '--display', type=str, default="2")
+
+    parser.add_argument(
+        '--env-name',
+        default='virtualhome',
+        help='environment to train on (default: PongNoFrameskip-v4)')
+
+    parser.add_argument(
+        '--simulator-type',
+        default='unity',
+        choices=['unity', 'python'],
+        help='whether to use unity or python sim')
+
+    parser.add_argument(
+        '--num-processes',
+        type=int,
+        default=1,
+        help='how many training CPU processes to use (default: 16)')
 
 
     parser.add_argument('--use-editor', action='store_true', default=False,
                         help='whether to use an editor or executable')
+
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help='debugging mode')
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

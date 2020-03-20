@@ -43,10 +43,11 @@ if __name__ == '__main__':
     parser.add_argument('--record_dir', default='../../../tshu/vh_multiagent_models/record/debug_Alice_env_task_set_3_full/', type=str) 
     args = parser.parse_args()
 
-    dir_files = sorted(glob.glob('{}/init*50*'.format(args.record_dir)))
+    dir_files = sorted(glob.glob('{}'.format(args.record_dir)))
     dict_failures = []
     goal_dict = {}
     destinations = []
+    failed_ids = []
     progs_per_task = {}
 
     task_name_to_predicates = {}
@@ -80,19 +81,20 @@ if __name__ == '__main__':
                     content = json.load(f)
 
             except:
-                continue
-            
+                print('Cannot read')
+                pdb.set_trace()
+
             try:
                 id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
                 rooms = [node['id'] for node in content['init_unity_graph']['nodes'] if node['category'] == 'Rooms']
             except:
                 pdb.set_trace()
             
-            if content['env_id'] in [3,6]:
-                continue
+            # if content['env_id'] in [3,6]:
+            #     continue
             # Build a hash for the goal
 
-            if content['finished'] and len(content['action']['0']) > 30:
+            if content['finished']:
                 if finished == 0:
                     print(len(content['action']['0']), json_file)
 
@@ -119,50 +121,55 @@ if __name__ == '__main__':
 
                 task_name_to_predicates[task_name].append(goal_hash_string)
             else:
-                continue
+                #continue
 
-                   # #try:
-                   # no_errors = True
-                   # actions = content['action']['0']
-                   # if None in actions:
-                   #     errors['null'] += 1
-                   #     no_errors = False
-                   # if detect_bad_placing(actions):
-                   #     errors['bad_placing'] += 1
-                   #     no_errors = False
+               #try:
+               failed_ids.append(content['task_id'])
+               no_errors = True
+               actions = content['action']['0']
+               if None in actions:
+                   errors['null'] += 1
+                   no_errors = False
 
-                   # obj_walk = detect_bad_walk(actions)
-                   # if obj_walk is not None:
-                   #     obj_walk_curr = obj_walk.split('<')[1].split('>')[0]
-                   #     obj_id = int(obj_walk.split('(')[1].split(')')[0])
-                   #     if 'GRABBABLE' in id2node[obj_id]['properties']:
-                   #         edge = [edge for edge in content['init_unity_graph']['edges']
-                   #                 if edge['from_id'] == obj_id and edge['to_id'] not in rooms]
+               if detect_bad_placing(actions):
+                   errors['bad_placing'] += 1
+                   no_errors = False
 
-                   #         if len(edge) == 0:
-                   #             pass
-                   #             #print(id2node[obj_id]['class_name'], content['env_id'])
-                   #         else:
-                   #             dest = id2node[edge[0]['to_id']]['class_name']
-                   #             destinations.append(dest + str(content['env_id']))
-                   #             #pdb.set_trace()
+               obj_walk = detect_bad_walk(actions)
+               if obj_walk is not None:
+                   obj_walk_curr = obj_walk.split('<')[1].split('>')[0]
+                   obj_id = int(obj_walk.split('(')[1].split(')')[0])
+                   if 'GRABBABLE' in id2node[obj_id]['properties']:
+                       edge = [edge for edge in content['init_unity_graph']['edges']
+                               if edge['from_id'] == obj_id and edge['to_id'] not in rooms]
 
-                   #     # if content['env_id'] == 6:
-                   #     #     # if obj_walk_curr == 'kitchencabinets':
-                   #     #     #     pdb.set_trace()
-                   #     obj_and_env = 'WALK_' + obj_walk_curr + '_' + str(content['env_id'])
+                       if len(edge) == 0:
+                           pass
+                           #print(id2node[obj_id]['class_name'], content['env_id'])
+                       else:
+                           dest = id2node[edge[0]['to_id']]['class_name']
+                           destinations.append(dest + str(content['env_id']))
 
-                   #     dict_failures.append(obj_and_env)
+                           print(dest + str(content['env_id']), obj_walk_curr)
+                           #pdb.set_trace()
 
-                   #     errors['bad_walk'] += 1
-                   #     no_errors = False
+                   # if content['env_id'] == 6:
+                   #     # if obj_walk_curr == 'kitchencabinets':
+                   #     #     pdb.set_trace()
+                   obj_and_env = 'WALK_' + obj_walk_curr + '_' + str(content['env_id'])
+                   #if 'kitchencabinets' in obj_walk_curr:
+                   print(obj_walk_curr, json_file, content['action']['0'][-1], content['task_id'])
+                   dict_failures.append(obj_and_env)
 
-                   # if no_errors:
-                   #     add_to_stats(dict_apartments, content)
-                   #     #pdb.set_trace()
-                   #     errors['other'] += 1
-                   # # except:
-                   # #     pdb.set_trace()
+                   errors['bad_walk'] += 1
+                   no_errors = False
+
+               if no_errors:
+                   add_to_stats(dict_apartments, content)
+                   # pdb.set_trace()
+                   errors['other'] += 1
+               # except:
+               #     pdb.set_trace()
 
         print(errors)
 
@@ -176,29 +183,30 @@ if __name__ == '__main__':
 
     ct = Counter(destinations).most_common()
     print(ct)
-    
-    # Set train/Test
-    train_preds, test_preds = [], []
-    train_all = []
-    test_all = []
-    for task_name, lpreds in task_name_to_predicates.items():
-        preds = list(set(lpreds))
-        num_preds = len(preds)
-        random.shuffle(preds)
-        test_index = int(num_preds * 0.3)
-        test_preds += preds[:test_index]
-        train_preds += preds[test_index:]
-        
-    for t in test_preds:
-        test_all += goal_dict[t][1]
 
-    for t in train_preds:
-        train_all += goal_dict[t][1]
-    
-    pdb.set_trace()
-    dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates, 
-            'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
-    pdb.set_trace()
+    print(failed_ids)
+    # Set train/Test
+    # train_preds, test_preds = [], []
+    # train_all = []
+    # test_all = []
+    # for task_name, lpreds in task_name_to_predicates.items():
+    #     preds = list(set(lpreds))
+    #     num_preds = len(preds)
+    #     random.shuffle(preds)
+    #     test_index = int(num_preds * 0.3)
+    #     test_preds += preds[:test_index]
+    #     train_preds += preds[test_index:]
+    #
+    # for t in test_preds:
+    #     test_all += goal_dict[t][1]
+    #
+    # for t in train_preds:
+    #     train_all += goal_dict[t][1]
+    #
+    # pdb.set_trace()
+    # dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates,
+    #         'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
+    # pdb.set_trace()
 
     #with open('info_demo_scenes_2.json', 'w+') as f:
     #    f.write(json.dumps(dict_info, indent=4))

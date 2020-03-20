@@ -25,12 +25,14 @@ class A2C(Arena):
         # Reset hidden state of agents
         self.reset()
         c_r_all = [0] * self.num_agents
+        success_r_all = [0] * self.num_agents
         done = False
         actions = []
         nb_steps = 0
 
         while not done and nb_steps < self.args.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
+
             action_dict = {}
             nb_steps += 1
             for agent_index in agent_info.keys():
@@ -40,7 +42,7 @@ class A2C(Arena):
                 # action_dict[agent_index] = agent_info[agent_index]['action']
 
             if record:
-                actions.append(action_actions)
+                actions.append(agent_actions)
 
             if not self.args.on_policy:
                 # append to memory
@@ -53,10 +55,12 @@ class A2C(Arena):
 
                         self.memory_all[agent_id].append(state, policy, action, rewards, 1)
 
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
         # padding
         # TODO: is this correct? Padding that is valid?
         while nb_steps < self.args.max_episode_length:
-            pdb.set_trace()
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if self.agents[agent_id].agent_type == 'RL':
@@ -74,7 +78,7 @@ class A2C(Arena):
                         len(self.memory_all[agent_id].memory[self.memory_all[agent_id].position]) > 0:
                     self.memory_all[agent_id].append(None, None, None, 0, 0)
 
-        return c_r_all
+        return c_r_all, success_r_all
 
 
     def train(self, trainable_agents=None):
@@ -88,8 +92,11 @@ class A2C(Arena):
 
         start_episode_id = 1
         for episode_id in range(start_episode_id, self.args.nb_episodes):
-            c_r_all = self.rollout()
-            print("episode: #{} steps: {} reward: {}".format(episode_id, self.env.steps, [c_r_all[agent_id] for agent_id in trainable_agents]))
+            c_r_all, success_r_all = self.rollout()
+            print("episode: #{} steps: {} reward: {} finished: {}".format(
+                episode_id, self.env.steps,
+                [c_r_all[agent_id] for agent_id in trainable_agents],
+                [success_r_all[agent_id] for agent_id in trainable_agents]))
 
 
             for agent_id in range(self.num_agents):
@@ -110,8 +117,6 @@ class A2C(Arena):
                             trajs = self.memory_all[agent_id].sample_batch(
                                 self.args.batch_size,
                                 maxlen=self.args.max_episode_length)
-
-
                         N = len(trajs[0])
                         policies, actions, rewards, Vs, old_policies, dones, masks = \
                             [], [], [], [], [], [], []
@@ -150,7 +155,6 @@ class A2C(Arena):
 
                             if (t + 1) % self.args.t_max == 0:  # maximum bptt length
                                 hx = hx.detach()
-
                         self._train(self.agents[agent_id].actor_critic,
                                     self.optimizers[agent_id],
                                     policies,
@@ -249,4 +253,3 @@ class A2C(Arena):
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.max_gradient_norm, 1)
         optimizer.step()
-        pdb.set_trace()

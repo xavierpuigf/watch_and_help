@@ -5,6 +5,7 @@ from utils import utils_rl_agent
 import numpy as np
 import pdb
 import copy
+import random
 
 class RL_agent:
     """
@@ -58,7 +59,7 @@ class RL_agent:
         rnn_hxs = self.hidden_state
 
         inputs, info = self.graph_helper.build_graph(observation, character_id=self.agent_id)
-        #assert(inputs.size(1) == 1)
+        visible_objects = info[-1]
 
         target_obj_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
         target_loc_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
@@ -106,10 +107,25 @@ class RL_agent:
         info_model['actions'] = action
         info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
 
+        #############
+        # DEBUGGING
+        # This is for debugging
+        id_glass = 459
+        perc_correct_actions = 0.1
+        if len([edge for edge in observation['edges'] if
+                edge['from_id'] == 1 and edge['to_id'] == id_glass and edge['relation_type'] == 'CLOSE']) > 0:
+            # Grab
+            action_id = self.graph_helper.action_dict.get_id('grab')
+        else:
+            # Walk to
+            action_id = self.graph_helper.action_dict.get_id('walktowards')
+        object_id = [it for it, node in enumerate(visible_objects) if node[1] == id_glass][0]
 
-        visible_objects = info[-1]
+        if random.random() < perc_correct_actions:
+            info_model['actions'] = [torch.tensor(action_id)[None, None], torch.tensor(object_id)[None, None]]
 
-        action_str = self.get_action_instr(action, visible_objects, observation)
+
+        action_str = self.get_action_instr(info_model['actions'], visible_objects, observation)
 
         # print('ACTIONS', info_model['actions'], action_str, action_probs[0],
         #       'IDS', inputs_tensor['node_ids'][0, :4])

@@ -1,4 +1,5 @@
 import pdb
+import copy
 
 def inside_not_trans(graph):
     id2node = {node['id']: node for node in graph['nodes']}
@@ -114,6 +115,17 @@ def convert_action(action_dict):
     return script_list
 
 
+def separate_new_ids_graph(graph, max_id):
+    new_graph = copy.deepcopy(graph)
+    for node in new_graph['nodes']:
+        if node['id'] > max_id:
+            node['id'] = node['id'] - max_id + 1000
+    for edge in new_graph['edges']:
+        if edge['from_id'] > max_id:
+            edge['from_id'] = edge['from_id'] - max_id + 1000
+        if edge['to_id'] > max_id:
+            edge['to_id'] = edge['to_id'] - max_id + 1000
+    return new_graph
 
 def check_progress(state, goal_spec):
     """TODO: add more predicate checkers; currently only ON"""
@@ -127,6 +139,11 @@ def check_progress(state, goal_spec):
         satisfied[key]
         satisfied[key] = []
         for edge in state['edges']:
+            if elements[0] in 'close':
+                if edge['relation_type'].lower().startswith('close') and id2node[edge['to_id']]['class_name'] == elements[1] and edge['from_id'] == int(elements[2]):
+                    predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
+                    satisfied[key].append(predicate)
+                    unsatisfied[key] -= 1
             if elements[0] in ['on', 'inside']:
                 if edge['relation_type'].lower() == elements[0] and edge['to_id'] == int(elements[2]) and (id2node[edge['from_id']]['class_name'] == elements[1] or str(edge['from_id']) == elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['from_id'], elements[2])

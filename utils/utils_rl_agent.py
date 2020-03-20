@@ -25,6 +25,9 @@ class DictObjId:
         else:
             return self.id2el[id]
 
+    def valid_el(self, el):
+        return el in self.el2id.keys()
+
     def get_id(self, el):
         el = el.lower()
         if el in self.el2id.keys():
@@ -33,7 +36,7 @@ class DictObjId:
             if self.include_other:
                 return 0
             else:
-                return self.el2id[el]
+                raise Exception
 
     def add(self, el):
         el = el.lower()
@@ -185,7 +188,8 @@ class GraphHelper():
 
     def build_graph(self, graph, character_id, ids=None, plot_graph=False, level=1):
         if ids is None:
-            ids = [node['id'] for node in graph['nodes'] if node['class_name'].lower() not in self.removed_categories]
+            ids = [node['id'] for node in graph['nodes'] if self.object_dict.valid_el(node['class_name'])]
+
         for node in graph['nodes']:
             if node['category'] == 'Rooms':
                 assert(node['class_name'] in self.rooms)
@@ -214,7 +218,7 @@ class GraphHelper():
         node_ids = [node['id'] for node in nodes]
 
         # The self agent is equal to no_obj
-        class_names_str[0] = 'no_obj'
+        #class_names_str[0] = 'no_obj'
 
         visible_nodes = [(class_name, node_id) for class_name, node_id in zip(class_names_str, node_ids)]
 
