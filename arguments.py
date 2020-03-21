@@ -90,7 +90,7 @@ def get_args():
     parser.add_argument(
         '--save-interval',
         type=int,
-        default=100,
+        default=10,
         help='save interval, one save per n updates (default: 100)')
     parser.add_argument(
         '--eval-interval',
@@ -284,19 +284,4 @@ def get_args():
                         help='whether to use an editor or executable')
 
     parser.add_argument('--debug', action='store_true', default=False,
-                        help='debugging mode')
-
-    args = parser.parse_args()
-
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
-
-    assert args.algo in ['a2c', 'ppo', 'acktr']
-    if args.recurrent_policy:
-        assert args.algo in ['a2c', 'ppo'], \
-            'Recurrent policy is not implemented for ACKTR'
-
-    return args
-
-
-if __name__ == '__main__':
-    args = get_args()
+                        he

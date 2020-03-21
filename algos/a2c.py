@@ -197,6 +197,10 @@ class A2C(Arena):
                                     old_policies,
                                     verbose=1)
 
+            if not self.args.debug and episode_id % self.args.save_interval:
+                self.logger.save_model(episode_id, self.agents[0].actor_critic)
+
+
     def _train(self,
                model,
                optimizer,
