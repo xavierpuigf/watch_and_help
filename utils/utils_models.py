@@ -103,33 +103,34 @@ class Logger():
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
                 self.set_tensorboard()
-
-        print(
-            "Updates {}, num timesteps {}, FPS {} "
-            "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
-                .format(j, total_num_steps,
-                        int(total_num_steps / (end - start)),
-                        len(episode_rewards), np.mean(episode_rewards),
-                        np.median(episode_rewards), np.min(episode_rewards),
-                        np.max(episode_rewards), dist_entropy, value_loss,
-                        action_loss))
+        fps = total_num_steps / (end - start)
+        # print(
+        #     "Updates {}, num timesteps {}, FPS {} "
+        #     "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
+        #         .format(j, total_num_steps,
+        #                 int(total_num_steps / (end - start)),
+        #                 len(episode_rewards), np.mean(episode_rewards),
+        #                 np.median(episode_rewards), np.min(episode_rewards),
+        #                 np.max(episode_rewards), dist_entropy, value_loss,
+        #                 action_loss))
 
         if self.tensorboard_writer is not None:
             self.tensorboard_writer.add_scalar("sum_reward", np.sum(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
-            self.tensorboard_writer.add_scalar("dist_entropy", dist_entropy, total_num_steps)
+            self.tensorboard_writer.add_scalar("action_entropy/action", dist_entropy[0], total_num_steps)
+            self.tensorboard_writer.add_scalar("action_entropy/object", dist_entropy[1], total_num_steps)
             self.tensorboard_writer.add_scalar("losses/value_loss", value_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
             self.tensorboard_writer.add_scalar("info/success", successes, total_num_steps)
+            self.tensorboard_writer.add_scalar("info/fps", fps, total_num_steps)
 
-    def save_model(self, j, actor_critic, envs):
+    def save_model(self, j, actor_critic):
         save_path = os.path.join(self.save_dir, self.experiment_name)
 
         torch.save([
             actor_critic,
-            getattr(get_vec_normalize(envs), 'ob_rms', None)
         ], os.path.join(save_path, "{}.pt".format(j)))

@@ -161,12 +161,16 @@ class GraphHelper():
         self.obj1_affordance[self.action_dict.get_id('open'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('close'),self.object_dict.get_id('kitchencounterdrawer')] = 0
         self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('kitchencounterdrawer')] = 0
-        self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
-        self.obj1_affordance[:, id_no_obj] = 0
+        #self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
+        #self.obj1_affordance[:, id_no_obj] = 0
+
 
         if self.simulaor_type == 'unity':
             for action_no_args in self.actions_no_args:
                 self.obj1_affordance[self.action_dict.get_id(action_no_args), id_no_obj] = 1
+
+        # if np.sum(self.obj1_affordance.sum(0) == 0) > 0:
+        #     pdb.set_trace()
 
     def get_objects(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -300,6 +304,9 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     close_edge = len([edge['to_id'] for edge in graph['edges'] if edge['from_id'] == agent_id and edge['to_id'] == o1_id and edge['relation_type'] == 'CLOSE']) > 0
     if action == 'grab':
         print(agent_id, o1_id, close_edge)
+
+    if o1_id == agent_id:
+        return None
 
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None

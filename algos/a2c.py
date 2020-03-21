@@ -1,10 +1,13 @@
 from .arena import Arena
 from utils.memory import MemoryMask
 import torch
+from torch import optim, nn
+import time
 import numpy as np
 import pdb
 import copy
-from torch import optim, nn
+from utils.utils_models import Logger
+
 
 class A2C(Arena):
     def __init__(self, agent_types, environment, args):
@@ -15,6 +18,10 @@ class A2C(Arena):
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
         self.optimizers = [optim.RMSprop(agent.actor_critic.parameters(), lr=args.lr)
                            for agent in agent_types]
+
+        self.logger = None
+        if not args.debug:
+            self.logger = Logger(args)
 
     def reset(self):
         super(A2C, self).reset()
@@ -29,6 +36,8 @@ class A2C(Arena):
         done = False
         actions = []
         nb_steps = 0
+        info_rollout = {}
+        entropy_action, entropy_object = [], []
 
         while not done and nb_steps < self.args.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
@@ -38,8 +47,10 @@ class A2C(Arena):
             for agent_index in agent_info.keys():
                 # currently single reward for both agents
                 c_r_all[agent_index] += reward
-
                 # action_dict[agent_index] = agent_info[agent_index]['action']
+
+            entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
+            entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
 
             if record:
                 actions.append(agent_actions)
@@ -57,6 +68,12 @@ class A2C(Arena):
 
         for agent_index in agent_info.keys():
             success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+
 
         # padding
         # TODO: is this correct? Padding that is valid?
@@ -78,7 +95,7 @@ class A2C(Arena):
                         len(self.memory_all[agent_id].memory[self.memory_all[agent_id].position]) > 0:
                     self.memory_all[agent_id].append(None, None, None, 0, 0)
 
-        return c_r_all, success_r_all
+        return c_r_all, success_r_all, info_rollout
 
 
     def train(self, trainable_agents=None):
@@ -91,13 +108,27 @@ class A2C(Arena):
             memory.reset()
 
         start_episode_id = 1
+        start_time = time.time()
+        total_num_steps = 0
+
         for episode_id in range(start_episode_id, self.args.nb_episodes):
-            c_r_all, success_r_all = self.rollout()
+            c_r_all, success_r_all, info_rollout = self.rollout()
             print("episode: #{} steps: {} reward: {} finished: {}".format(
                 episode_id, self.env.steps,
                 [c_r_all[agent_id] for agent_id in trainable_agents],
                 [success_r_all[agent_id] for agent_id in trainable_agents]))
 
+            if self.logger:
+                successes = info_rollout['success']
+                num_steps = info_rollout['nsteps']
+                epsilon = info_rollout['epsilon']
+                dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
+                end_time = time.time()
+                episode_rewards = c_r_all
+                total_num_steps += num_steps
+
+                self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
+                                     dist_entropy, epsilon, successes)
 
             for agent_id in range(self.num_agents):
                 cumulative_rewards[agent_id].append(c_r_all[agent_id])
