@@ -31,7 +31,7 @@ class RL_agent:
         self.agent_id = agent_id
         self.char_index = char_index
 
-        self.epsilon = args.epsilon
+        self.epsilon = args.init_epsilon
         self.deterministic = deterministic
 
         self.hidden_size = args.hidden_size
@@ -60,14 +60,16 @@ class RL_agent:
     def evaluate(self, rollout):
         pass
 
-    def get_action(self, observation, goal_spec, action_indices=None):
+    def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None):
         rnn_hxs = self.hidden_state
 
         masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
         if torch.cuda.is_available():
             rnn_hxs = rnn_hxs.cuda()
             masks = masks.cuda()
-        inputs, info = self.graph_helper.build_graph(observation, character_id=self.agent_id)
+        inputs, info = self.graph_helper.build_graph(observation,
+                                                     action_space_ids=action_space_ids,
+                                                     character_id=self.agent_id)
         visible_objects = info[-1]
 
         target_obj_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
@@ -115,6 +117,7 @@ class RL_agent:
         info_model['actions'] = action
         info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
         info_model['num_objects'] = inputs['mask_object'].sum(-1)
+        info_model['num_objects_action'] = inputs['mask_action_node'].sum(-1)
 
         #############
         # DEBUGGING

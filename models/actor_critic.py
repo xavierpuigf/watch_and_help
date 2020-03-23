@@ -96,7 +96,7 @@ class ActorCritic(nn.Module):
 
         # TODO: this can probably be always shared across a batch
         object_classes = inputs['class_objects']
-        mask_observations = inputs['mask_object']
+        mask_actions_nodes = inputs['mask_action_node']
 
         # select object1, and mask action accordingly
         indices = [1, 0] # object1, action
@@ -110,7 +110,7 @@ class ActorCritic(nn.Module):
             else:
                 dist = distr(context_goal, object_goal)
 
-            new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_observations, affordance_obj1)
+            new_log_probs = utils_rl_agent.update_probs(dist.original_logits, i, actions, object_classes, mask_actions_nodes, affordance_obj1)
             # if i == 0:
             #   print(new_log_probs)
             dist = distr.update_logs(new_log_probs)
@@ -123,7 +123,7 @@ class ActorCritic(nn.Module):
                 if u < epsilon:
                     uniform_logits = torch.ones(dist.original_logits.shape).to(new_log_probs.device)
                     updated_uniform_logits = utils_rl_agent.update_probs(uniform_logits, i, actions, object_classes,
-                                                                         mask_observations, affordance_obj1)
+                                                                         mask_actions_nodes, affordance_obj1)
 
                     random_policy = torch.distributions.Categorical(logits=updated_uniform_logits)
                     action = random_policy.sample().unsqueeze(-1)

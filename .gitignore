@@ -2,6 +2,7 @@
 *.png
 logs/*
 logs_test/*
+vi log_tb/*
 record/*
 *.gv
 *.pdf

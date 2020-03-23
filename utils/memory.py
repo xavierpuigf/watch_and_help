@@ -133,13 +133,13 @@ class MemoryMask():
         return list(map(list, zip(*batch)))
 
 
-    def sample_batch_balanced(self, batch_size, neg_ratio, maxlen = 0):
+    def sample_batch_balanced(self, batch_size, neg_ratio, maxlen = 0, cutoff_positive=0.):
         """balanced batch sampling: pos vs neg"""
         N_pos, N_neg = 0, 0
         self.list_pos, self.list_neg = [], []
         for e in range(self.episode_counts):
           # if self.max_reward[e] > 0:
-          if self.c_reward[e] > 0.0:
+          if self.c_reward[e] > cutoff_positive:
             N_pos += 1
             self.list_pos.append(e)
           elif len(self.memory[e]) > 0:

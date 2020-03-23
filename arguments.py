@@ -164,11 +164,6 @@ def get_args():
         choices=['BC', 'RL']
     )
 
-    parser.add_argument(
-        '--epsilon',
-        type=float,
-        default=0.05,
-        help='epsilon for e-greedy')
 
     parser.add_argument(
         '--hidden-size',

@@ -190,7 +190,7 @@ class GraphHelper():
             one_hot[self.state_dict.get_id(state)] = 1
         return one_hot
 
-    def build_graph(self, graph, character_id, ids=None, plot_graph=False, level=1):
+    def build_graph(self, graph, character_id, ids=None, plot_graph=False, action_space_ids=None, level=1):
         if ids is None:
             ids = [node['id'] for node in graph['nodes'] if self.object_dict.valid_el(node['class_name'])]
 
@@ -245,6 +245,7 @@ class GraphHelper():
         all_edge_types = np.zeros((max_edges))
 
         mask_nodes = np.zeros((max_nodes))
+        mask_action_nodes = np.zeros((max_nodes))
         all_class_names = np.zeros((max_nodes)).astype(np.int32)
         all_node_states = np.zeros((max_nodes, len(self.state_dict)))
         all_node_ids = np.zeros((max_nodes)).astype(np.int32)
@@ -254,6 +255,7 @@ class GraphHelper():
             all_edge_ids[:len(edges), :] = edge_ids
             all_edge_types[:len(edges)] = edge_types
 
+        mask_action_nodes[:len(nodes)] = np.array([1 if node_id in action_space_ids else 0 for node_id in node_ids])
         mask_nodes[:len(nodes)] = 1.
         all_class_names[:len(nodes)] = class_names
         all_node_states[:len(nodes)] = node_states
@@ -278,6 +280,7 @@ class GraphHelper():
             'edge_classes': all_edge_types,
             'mask_object': mask_nodes,
             'mask_edge': mask_edges,
+            'mask_action_node': mask_action_nodes,
             'object_coords': obj_coords,
             'node_ids': all_node_ids
         }

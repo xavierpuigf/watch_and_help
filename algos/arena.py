@@ -18,7 +18,7 @@ class Arena:
             else:
                 agent.reset(self.env.python_graph)
 
-    def get_actions(self, obs):
+    def get_actions(self, obs, action_space=None):
         dict_actions, dict_info = {}, {}
         op_subgoal = {0: None, 1: None}
         for it, agent in enumerate(self.agents):
@@ -27,14 +27,15 @@ class Arena:
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it], opponent_subgoal)
-            else:
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it])
+            elif agent.agent_type == 'RL':
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
 
     def step(self):
         obs = self.env.get_observations()
-        dict_actions, dict_info = self.get_actions(obs)
+        action_space = self.env.get_action_space()
+        dict_actions, dict_info = self.get_actions(obs, action_space)
         print(dict_actions)
         return self.env.step(dict_actions), dict_actions, dict_info
 

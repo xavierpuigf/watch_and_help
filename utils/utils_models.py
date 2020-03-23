@@ -60,6 +60,11 @@ def cleanup_log_dir(log_dir):
             os.remove(f)
 
 
+
+def get_epsilon(init_eps, end_eps, num_steps, episode):
+    return (init_eps - end_eps) *(1.0 - float(episode) / float(num_steps)) + end_eps
+
+
 class Logger():
     def __init__(self, args):
         self.args = args

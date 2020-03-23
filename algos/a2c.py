@@ -7,7 +7,7 @@ import numpy as np
 import pdb
 import copy
 from utils.utils_models import Logger
-
+from utils import utils_models
 
 class A2C(Arena):
     def __init__(self, agent_types, environment, args):
@@ -38,7 +38,7 @@ class A2C(Arena):
         nb_steps = 0
         info_rollout = {}
         entropy_action, entropy_object = [], []
-        observation_space = []
+        observation_space, action_space = [], []
         while not done and nb_steps < self.args.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
 
@@ -52,6 +52,7 @@ class A2C(Arena):
             entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
             entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
             observation_space.append(agent_info[0]['num_objects'])
+            action_space.append(agent_info[0]['num_objects_action'])
             if record:
                 actions.append(agent_actions)
 
@@ -74,7 +75,7 @@ class A2C(Arena):
         info_rollout['epsilon'] = self.agents[0].epsilon
         info_rollout['entropy'] = (entropy_action, entropy_object)
         info_rollout['observation_space'] = np.mean(observation_space)
-
+        info_rollout['action_space'] = np.mean(action_space)
 
         # padding
         # TODO: is this correct? Padding that is valid?
@@ -113,6 +114,12 @@ class A2C(Arena):
         total_num_steps = 0
 
         for episode_id in range(start_episode_id, self.args.nb_episodes):
+            eps = utils_models.get_epsilon(self.args.init_epsilon, self.args.final_epsilon, self.args.max_exp_episodes,
+                                           episode_id)
+
+            for agent in self.agents:
+                if agent.agent_type == 'RL':
+                    agent.epsilon = eps
 
             c_r_all, success_r_all, info_rollout = self.rollout()
 
@@ -120,17 +127,18 @@ class A2C(Arena):
             num_steps = info_rollout['nsteps']
             epsilon = info_rollout['epsilon']
             obs_space = info_rollout['observation_space']
+            action_space = info_rollout['action_space']
             dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
 
             episode_rewards = c_r_all
             total_num_steps += num_steps
 
             end_time = time.time()
-            print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {}".format(
+            print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
                 episode_id, self.env.steps,
                 [c_r_all[agent_id] for agent_id in trainable_agents],
                 [success_r_all[agent_id] for agent_id in trainable_agents],
-                total_num_steps*1.0/(end_time-start_time), obs_space))
+                total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 
             if self.logger:
                 self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
@@ -149,7 +157,8 @@ class A2C(Arena):
                             trajs = self.memory_all[agent_id].sample_batch_balanced(
                                 self.args.batch_size,
                                 self.args.neg_ratio,
-                                maxlen=self.args.max_episode_length)
+                                maxlen=self.args.max_episode_length,
+                                cutoff_positive=4.0)
                         else:
                             trajs = self.memory_all[agent_id].sample_batch(
                                 self.args.batch_size,

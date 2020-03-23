@@ -95,7 +95,7 @@ class UnityEnvironment(BaseEnvironment):
         for key, value in satisfied.items():
             value_pred = min(len(value), self.goal_spec[key])
             mult = 1.0
-            if 'grab ' in key:
+            if 'hold' in key:
                 mult = 10.
             if 'close' in key:
                 mult = 0.1
@@ -265,6 +265,16 @@ class UnityEnvironment(BaseEnvironment):
             dict_observations[agent_id] = self.get_observation(agent_id, obs_type)
         return dict_observations
 
+    def get_action_space(self):
+        dict_action_space = {}
+        for agent_id in range(self.num_agents):
+            if self.observation_types[agent_id] not in ['mcts', 'full']:
+                raise NotImplementedError
+            else:
+                obs_type = 'mcts'
+            visible_graph = self.get_observation(agent_id, obs_type)
+            dict_action_space[agent_id] = [node['id'] for node in visible_graph['nodes']]
+        return dict_action_space
 
     def get_observation(self, agent_id, obs_type, info={}):
         if obs_type == 'mcts':

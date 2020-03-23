@@ -35,7 +35,9 @@ if __name__ == '__main__':
     if args.debug:
         env_task_set = env_task_set[0]
         single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
-        env_task_set['init_rooms'] = ['kitchen']
+
+        if args.obs_type == 'mcts':
+            env_task_set['init_rooms'] = ['kitchen']
         env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
         env_task_set = [env_task_set]
 
