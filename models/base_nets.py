@@ -184,8 +184,7 @@ class TransformerBase(nn.Module):
     def forward(self, inputs):
         # Use transformer to get feats for every object
         mask_visible = inputs['mask_object']
-        input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(),
-                                                           inputs['object_coords']).squeeze(1)
+        input_node_embedding = self.single_object_encoding(inputs['class_objects'].long(), inputs['object_coords']).squeeze(1)
         node_embedding = self.main(input_node_embedding, mask_visible)
         return node_embedding
 

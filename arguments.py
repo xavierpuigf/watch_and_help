@@ -53,7 +53,7 @@ def get_args():
     parser.add_argument(
         '--max-exp-episodes',
         type=int,
-        default=10000,
+        default=1000,
         help='Maximum exploration episodes (default: 10000)')
     parser.add_argument(
         '--value-loss-coef',
@@ -254,7 +254,7 @@ def get_args():
     # Exec args
     parser.add_argument(
         '--executable_file', type=str,
-        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.15.2.x86_64')
+        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64')
 
     parser.add_argument(
         '--base-port', type=int, default=8080)
@@ -284,4 +284,25 @@ def get_args():
                         help='whether to use an editor or executable')
 
     parser.add_argument('--debug', action='store_true', default=False,
-                        he
+                        help='debugging mode')
+
+    parser.add_argument('--logging', action='store_true', default=False,
+                        help='debugging mode')
+
+    parser.add_argument('--use_gt_actions', action='store_true', default=False,
+                        help='debugging mode')
+
+    args = parser.parse_args()
+
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    assert args.algo in ['a2c', 'ppo', 'acktr']
+    if args.recurrent_policy:
+        assert args.algo in ['a2c', 'ppo'], \
+            'Recurrent policy is not implemented for ACKTR'
+
+    return args
+
+
+if __name__ == '__main__':
+    args = get_args()

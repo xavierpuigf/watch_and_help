@@ -74,13 +74,21 @@ class ActorCritic(nn.Module):
         """Size of rnn_hx."""
         return self.base.recurrent_hidden_state_size
 
+
+    def is_cuda(self):
+        return torch.cuda.is_available()
+
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks=None, deterministic=False, epsilon=0.0, action_indices=None):
 
+        if self.is_cuda():
+            new_inputs = {}
+            for name, inp in inputs.items():
+                new_inputs[name] = inp.cuda()
+            inputs = new_inputs
         affordance_obj1 = inputs['affordance_matrix']
-
 
         # value function, history, node_embedding, rnn
         context_goal, object_goal, rnn_hxs = self.base(inputs, rnn_hxs, masks)

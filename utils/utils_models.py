@@ -85,7 +85,7 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}-numenvs.{}-obstype.{}-sim.{}/mode.{}-algo.{}-attention.{}-gamma.{}-lr{}'.format(
+        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/mode.{}-algo.{}-attention.{}-gamma.{}-lr{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,
@@ -98,7 +98,7 @@ class Logger():
             args.lr)
         return experiment_name
 
-    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, value_loss, action_loss, epsilon, successes):
+    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, epsilon, successes):
         if self.first_log == True:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
@@ -121,8 +121,8 @@ class Logger():
             # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
             self.tensorboard_writer.add_scalar("action_entropy/action", dist_entropy[0], total_num_steps)
             self.tensorboard_writer.add_scalar("action_entropy/object", dist_entropy[1], total_num_steps)
-            self.tensorboard_writer.add_scalar("losses/value_loss", value_loss, total_num_steps)
-            self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
+            # self.tensorboard_writer.add_scalar("losses/value_loss", value_loss, total_num_steps)
+            # self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
             self.tensorboard_writer.add_scalar("info/success", successes, total_num_steps)

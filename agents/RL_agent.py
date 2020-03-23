@@ -9,10 +9,10 @@ import random
 
 class RL_agent:
     """
-    MCTS for a single agent
+    RL for a single agent
     """
     def __init__(self, args, agent_id, char_index, graph_helper, deterministic=False):
-
+        self.args = args
         self.agent_type = 'RL'
         self.max_num_objects = args.max_num_objects
         self.num_actions = graph_helper.num_actions
@@ -42,6 +42,11 @@ class RL_agent:
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
 
+        if torch.cuda.is_available():
+            self.actor_critic.cuda()
+
+
+
     def init_hidden_state(self):
         h_state = torch.zeros(1, self.hidden_size)
         return h_state
@@ -58,6 +63,10 @@ class RL_agent:
     def get_action(self, observation, goal_spec, action_indices=None):
         rnn_hxs = self.hidden_state
 
+        masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
+        if torch.cuda.is_available():
+            rnn_hxs = rnn_hxs.cuda()
+            masks = masks.cuda()
         inputs, info = self.graph_helper.build_graph(observation, character_id=self.agent_id)
         visible_objects = info[-1]
 
@@ -93,7 +102,6 @@ class RL_agent:
             inputs_tensor[input_name] = inp_tensor
 
 
-        masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
         value, action, action_probs, rnn_state = self.actor_critic.act(inputs_tensor,
                                                                            rnn_hxs,
                                                                            masks,
@@ -106,23 +114,25 @@ class RL_agent:
         info_model['value'] = value
         info_model['actions'] = action
         info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
+        info_model['num_objects'] = inputs['mask_object'].sum(-1)
 
         #############
         # DEBUGGING
         # This is for debugging
         id_glass = 459
-        perc_correct_actions = 0.1
-        if len([edge for edge in observation['edges'] if
-                edge['from_id'] == 1 and edge['to_id'] == id_glass and edge['relation_type'] == 'CLOSE']) > 0:
-            # Grab
-            action_id = self.graph_helper.action_dict.get_id('grab')
-        else:
-            # Walk to
-            action_id = self.graph_helper.action_dict.get_id('walktowards')
-        object_id = [it for it, node in enumerate(visible_objects) if node[1] == id_glass][0]
+        perc_correct_actions = 1.0
+        if self.args.use_gt_actions:
+            if len([edge for edge in observation['edges'] if
+                    edge['from_id'] == 1 and edge['to_id'] == id_glass and edge['relation_type'] == 'CLOSE']) > 0:
+                # Grab
+                action_id = self.graph_helper.action_dict.get_id('grab')
+            else:
+                # Walk to
+                action_id = self.graph_helper.action_dict.get_id('walktowards')
+            object_id = [it for it, node in enumerate(visible_objects) if node[1] == id_glass][0]
 
-        if random.random() < perc_correct_actions:
-            info_model['actions'] = [torch.tensor(action_id)[None, None], torch.tensor(object_id)[None, None]]
+            if random.random() < perc_correct_actions:
+                info_model['actions'] = [torch.tensor(action_id)[None, None], torch.tensor(object_id)[None, None]]
 
 
         action_str = self.get_action_instr(info_model['actions'], visible_objects, observation)

@@ -20,7 +20,7 @@ class A2C(Arena):
                            for agent in agent_types]
 
         self.logger = None
-        if not args.debug:
+        if args.logging:
             self.logger = Logger(args)
 
     def reset(self):
@@ -38,7 +38,7 @@ class A2C(Arena):
         nb_steps = 0
         info_rollout = {}
         entropy_action, entropy_object = [], []
-
+        observation_space = []
         while not done and nb_steps < self.args.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
 
@@ -51,7 +51,7 @@ class A2C(Arena):
 
             entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
             entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
-
+            observation_space.append(agent_info[0]['num_objects'])
             if record:
                 actions.append(agent_actions)
 
@@ -73,6 +73,7 @@ class A2C(Arena):
         info_rollout['nsteps'] = nb_steps
         info_rollout['epsilon'] = self.agents[0].epsilon
         info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
 
 
         # padding
@@ -112,21 +113,26 @@ class A2C(Arena):
         total_num_steps = 0
 
         for episode_id in range(start_episode_id, self.args.nb_episodes):
+
             c_r_all, success_r_all, info_rollout = self.rollout()
-            print("episode: #{} steps: {} reward: {} finished: {}".format(
+
+            successes = info_rollout['success']
+            num_steps = info_rollout['nsteps']
+            epsilon = info_rollout['epsilon']
+            obs_space = info_rollout['observation_space']
+            dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
+
+            episode_rewards = c_r_all
+            total_num_steps += num_steps
+
+            end_time = time.time()
+            print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {}".format(
                 episode_id, self.env.steps,
                 [c_r_all[agent_id] for agent_id in trainable_agents],
-                [success_r_all[agent_id] for agent_id in trainable_agents]))
+                [success_r_all[agent_id] for agent_id in trainable_agents],
+                total_num_steps*1.0/(end_time-start_time), obs_space))
 
             if self.logger:
-                successes = info_rollout['success']
-                num_steps = info_rollout['nsteps']
-                epsilon = info_rollout['epsilon']
-                dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
-                end_time = time.time()
-                episode_rewards = c_r_all
-                total_num_steps += num_steps
-
                 self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
                                      dist_entropy, epsilon, successes)
 

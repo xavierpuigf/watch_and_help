@@ -34,6 +34,8 @@ class UnityEnvironment(BaseEnvironment):
         np.random.seed(seed)
 
         self.steps = 0
+        self.env_id = None
+        self.max_ids = {}
 
         self.pythnon_graph = None
         self.env_task_set = env_task_set
@@ -91,7 +93,13 @@ class UnityEnvironment(BaseEnvironment):
         done = True
         satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec)
         for key, value in satisfied.items():
-            count += min(len(value), self.goal_spec[key])
+            value_pred = min(len(value), self.goal_spec[key])
+            mult = 1.0
+            if 'grab ' in key:
+                mult = 10.
+            if 'close' in key:
+                mult = 0.1
+            count += (value_pred*mult)
             if unsatisfied[key] > 0:
                 done = False
         return count, done, {}
@@ -181,6 +189,8 @@ class UnityEnvironment(BaseEnvironment):
         self.task_goal = env_task['task_goal']
 
         self.task_name = env_task['task_name']
+
+        old_env_id = self.env_id
         self.env_id = env_task['env_id']
 
         seed = (self.seed + self.task_id * 101) % 10007
@@ -190,10 +200,18 @@ class UnityEnvironment(BaseEnvironment):
         # TODO: in the future we may want different goals
         self.goal_spec = self.get_goal(self.task_goal[0], self.agent_goals[0])
 
-        print(self.goal_spec)
+        # if old_env_id == self.env_id:
+        #     self.comm.fast_reset()
+        # else:
         self.comm.reset(self.env_id)
+
         s,g = self.comm.environment_graph()
-        max_id = max([node['id'] for node in g['nodes']])
+        if self.env_id not in self.max_ids.keys():
+            max_id = max([node['id'] for node in g['nodes']])
+            self.max_ids[self.env_id] = max_id
+
+        max_id = self.max_ids[self.env_id]
+        print(max_id)
         if environment_graph is not None:
             # TODO: this should be modified to extend well
             updated_graph = utils.separate_new_ids_graph(environment_graph, max_id)
@@ -217,6 +235,7 @@ class UnityEnvironment(BaseEnvironment):
                 self.comm.add_character(self.agent_info[i], initial_room=rooms[i])
             else:
                 self.comm.add_character()
+
         _, self.init_unity_graph = self.comm.environment_graph()
 
 
@@ -248,7 +267,7 @@ class UnityEnvironment(BaseEnvironment):
 
 
     def get_observation(self, agent_id, obs_type, info={}):
-        if obs_type == 'partial':
+        if obs_type == 'mcts':
             return self.env.get_observations(char_index=agent_id)
 
         elif obs_type == 'full':

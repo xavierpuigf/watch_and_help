@@ -18,7 +18,6 @@ if __name__ == '__main__':
     args.task = 'setup_table'
     #args.num_per_apartment = '50'
     args.mode = 'full'
-    args.use_editor = True
     num_agents = 1
     args.dataset_path = 'initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode)
     print(args.dataset_path)
@@ -36,6 +35,7 @@ if __name__ == '__main__':
     if args.debug:
         env_task_set = env_task_set[0]
         single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
+        env_task_set['init_rooms'] = ['kitchen']
         env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
         env_task_set = [env_task_set]
 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     env = UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                            env_task_set=env_task_set,
                            agent_goals=['grab'],
-                           observation_types=['full'],
+                           observation_types=[args.obs_type],
                            use_editor=args.use_editor,
                            executable_args=executable_args)
 
