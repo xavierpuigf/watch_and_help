@@ -109,6 +109,16 @@ class A2C(Arena):
         info_rollout['t_reset'] = t_reset
         info_rollout['t_steps'] = t_steps
 
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
+        info_rollout['action_space'] = np.mean(action_space)
+
         # padding
         # TODO: is this correct? Padding that is valid?
         while nb_steps < self.args.max_episode_length:
@@ -144,7 +154,6 @@ class A2C(Arena):
         start_episode_id = 1
         start_time = time.time()
         total_num_steps = 0
-
         info_ep = []
         for episode_id in range(start_episode_id, self.args.nb_episodes):
             eps = utils_models.get_epsilon(self.args.init_epsilon, self.args.final_epsilon, self.args.max_exp_episodes,
@@ -168,7 +177,6 @@ class A2C(Arena):
             total_num_steps += num_steps
 
             end_time = time.time()
-
             print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
                 episode_id, self.env.steps,
                 [c_r_all[agent_id] for agent_id in trainable_agents],

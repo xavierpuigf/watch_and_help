@@ -184,7 +184,6 @@ class Logger():
         #                 np.median(episode_rewards), np.min(episode_rewards),
         #                 np.max(episode_rewards), dist_entropy, value_loss,
         #                 action_loss))
-
         # self.stats.add_list(info_episodes)
         # self.stats.print_hist(self.tensorboard_writer)
 

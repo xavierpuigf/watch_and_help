@@ -49,7 +49,7 @@ def get_args():
     parser.add_argument(
         '--max-exp-episodes',
         type=int,
-        default=10000,
+        default=1000,
         help='Maximum exploration episodes (default: 10000)')
     parser.add_argument(
         '--value-loss-coef',
@@ -68,8 +68,6 @@ def get_args():
         action='store_true',
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
-
-
 
     parser.add_argument(
         '--t-max',

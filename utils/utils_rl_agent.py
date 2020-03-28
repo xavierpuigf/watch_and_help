@@ -318,6 +318,9 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
     if o1_id == agent_id:
         return None
 
+    if o1_id == agent_id:
+        return None
+
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
 

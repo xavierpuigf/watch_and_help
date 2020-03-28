@@ -30,7 +30,6 @@ class Arena:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it], opponent_subgoal)
             elif agent.agent_type == 'RL':
-                # Goal encoding should be done with goal_spec
 
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
@@ -40,7 +39,6 @@ class Arena:
         obs = self.env.get_observations()
         action_space = self.env.get_action_space()
         dict_actions, dict_info = self.get_actions(obs, action_space)
-        # print(dict_actions)
         return self.env.step(dict_actions), dict_actions, dict_info
 
 

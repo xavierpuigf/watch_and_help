@@ -43,7 +43,26 @@ if __name__ == '__main__':
     if args.task_set != 'full':
         env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
-    # env_task_set = [env_task for env_task in env_task_set if env_task['env_id'] == 0]
+    # env_task_set = []
+    # for task_id, problem_setup in enumerate(data):
+    #     env_id = problem_setup['apartment'] - 1
+    #     task_name = problem_setup['task_name']
+    #     init_graph = problem_setup['init_graph']
+    #     goal = problem_setup['goal'][task_name]
+    #
+    #     goals = utils_goals.conv ert_goal_spec(task_name, goal, init_graph,
+    #                                           exclude=['cutleryknife'])
+    #     print('env_id:', env_id)
+    #     print('task_name:', task_name)
+    #     print('goals:', goals)
+    #
+    #     task_goal = {}
+    #     for i in range(2):
+    #         task_goal[i] = goals
+    #
+    #     env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph,
+    #                          'task_goal': task_goal,
+    #                          'level': 0, 'init_rooms': [0, 0]})
 
     # episode_ids = list(range(len(env_task_set)))
     # random.shuffle(episode_ids)
