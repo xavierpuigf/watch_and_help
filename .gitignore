@@ -2,6 +2,7 @@
 trained_models/*
 *.png
 logs/*
+logs.txt*
 logs_test/*
 log_tb/*
 record/*
