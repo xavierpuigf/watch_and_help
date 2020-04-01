@@ -12,6 +12,7 @@ from arguments import get_args
 from algos.arena import Arena
 from algos.a2c import A2C
 from utils import utils_goals, utils_rl_agent
+import ray
 
 if __name__ == '__main__':
     args = get_args()
@@ -67,6 +68,7 @@ if __name__ == '__main__':
     # episode_ids = list(range(len(env_task_set)))
     # random.shuffle(episode_ids)
 
+    env_task_set = [env for env in env_task_set if env['env_id'] == 0]
     print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'grab'

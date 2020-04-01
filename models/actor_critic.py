@@ -47,6 +47,7 @@ class ActorCritic(nn.Module):
             raise NotImplementedError
 
         node_encoder = base(**base_kwargs)
+        self.hidden_size = base_kwargs['hidden_size']
         self.base = base_nets.GoalAttentionModel(hidden_size=base_kwargs['hidden_size'],
                                                    recurrent=True,
                                                    num_classes=base_kwargs['num_classes'],

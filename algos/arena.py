@@ -61,7 +61,7 @@ class Arena:
                       'task_name': self.env.task_name,
                       'gt_goals': self.env.task_goal[0],
                       'goals': self.task_goal[0],
-                      'action': {0: [], 1: []}, 
+                      'action': {0: [], 1: []},
                       'plan': {0: [], 1: []},
                       'subgoal': {0: [], 1: []},
                       # 'init_pos': {0: None, 1: None},

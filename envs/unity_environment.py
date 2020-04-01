@@ -2,8 +2,17 @@ from .base_environment import BaseEnvironment
 from utils import utils_environment as utils
 
 import sys
+import os
 # sys.path.append('../../virtualhome/simulation/')
 # sys.path.append('../../vh_mdp/')
+
+
+curr_dir = os.path.dirname(os.path.realpath(__file__))
+
+sys.path.append(f'{curr_dir}/../../virtualhome/')
+sys.path.append(f'{curr_dir}/../../vh_mdp/')
+sys.path.append(f'{curr_dir}/../../virtualhome/simulation/')
+
 from unity_simulator import comm_unity as comm_unity
 from vh_graph.envs import belief, vh_env
 
@@ -215,9 +224,10 @@ class UnityEnvironment(BaseEnvironment):
         print("Goal: ", self.goal_spec)
 
         # pdb.set_trace()
-        if False: # old_env_id == self.env_id:
+        if old_env_id == self.env_id:
 
             # pdb.set_trace()
+            print("Fast reset")
             self.comm.fast_reset()
         else:
             self.comm.reset(self.env_id)

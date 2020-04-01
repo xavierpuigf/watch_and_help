@@ -254,6 +254,8 @@ def get_args():
     parser.add_argument(
         '--base-port', type=int, default=8080)
 
+
+
     parser.add_argument(
         '--display', type=str, default="2")
 
@@ -272,7 +274,7 @@ def get_args():
         '--num-processes',
         type=int,
         default=1,
-        help='how many training CPU processes to use (default: 16)')
+        help='how many training CPU processes to use (default: 1)')
 
 
     parser.add_argument('--use-editor', action='store_true', default=False,
