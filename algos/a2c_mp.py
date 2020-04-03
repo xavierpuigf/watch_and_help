@@ -1,4 +1,3 @@
-from .arena_mp2 import Arena
 from utils.memory import MemoryMask
 import torch
 from torch import optim, nn
@@ -12,11 +11,11 @@ from utils.utils_models import Logger
 from utils import utils_models
 import models.actor_critic as actor_critic
 from gym import spaces
+import atexit
 
 class A2C:
-    def __init__(self, env_fn, agent_fn, graph_helper, args):
-        self.arenas = [Arena.remote(arena_id, env_fn, agent_fn) for arena_id in range(args.num_processes)]
-
+    def __init__(self, arenas, graph_helper, args):
+        self.arenas = arenas
         base_kwargs = {
             'hidden_size': args.hidden_size,
             'max_nodes': args.max_num_objects,
@@ -26,39 +25,66 @@ class A2C:
         }
         num_actions = graph_helper.num_actions
         action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(args.max_num_objects)))
+
+        self.device = torch.device('cuda:0' if args.cuda else 'cpu')
+
+        # self.actor_critic = self.arenas[0].agents[0].actor_critic
         self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
 
+        self.actor_critic.to(self.device)
 
         self.memory_capacity_episodes = args.memory_capacity_episodes
         self.args = args
         self.memory_all = []
-        self.device = torch.device('cuda:0' if args.cuda else 'cpu')
         self.optimizer = optim.RMSprop(self.actor_critic.parameters(), lr=args.lr)
 
         self.logger = None
         if args.logging:
             self.logger = Logger(args)
 
+        atexit.register(self.close)
+
+    def close(self):
+        print('closing')
+        del(self.arenas[0])
+        pdb.set_trace()
 
     def rollout(self, logging=False, record=False):
         """ Reward for an episode, get the cum reward """
 
         # Reset hidden state of agents
+        # TODO: uncomment
         async_routs = []
-        pdb.set_trace()
         for arena in self.arenas:
             async_routs.append(arena.rollout.remote(logging, record))
-        pdb.set_trace()
+
+        info_envs = []
         for async_rout in async_routs:
-            c_r_all, success_r_all, info_rollout, rollout_agent = ray.get(async_rout)
-            pdb.set_trace()
-        return c_r_all, success_r_all, info_rollout
+            info_envs.append(ray.get(async_rout))
+
+        # # TODO: comment
+        # info_envs = []
+        # info_envs.append(self.arenas[0].rollout(logging, record))
+
+        rewards = []
+        for process_data in info_envs:
+            rewards.append(process_data[0])
+            # successes.append(process_data[1]['success'])
+            rollout_memory = process_data[2]
+
+            # Add into memory
+            for mem in rollout_memory[0]:
+                self.memory_all.append(*mem)
+            self.memory_all.append(None, None, None, 0, 0)
+
+        # only get info form one process
+        info_rollout = info_envs[0][1]
+        return rewards, info_rollout
 
 
     def train(self, trainable_agents=None):
 
         self.memory_all = MemoryMask(self.memory_capacity_episodes)
-        cumulative_rewards = {0: []} # for agent_id in range(self.num_agents)}
         self.memory_all.reset()
 
         start_episode_id = 1
@@ -71,30 +97,48 @@ class A2C:
 
 
             time_prerout = time.time()
+
+            # TODO: Uncomment
             curr_model = self.actor_critic.state_dict()
+
+            for k, v in curr_model.items():
+               curr_model[k] = v.cpu()
+
+            # ray.register_custom_serializer(torch.Tensor, serializer=serializer, deserializer=deserializer)
+            # ray.register_custom_serializer(torch.LongTensor, serializer=serializer, deserializer=deserializer)
+            # ray.register_custom_serializer(torch.FloatTensor, serializer=serializer, deserializer=deserializer)
+            #
+            # m_id = ray.put(curr_model)
+            # model_s = ray.get(m_id)
+
+            # TODO: Uncomment
             [arena.set_weigths.remote(eps, curr_model) for arena in self.arenas]
-            c_r_all, success_r_all, info_rollout = self.rollout(logging=(episode_id % 10 == 0))
+            c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
 
-
-            successes = info_rollout['success']
-            num_steps = info_rollout['nsteps']
-            epsilon = info_rollout['epsilon']
-            obs_space = info_rollout['observation_space']
-            action_space = info_rollout['action_space']
-            dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
 
             episode_rewards = c_r_all
+            num_steps = info_rollout['nsteps']
             total_num_steps += num_steps
 
             end_time = time.time()
+
+            action_space = info_rollout['action_space']
+            obs_space = info_rollout['observation_space']
+            successes = info_rollout['success']
+
             print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
-                episode_id, self.env.steps,
-                [c_r_all[agent_id] for agent_id in trainable_agents],
-                [success_r_all[agent_id] for agent_id in trainable_agents],
+                episode_id, num_steps,
+                [c_r_all[0][0]],
+                info_rollout['success'],
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 
             if self.logger:
-                if episode_id % 10 == 0:
+                if episode_id % self.args.log_interval == 0:
+
+                    num_steps = info_rollout['nsteps']
+                    epsilon = info_rollout['epsilon']
+                    dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
+                    # pdb.set_trace()
                     info_episode = {
                         'success': successes,
                         'reward': c_r_all[0],
@@ -106,86 +150,86 @@ class A2C:
                     file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
                     with open(file_name_log, 'w+') as f:
                         f.write(json.dumps(info_ep, indent=4))
-                info_episodes = [{'success': successes,
-                                  'goal': list(self.env.task_goal[0].keys())[0],
-                                  'apt': self.env.env_id}]
-                self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
-                                     dist_entropy, epsilon, successes, info_episodes)
 
-            for agent_id in range(self.num_agents):
-                cumulative_rewards[agent_id].append(c_r_all[agent_id])
+                    #list(self.env.task_goal[0].keys())
+                    # self.env.env_id
+                    # goal =
+                    # apt = self.arena.get_goal
+
+                    info_episodes = [{'success': successes,
+                                      'goal': info_rollout['goals'][0],
+                                      'apt': info_rollout['env_id']}]
+                    self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
+                                         dist_entropy, epsilon, successes, info_episodes)
 
 
-            t_pfb = time.time()
-            t_rollout = t_pfb - time_prerout
-            t_steps = info_rollout['t_steps']
-            t_reset = info_rollout['t_reset']
+
             # ===================== off-policy training =====================
             if not self.args.on_policy and episode_id - start_episode_id + 1 >= self.args.replay_start:
                 nb_replays = 1
                 for replay_id in range(nb_replays):
-                    for agent_id in trainable_agents:
-                        if self.args.balanced_sample:
-                            trajs = self.memory_all[agent_id].sample_batch_balanced(
-                                self.args.batch_size,
-                                self.args.neg_ratio,
-                                maxlen=self.args.max_episode_length,
-                                cutoff_positive=5.0)
-                        else:
-                            trajs = self.memory_all[agent_id].sample_batch(
-                                self.args.batch_size,
-                                maxlen=self.args.max_episode_length)
-                        N = len(trajs[0])
-                        policies, actions, rewards, Vs, old_policies, dones, masks = \
-                            [], [], [], [], [], [], []
+                    if self.args.balanced_sample:
+                        trajs = self.memory_all.sample_batch_balanced(
+                            self.args.batch_size,
+                            self.args.neg_ratio,
+                            maxlen=self.args.max_episode_length,
+                            cutoff_positive=5.0)
+                    else:
+                        trajs = self.memory_all.sample_batch(
+                            self.args.batch_size,
+                            maxlen=self.args.max_episode_length)
+                    N = len(trajs[0])
+                    policies, actions, rewards, Vs, old_policies, dones, masks = \
+                        [], [], [], [], [], [], []
 
-                        hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
+                    hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
 
-                        state_keys = trajs[0][0].state.keys()
-                        for t in range(len(trajs) - 1):
+                    state_keys = trajs[0][0].state.keys()
 
-                            # TODO: decompose here
-                            inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]) for state_key in state_keys}
+                    for t in range(len(trajs) - 1):
 
-                            action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
-                                                for i in range(N)]) for action_index in range(2)]
+                        # TODO: decompose here
+                        inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]).to(self.device) for state_key in state_keys}
 
-
-                            old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
-                                                    for i in range(N)]) for policy_index in range(2)]
-                            done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
-                                0).to(self.device)
-                                              for i in range(N)])
-                            mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
-                                              for i in range(N)])
-                            reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
-
-                            # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
-                            v, _, policy, hx = self.actor_critic.act(inputs, hx, mask, action_indices=action)
+                        action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
+                                            for i in range(N)]) for action_index in range(2)]
 
 
-                            [array.append(element) for array, element in
-                             zip((policies, actions, rewards, Vs, old_policies, dones, masks),
-                                 (policy, action, reward, v, old_policy, done, mask))]
+                        old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
+                                                for i in range(N)]) for policy_index in range(2)]
+                        done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
+                            0).to(self.device)
+                                          for i in range(N)])
+                        mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
+                                          for i in range(N)])
+                        reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
+
+                        # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
+                        v, _, policy, hx = self.actor_critic.act(inputs, hx, mask, action_indices=action)
 
 
-                            dones.append(done)
+                        [array.append(element) for array, element in
+                         zip((policies, actions, rewards, Vs, old_policies, dones, masks),
+                             (policy, action, reward, v, old_policy, done, mask))]
 
-                            if (t + 1) % self.args.t_max == 0:  # maximum bptt length
-                                hx = hx.detach()
-                        self._train(self.actor_critic,
-                                    self.optimizers,
-                                    policies,
-                                    Vs,
-                                    actions,
-                                    rewards,
-                                    dones,
-                                    masks,
-                                    old_policies,
-                                    verbose=1)
 
-            t_fb = time.time() - t_pfb
-            print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(self.env.steps, t_rollout, t_steps, t_reset, t_fb))
+                        dones.append(done)
+
+                        if (t + 1) % self.args.t_max == 0:  # maximum bptt length
+                            hx = hx.detach()
+
+
+                    self._train(self.actor_critic,
+                                self.optimizer,
+                                policies,
+                                Vs,
+                                actions,
+                                rewards,
+                                dones,
+                                masks,
+                                old_policies,
+                                verbose=1)
+
             if not self.args.debug and episode_id % self.args.save_interval == 0:
                 self.logger.save_model(episode_id, self.actor_critic)
 

@@ -46,8 +46,9 @@ if __name__ == '__main__':
         env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
         env_task_set = [env_task_set]
 
-    if args.task_set != 'full':
-        env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
+    else:
+        if args.task_set != 'full':
+            env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
     env_task_set = [env for env in env_task_set if env['env_id'] == 0]
@@ -83,14 +84,15 @@ if __name__ == '__main__':
         return RL_agent(**args_agent2)
 
     def env_fn(env_id):
-        return  UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
-                               port_id=env_id,
-                               env_task_set=env_task_set,
-                               agent_goals=[agent_goal],
-                               observation_types=[args.obs_type],
-                               use_editor=args.use_editor,
-                               executable_args=executable_args,
-                               base_port=args.base_port)
+        return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+                                port_id=env_id,
+                                env_task_set=env_task_set,
+                                agent_goals=[agent_goal],
+                                observation_types=[args.obs_type],
+                                use_editor=args.use_editor,
+                                executable_args=executable_args,
+                                base_port=args.base_port,
+                                seed=env_id)
 
     # args_agent1.update(args_mcts)
 
@@ -102,6 +104,8 @@ if __name__ == '__main__':
     agents = [RL_agent_fn]
 
     arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+    #arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+
     a2c = A2C(arenas, graph_helper, args)
 
     a2c.train()

@@ -1,19 +1,31 @@
 import random
 import pdb
+import torch
 import copy
 import numpy as np
 import time
 import ray
-
+import atexit
 
 @ray.remote
-class Arena:
+class ArenaMP(object):
     def __init__(self, arena_id, environment_fn, agent_fn):
         self.agents = []
-        for agent_type in agent_fn:
-            self.agents.append(agent_fn)
+
+        for agent_type_fn in agent_fn:
+            self.agents.append(agent_type_fn())
         self.num_agents = len(agent_fn)
         self.env = environment_fn(arena_id)
+        self.max_episode_length = self.env.max_episode_length
+
+        atexit.register(self.close)
+
+    def close(self):
+        self.env.close()
+
+    def get_port(self):
+        return self.env.port_number
+
 
     def reset(self, task_id=None):
         ob = None
@@ -45,9 +57,9 @@ class Arena:
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
-
     def rollout(self, logging=False, record=False):
         t1 = time.time()
+        print("Resetting")
         self.reset()
         t2 = time.time()
         t_reset = t2 - t1
@@ -84,7 +96,7 @@ class Arena:
                                 edge['from_id']) for edge in init_graph['edges'] if edge['from_id'] in ids_target])
             info_rollout['target'] = [pred, info_goals]
 
-        while not done and nb_steps < self.args.max_episode_length:
+        while not done and nb_steps < self.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             if logging:
                 node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
@@ -108,16 +120,17 @@ class Arena:
             if record:
                 actions.append(agent_actions)
 
-            if not self.args.on_policy:
-                # append to memory
-                for agent_id in range(self.num_agents):
-                    if self.agents[agent_id].agent_type == 'RL':
-                        state = agent_info[agent_id]['state_inputs']
-                        policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
-                        action = agent_info[agent_id]['actions']
-                        rewards = reward
+            # append to memory
+            for agent_id in range(self.num_agents):
+                if self.agents[agent_id].agent_type == 'RL':
+                    state = agent_info[agent_id]['state_inputs']
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                    action = agent_info[agent_id]['actions']
+                    rewards = reward
 
-                        rollout_agent[agent_id].append((state, policy, action, rewards, 1))
+                    rollout_agent[agent_id].append((state, policy, action, rewards, 1))
+
+
         t_steps = time.time() - t2
         for agent_index in agent_info.keys():
             success_r_all[agent_index] = env_info['finished']
@@ -141,9 +154,11 @@ class Arena:
         info_rollout['observation_space'] = np.mean(observation_space)
         info_rollout['action_space'] = np.mean(action_space)
 
+        info_rollout['env_id'] = self.env.env_id
+        info_rollout['goals'] = list(self.env.task_goal[0].keys())
         # padding
         # TODO: is this correct? Padding that is valid?
-        while nb_steps < self.args.max_episode_length:
+        while nb_steps < self.max_episode_length:
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if self.agents[agent_id].agent_type == 'RL':
@@ -155,7 +170,7 @@ class Arena:
                     rewards = reward
                     rollout_agent[agent_id].append((state, policy, action, 0, 0))
 
-        return c_r_all, success_r_all, info_rollout, rollout_agent
+        return c_r_all, info_rollout, rollout_agent
 
 
     def step(self):

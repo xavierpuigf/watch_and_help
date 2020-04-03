@@ -15,7 +15,7 @@ sys.path.append(f'{curr_dir}/../../virtualhome/simulation/')
 
 from unity_simulator import comm_unity as comm_unity
 from vh_graph.envs import belief, vh_env
-
+import atexit
 import pdb
 import random
 import numpy as np
@@ -83,6 +83,8 @@ class UnityEnvironment(BaseEnvironment):
         self.id2node = None
         self.offset_cameras = None
 
+        self.port_number = 8080
+
         if use_editor:
             # Use Unity
             self.comm = comm_unity.UnityCommunication()
@@ -93,9 +95,14 @@ class UnityEnvironment(BaseEnvironment):
 
             self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **executable_args)
 
+        atexit.register(self.close)
 
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
         self.reset()
+
+    def close(self):
+        self.comm.close()
+
 
     def reward(self):
         reward = 0.
@@ -224,7 +231,7 @@ class UnityEnvironment(BaseEnvironment):
         print("Goal: ", self.goal_spec)
 
         # pdb.set_trace()
-        if old_env_id == self.env_id:
+        if False: # old_env_id == self.env_id:
 
             # pdb.set_trace()
             print("Fast reset")
