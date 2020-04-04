@@ -13,7 +13,7 @@ class ArenaMP(object):
         self.agents = []
 
         for agent_type_fn in agent_fn:
-            self.agents.append(agent_type_fn())
+            self.agents.append(agent_type_fn(arena_id))
         self.num_agents = len(agent_fn)
         self.env = environment_fn(arena_id)
         self.max_episode_length = self.env.max_episode_length
@@ -57,9 +57,11 @@ class ArenaMP(object):
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
+    #def rollout_relaunch(self):
+
+
     def rollout(self, logging=False, record=False):
         t1 = time.time()
-        print("Resetting")
         self.reset()
         t2 = time.time()
         t_reset = t2 - t1
@@ -177,7 +179,11 @@ class ArenaMP(object):
         obs = self.env.get_observations()
         action_space = self.env.get_action_space()
         dict_actions, dict_info = self.get_actions(obs, action_space)
-        return self.env.step(dict_actions), dict_actions, dict_info
+        try:
+            step_info = self.env.step(dict_actions)
+        except:
+            print("Time out for action: ", dict_actions)
+        return step_info, dict_actions, dict_info
 
 
     def run(self, random_goal=False, pred_goal=None):

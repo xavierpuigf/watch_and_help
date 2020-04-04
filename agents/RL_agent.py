@@ -11,7 +11,7 @@ class RL_agent:
     """
     RL for a single agent
     """
-    def __init__(self, args, agent_id, char_index, graph_helper, deterministic=False):
+    def __init__(self, args, agent_id, char_index, graph_helper, deterministic=False, seed=123):
         self.args = args
         self.agent_type = 'RL'
         self.max_num_objects = args.max_num_objects
@@ -39,7 +39,8 @@ class RL_agent:
         self.hidden_size = args.hidden_size
 
         self.action_space = spaces.Tuple((spaces.Discrete(self.num_actions), spaces.Discrete(self.max_num_objects)))
-        self.actor_critic = actor_critic.ActorCritic(self.action_space, base_name=args.base_net, base_kwargs=base_kwargs)
+        self.actor_critic = actor_critic.ActorCritic(self.action_space, base_name=args.base_net,
+                                                     base_kwargs=base_kwargs, seed=seed)
 
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
@@ -161,5 +162,5 @@ class RL_agent:
             o1 = None
         action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph)
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
-        print('{: <40} --> {}'.format(action_try, action))
+        #print('{: <40} --> {}'.format(action_try, action))
         return action

@@ -108,11 +108,10 @@ class A2C:
             # ray.register_custom_serializer(torch.LongTensor, serializer=serializer, deserializer=deserializer)
             # ray.register_custom_serializer(torch.FloatTensor, serializer=serializer, deserializer=deserializer)
             #
-            # m_id = ray.put(curr_model)
-            # model_s = ray.get(m_id)
+            m_id = ray.put(curr_model)
 
             # TODO: Uncomment
-            [arena.set_weigths.remote(eps, curr_model) for arena in self.arenas]
+            ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
             c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
 
 
@@ -159,7 +158,7 @@ class A2C:
                     info_episodes = [{'success': successes,
                                       'goal': info_rollout['goals'][0],
                                       'apt': info_rollout['env_id']}]
-                    self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
+                    self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards[0],
                                          dist_entropy, epsilon, successes, info_episodes)
 
 

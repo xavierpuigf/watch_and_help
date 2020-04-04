@@ -17,9 +17,9 @@ import ray
 import atexit
 
 if __name__ == '__main__':
-    #ray.init(local_mode=True)
-
+    # ray.init(local_mode=True)
     ray.init()
+
     args = get_args()
     #args.task = 'setup_table'
     #args.num_per_apartment = '50'
@@ -51,7 +51,7 @@ if __name__ == '__main__':
             env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
-    env_task_set = [env for env in env_task_set if env['env_id'] == 0]
+    #env_task_set = [env for env in env_task_set if env['env_id'] == 0]
     print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'grab'
@@ -76,11 +76,13 @@ if __name__ == '__main__':
                                               max_num_edges=args.max_num_edges, current_task=None, simulator_type='unity')
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
-    args_agent2 = {'agent_id': 1, 'char_index': 0,
-                   'args': args, 'graph_helper': graph_helper}
 
 
-    def RL_agent_fn():
+
+    def RL_agent_fn(seed=0):
+        args_agent2 = {'agent_id': 1, 'char_index': 0,
+                       'args': args, 'graph_helper': graph_helper}
+        args_agent2['seed'] = seed
         return RL_agent(**args_agent2)
 
     def env_fn(env_id):

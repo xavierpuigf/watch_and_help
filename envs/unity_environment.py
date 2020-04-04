@@ -84,6 +84,7 @@ class UnityEnvironment(BaseEnvironment):
         self.offset_cameras = None
 
         self.port_number = 8080
+        self.executable_args = executable_args
 
         if use_editor:
             # Use Unity
@@ -103,6 +104,9 @@ class UnityEnvironment(BaseEnvironment):
     def close(self):
         self.comm.close()
 
+    def relaunch(self):
+        self.comm.close()
+        self.comm = comm_unity.UnityCommunication(port=str(self.port_number), **self.executable_args)
 
     def reward(self):
         reward = 0.
