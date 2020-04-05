@@ -57,7 +57,7 @@ class PythonEnvironment(BaseEnvironment):
 
 
 
-        self.task_goal, self.goal_spec = {0: {}, 1: {}}, {}
+        self.task_goal, self.goal_spec = {0: {}, 1: {}}, {0: {}, 1: {}}
 
         self.changed_graph = False
         self.rooms = None
@@ -66,14 +66,14 @@ class PythonEnvironment(BaseEnvironment):
 
 
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
-        self.reset()
 
     def reward(self):
         reward = 0.
         done = True
-        satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec)
+        # TODO: we should specify goal per agent maybe
+        satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec[0])
         for key, value in satisfied.items():
-            preds_needed, mandatory, reward_per_pred = self.goal_spec[key]
+            preds_needed, mandatory, reward_per_pred = self.goal_spec[0][key]
             # How many predicates achieved
             value_pred = min(len(value), preds_needed)
             reward += value_pred * reward_per_pred
@@ -146,7 +146,8 @@ class PythonEnvironment(BaseEnvironment):
 
 
         # TODO: in the future we may want different goals
-        self.goal_spec = self.get_goal(self.task_goal[0], self.agent_goals[0])
+        self.goal_spec = {agent_id: self.get_goal(self.task_goal[agent_id], self.agent_goals[agent_id])
+                          for agent_id in range(self.num_agents)}
         print("Goal: ", self.goal_spec)
 
         if environment_graph is None:

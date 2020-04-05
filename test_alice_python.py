@@ -12,7 +12,7 @@ from pathlib import Path
 from envs.python_environment import PythonEnvironment
 from agents import MCTS_agent
 from arguments import get_args
-from algos.arena_mp import ArenaMP
+from algos.arena_mp2 import ArenaMP
 from utils import utils_goals
 
 

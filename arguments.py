@@ -11,7 +11,7 @@ def get_args():
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
     parser.add_argument(
-        '--task_type', default='find', choices=['find', 'complex', 'open', 'put'], help='algorithm to use: find | complex')
+        '--task_type', default='find', choices=['find', 'full', 'open', 'put'], help='algorithm to use')
     parser.add_argument(
         '--lr', type=float, default=7e-4, help='learning rate (default: 7e-4)')
 

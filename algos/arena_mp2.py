@@ -7,15 +7,16 @@ import time
 import ray
 import atexit
 
-@ray.remote
+# @ray.remote
 class ArenaMP(object):
     def __init__(self, arena_id, environment_fn, agent_fn):
         self.agents = []
-
-        for agent_type_fn in agent_fn:
-            self.agents.append(agent_type_fn(arena_id))
         self.num_agents = len(agent_fn)
         self.env = environment_fn(arena_id)
+
+        for agent_type_fn in agent_fn:
+            self.agents.append(agent_type_fn(self.env))
+
         self.max_episode_length = self.env.max_episode_length
 
         atexit.register(self.close)
@@ -51,10 +52,10 @@ class ArenaMP(object):
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it], opponent_subgoal)
-            elif agent.agent_type == 'RL':
 
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], opponent_subgoal)
+            elif agent.agent_type == 'RL':
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
     #def rollout_relaunch(self):
@@ -211,7 +212,7 @@ class ArenaMP(object):
                       'subgoal': {0: [], 1: []},
                       # 'init_pos': {0: None, 1: None},
                       'finished': None,
-                      'init_unity_graph': self.env.init_unity_graph,
+                      'init_unity_graph': self.env.init_graph,
                       'obs': []}
         success = False
         while True:

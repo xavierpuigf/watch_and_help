@@ -340,8 +340,9 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
     else:
         init_vh_state = env.vh_state
 
-    satisfied, unsatisfied = utils_env.check_progress(init_state, goal_spec)
     print('goal_spec:', goal_spec)
+
+    satisfied, unsatisfied = utils_env.check_progress(init_state, goal_spec)
     # print('get plan:', init_state)
 
     if env.is_terminal(0, init_state):

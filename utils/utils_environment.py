@@ -137,7 +137,6 @@ def check_progress(state, goal_spec):
     for key, value in goal_spec.items():
 
         elements = key.split('_')
-        pdb.set_trace()
         unsatisfied[key] = value[0] if elements[0] not in ['offOn', 'offInside'] else 0
         satisfied[key] = [None] * 2
         satisfied[key]
