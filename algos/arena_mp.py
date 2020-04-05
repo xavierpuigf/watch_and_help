@@ -1,233 +1,222 @@
 import random
 import pdb
+import torch
 import copy
-import multiprocessing
-from utils.utils import CloudpickleWrapper
+import numpy as np
+import time
+import ray
+import atexit
 
-def _worker(remote, parent_remote, env_fn_wrapper):
-    parent_remote.close()
-    env = env_fn_wrapper.var()
-    while True:
-        try:
-            cmd, data = remote.recv()
-            if cmd == 'step':
-                observation, reward, done, info = env.step(data)
-                if done:
-                    # save final observation where user can get it, then reset
-                    info['terminal_observation'] = observation
-                    observation = env.reset()
-                remote.send((observation, reward, done, info))
-            elif cmd == 'seed':
-                remote.send(env.seed(data))
-
-            elif cmd == 'get_observations':
-                ob = env.get_observations()
-                action_space = env.get_action_space()
-                remote.send((ob, action_space))
-            elif cmd == 'reset':
-
-                ob = None
-                while ob is None:
-                    ob = env.reset(task_id=data)
-                remote.send((ob, env.python_graph, env.task_goal))
-
-            elif cmd == 'close':
-                remote.close()
-                break
-            # elif cmd == 'get_spaces':
-            #     remote.send((env.observation_space, env.action_space))
-            elif cmd == 'env_method':
-                method = getattr(env, data[0])
-                remote.send(method(*data[1], **data[2]))
-            elif cmd == 'get_attr':
-                remote.send(getattr(env, data))
-            elif cmd == 'set_attr':
-                remote.send(setattr(env, data[0], data[1]))
-            else:
-                raise NotImplementedError
-        except EOFError:
-            break
-
-
-class Arena:
-    def __init__(self, agent_types, environment_fns, agent_env_mapping=None):
-        # Subprocess start method
-        forkserver_available = 'forkserver' in multiprocessing.get_all_start_methods()
-        start_method = 'forkserver' if forkserver_available else 'spawn'
-
-        n_envs = len(environment_fns)
-
-        self.waiting = {id: False for id in range(n_envs)}
-        self.closed = False
-        self.n_envs = n_envs
-        ctx = multiprocessing.get_context(start_method)
-        self.remotes, self.work_remotes = zip(*[ctx.Pipe(duplex=True) for _ in range(n_envs)])
-        self.processes = []
-
-        for work_remote, remote, env_fn in zip(self.work_remotes, self.remotes, environment_fns):
-            args = (work_remote, remote, CloudpickleWrapper(env_fn))
-            # daemon=True: if the main process crashes, we should not cause things to hang
-            args = (work_remote, remote, CloudpickleWrapper(env_fn))
-            process = ctx.Process(target=_worker, args=args, daemon=True)  # pytype:disable=attribute-error
-            process.start()
-            self.processes.append(process)
-            work_remote.close()
-
-
+class ArenaMP(object):
+    def __init__(self, arena_id, environment_fn, agent_fn):
         self.agents = []
-        for agent_type in agent_types:
-            self.agents.append(agent_type)
-        self.num_agents = len(agent_types)
 
-        # if type(environment) == list:
-        #     self.env = environment
-        # else:
-        #     self.env = [environment]
+        self.num_agents = len(agent_fn)
+        self.env = environment_fn(arena_id)
 
-        if agent_env_mapping:
-            self.agent_env_mapping = {agent_id: 0 for agent_id in range(len(self.agents))}
-        else:
-            self.agent_env_mapping = agent_env_mapping
+        for agent_type_fn in agent_fn:
+            self.agents.append(agent_type_fn(self.env))
 
+        self.max_episode_length = self.env.max_episode_length
+
+        atexit.register(self.close)
 
     def close(self):
-        if self.closed:
-            return
-        for remote_id, remote in enumerate(self.remotes):
-            if self.waiting[remote_id]:
-                remote.recv()
-        for remote in self.remotes:
-            remote.send(('close', None))
-        for process in self.processes:
-            process.join()
-        self.closed = True
+        self.env.close()
+
+    def get_port(self):
+        return self.env.port_number
+
 
     def reset(self, task_id=None):
-        for remote in self.remotes:
-            remote.send(('reset', task_id))
-
-        obs = [remote.recv() for remote in self.remotes]
+        ob = None
+        while ob is None:
+            ob = self.env.reset(task_id=task_id)
         for it, agent in enumerate(self.agents):
-            env_id = self.agent_env_mapping[it]
             if agent.agent_type == 'MCTS':
-                agent.reset(obs[env_id][1], obs[env_id][2], seed=it)
+                agent.reset(self.env.python_graph, self.env.task_goal, seed=it)
             else:
-                agent.reset(obs[env_id][1])
+                agent.reset(self.env.python_graph)
 
-    def get_actions(self, obs, action_space=None, env_id=0):
+    def set_weigths(self, epsilon, weights):
+        for agent in self.agents:
+            if agent.agent_type == 'RL':
+                agent.epsilon = epsilon
+                agent.actor_critic.load_state_dict(weights)
+
+    def get_actions(self, obs, action_space=None):
         dict_actions, dict_info = {}, {}
         op_subgoal = {0: None, 1: None}
-
-        env_agent = self.envs[env_id]
         for it, agent in enumerate(self.agents):
-            if self.agent_env_mapping[it] != env_id:
-                continue
-            env_agent = self.envs[self.agent_env_mapping[it]]
             if agent.agent_type == 'MCTS':
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], env_agent.task_goal[it] if it == 0 else self.task_goal[it], opponent_subgoal)
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.task_goal[it] if it == 0 else self.task_goal[it], opponent_subgoal)
             elif agent.agent_type == 'RL':
 
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], env_agent.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it] if it == 0 else self.env.goal_spec[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
-
-    def get_observations(self, env_id=None):
-        if env_id is None:
-            env_ids = list(range(self.num_envs))
-        else:
-            env_ids = [env_id]
-
-        for c_env_id in env_ids:
-            curr_remote = self.remotes[c_env_id]
-            curr_remote.send(('get_observations', None))
-
-        obs = [remote.recv() for remote in self.remotes[c_env_id]]
-        obs_per_env = {eid: ob for eid, ob in zip(env_ids)}
-        return obs_per_env
-
-    def step(self, env_id):
-        # Sync
-        obs_per_env = self.get_observations(env_id)
-
-        for env_id, observation_env in obs_per_env.items():
-            obs, action_space = observation_env
-            dict_actions, dict_info = self.get_actions(obs, action_space, env_id)
+    #def rollout_relaunch(self):
 
 
+    def rollout(self, logging=False, record=False):
+        t1 = time.time()
+        self.reset()
+        t2 = time.time()
+        t_reset = t2 - t1
+        c_r_all = [0] * self.num_agents
+        success_r_all = [0] * self.num_agents
+        done = False
+        actions = []
+        nb_steps = 0
+        info_rollout = {}
+        entropy_action, entropy_object = [], []
+        observation_space, action_space = [], []
 
-        return info_per_env
+        info_rollout['step_info'] = []
+        info_rollout['script'] = []
 
-    def step_async(self, action_envs, env_id=None):
+        rollout_agent = {}
 
-        if env_id is None:
-            env_ids = list(range(self.num_envs))
-        else:
-            env_ids = [env_id]
+        for agent_id in range(self.num_agents):
+            agent = self.agents[agent_id]
+            if agent.agent_type == 'RL':
+                rollout_agent[agent_id] = []
 
-        for c_env_id in env_ids:
-            if c_env_id in action_envs:
-                curr_remote = self.remotes[c_env_id]
-                remote.send(('step', action_envs[c_env_id]))
+        if logging:
+            init_graph = self.env.get_graph()
+            pred = self.env.goal_spec
+            goal_class = list(pred.keys())[0].split('_')[1]
+            id2node = {node['id']: node for node in init_graph['nodes']}
+            info_goals = []
+            info_goals.append([node for node in init_graph['nodes'] if node['class_name'] == goal_class])
+            ids_target = [node['id'] for node in init_graph['nodes'] if node['class_name'] == goal_class]
+            info_goals.append([(id2node[edge['to_id']]['class_name'],
+                                edge['to_id'],
+                                edge['relation_type'],
+                                edge['from_id']) for edge in init_graph['edges'] if edge['from_id'] in ids_target])
+            info_rollout['target'] = [pred, info_goals]
 
-        action_space = env.get_action_space()
-        dict_actions, dict_info = self.get_actions(obs, action_space, env_id)
+        while not done and nb_steps < self.max_episode_length:
+            (obs, reward, done, env_info), agent_actions, agent_info = self.step()
+            if logging:
+                node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
+                edges_char = [(id2node[edge['to_id']]['class_name'],
+                                edge['to_id'],
+                                edge['relation_type']) for edge in init_graph['edges'] if edge['from_id'] == 1]
 
-        return env.step(dict_actions), dict_actions, dict_info
+                info_rollout['step_info'].append((node_id, edges_char))
+                info_rollout['script'].append(agent_actions[0])
 
-    def step_wait(self, env_id=None):
-        if env_id is None:
-            env_ids = list(range(self.num_envs))
-        else:
-            env_ids = [env_id]
+            nb_steps += 1
+            for agent_index in agent_info.keys():
+                # currently single reward for both agents
+                c_r_all[agent_index] += reward
+                # action_dict[agent_index] = agent_info[agent_index]['action']
 
-        obs, action_space = [], []
-        for c_env_id in env_ids:
-            curr_remote = self.remotes[c_env_id]
-            resp = [remote]
+            entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
+            entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
+            observation_space.append(agent_info[0]['num_objects'])
+            action_space.append(agent_info[0]['num_objects_action'])
+            if record:
+                actions.append(agent_actions)
+
+            # append to memory
+            for agent_id in range(self.num_agents):
+                if self.agents[agent_id].agent_type == 'RL':
+                    state = agent_info[agent_id]['state_inputs']
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                    action = agent_info[agent_id]['actions']
+                    rewards = reward
+
+                    rollout_agent[agent_id].append((state, policy, action, rewards, 1))
+
+
+        t_steps = time.time() - t2
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
+        info_rollout['action_space'] = np.mean(action_space)
+        info_rollout['t_reset'] = t_reset
+        info_rollout['t_steps'] = t_steps
+
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
+        info_rollout['action_space'] = np.mean(action_space)
+
+        info_rollout['env_id'] = self.env.env_id
+        info_rollout['goals'] = list(self.env.task_goal[0].keys())
+        # padding
+        # TODO: is this correct? Padding that is valid?
+        while nb_steps < self.max_episode_length:
+            nb_steps += 1
+            for agent_id in range(self.num_agents):
+                if self.agents[agent_id].agent_type == 'RL':
+                    state = agent_info[agent_id]['state_inputs']
+                    if 'edges' in obs.keys():
+                        pdb.set_trace()
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                    action = agent_info[agent_id]['actions']
+                    rewards = reward
+                    rollout_agent[agent_id].append((state, policy, action, 0, 0))
+
+        return c_r_all, info_rollout, rollout_agent
 
 
     def step(self):
-        info_env = {}
+        obs = self.env.get_observations()
+        action_space = self.env.get_action_space()
+        dict_actions, dict_info = self.get_actions(obs, action_space)
+        try:
+            step_info = self.env.step(dict_actions)
+        except:
+            print("Time out for action: ", dict_actions)
+            raise Exception
+        return step_info, dict_actions, dict_info
 
-        for it, env in enumerate(self.env):
-            info_env[it] = self.step_env(it)
-
-        return info_env
 
     def run(self, random_goal=False, pred_goal=None):
         """
         self.task_goal: goal inference
         self.env.task_goal: ground-truth goal
         """
-
-        assert(len(self.env) == 1)
-        self.task_goal = copy.deepcopy(self.env[0].task_goal)
+        self.task_goal = copy.deepcopy(self.env.task_goal)
         if random_goal:
-            for predicate in self.env[0].task_goal[0]:
+            for predicate in self.env.task_goal[0]:
                 u = random.choice([0, 1, 2])
                 self.task_goal[0][predicate] = u
                 self.task_goal[1][predicate] = u
         if pred_goal is not None:
             self.task_goal = copy.deepcopy(pred_goal)
 
-        saved_info = {'task_id': self.env[0].task_id,
-                      'env_id': self.env[0].env_id,
-                      'task_name': self.env[0].task_name,
-                      'gt_goals': self.env[0].task_goal[0],
+        saved_info = {'task_id': self.env.task_id,
+                      'env_id': self.env.env_id,
+                      'task_name': self.env.task_name,
+                      'gt_goals': self.env.task_goal[0],
                       'goals': self.task_goal[0],
-                      'action': {0: [], 1: []}, 
+                      'action': {0: [], 1: []},
                       'plan': {0: [], 1: []},
                       'subgoal': {0: [], 1: []},
                       # 'init_pos': {0: None, 1: None},
                       'finished': None,
-                      'init_unity_graph': self.env[0].init_unity_graph,
+                      'init_unity_graph': self.env.init_graph,
                       'obs': []}
         success = False
         while True:
-            (obs, reward, done, infos), actions, agent_info = self.step()[0]
+            (obs, reward, done, infos), actions, agent_info = self.step()
             success = infos['finished']
             for agent_id, action in actions.items():
                 saved_info['action'][agent_id].append(action)
@@ -241,4 +230,4 @@ class Arena:
             if done:
                 break
         saved_info['finished'] = success
-        return success, self.env[0].steps, saved_info
+        return success, self.env.steps, saved_info

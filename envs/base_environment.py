@@ -8,3 +8,6 @@ class BaseEnvironment:
 
     def step(self, action_dict):
         raise NotImplementedError
+
+    def close(self):
+        pass

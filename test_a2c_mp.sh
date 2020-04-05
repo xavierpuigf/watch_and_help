@@ -8,7 +8,7 @@
 ##--use-editor
 
 #--logging
-CUDA_VISIBLE_DEVICES=2 python test_a2c_mp.py \
+CUDA_VISIBLE_DEVICES=0 python test_a2c_mp.py \
 --num-per-apartment 3 \
 --max-num-edges 500 --max-episode-length 30 \
 --balanced_sample --neg_ratio 0.5 --batch_size 16 \

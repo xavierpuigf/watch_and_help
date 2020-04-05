@@ -183,6 +183,7 @@ class ArenaMP(object):
             step_info = self.env.step(dict_actions)
         except:
             print("Time out for action: ", dict_actions)
+            raise Exception
         return step_info, dict_actions, dict_info
 
 

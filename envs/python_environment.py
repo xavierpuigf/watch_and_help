@@ -48,7 +48,7 @@ class PythonEnvironment(BaseEnvironment):
         if observation_types is not None:
             self.observation_types = observation_types
         else:
-            self.observation_types = ['partial' for _ in range(num_agents)]
+            self.observation_types = ['mcts' for _ in range(num_agents)]
 
         if agent_goals is not None:
             self.agent_goals = agent_goals
@@ -67,7 +67,6 @@ class PythonEnvironment(BaseEnvironment):
 
         self.env = vh_env.VhGraphEnv(n_chars=self.num_agents)
         self.reset()
-
 
     def reward(self):
         reward = 0.
@@ -107,8 +106,10 @@ class PythonEnvironment(BaseEnvironment):
         self.env.to_pomdp()
 
     def get_goal(self, task_spec, agent_goal):
+
         if agent_goal == 'full':
-            return task_spec
+            task_spec_new = {goal_name: [cnt_val, True, 0] for goal_name, cnt_val in task_spec.items()}
+            return task_spec_new
         elif agent_goal == 'grab':
             candidates = [x.split('_')[1] for x,y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
             object_grab = random.choice(candidates)
@@ -148,7 +149,7 @@ class PythonEnvironment(BaseEnvironment):
         self.goal_spec = self.get_goal(self.task_goal[0], self.agent_goals[0])
         print("Goal: ", self.goal_spec)
 
-        if environment_graph is not None:
+        if environment_graph is None:
             environment_graph = env_task['init_graph']
 
 
@@ -166,7 +167,10 @@ class PythonEnvironment(BaseEnvironment):
                 'properties': []
             }
             room_name = rooms[i]
+            #try:
             room_id = [node['id'] for node in environment_graph['nodes'] if node['class_name'] == room_name][0]
+            #except:
+            #    pdb.set_trace()
             environment_graph['nodes'].append(new_char_node)
             environment_graph['edges'].append({'from_id': i+1, 'relation_type': 'INSIDE', 'to_id': room_id})
 
@@ -203,6 +207,7 @@ class PythonEnvironment(BaseEnvironment):
         return dict_action_space
 
     def get_observation(self, agent_id, obs_type, info={}):
+
         if obs_type == 'mcts':
             return self.env.get_observations(char_index=agent_id)
 
@@ -210,4 +215,5 @@ class PythonEnvironment(BaseEnvironment):
             return self.get_graph()
 
         else:
+            pdb.set_trace()
             raise NotImplementedError
