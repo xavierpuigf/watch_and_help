@@ -164,5 +164,5 @@ class RL_agent:
             o1 = None
         action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph, teleport=(not python_env))
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
-        #print('{: <40} --> {}'.format(action_try, action))
+        print('{: <40} --> {}'.format(action_try, action))
         return action

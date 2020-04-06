@@ -15,6 +15,7 @@ from vh_graph.envs import belief, vh_env
 import pdb
 import random
 import numpy as np
+import copy
 
 class PythonEnvironment(BaseEnvironment):
 
@@ -160,6 +161,7 @@ class PythonEnvironment(BaseEnvironment):
         else:
             rooms = list(self.init_rooms)
 
+        environment_graph = copy.deepcopy(environment_graph)
         for i in range(self.num_agents):
             new_char_node = {
                 'id': i+1,
@@ -175,7 +177,6 @@ class PythonEnvironment(BaseEnvironment):
             #    pdb.set_trace()
             environment_graph['nodes'].append(new_char_node)
             environment_graph['edges'].append({'from_id': i+1, 'relation_type': 'INSIDE', 'to_id': room_id})
-
 
 
         self.python_graph_reset(environment_graph)

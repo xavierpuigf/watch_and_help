@@ -266,9 +266,8 @@ class GraphHelper():
         all_node_states[:len(nodes)] = node_states
         all_node_ids[:len(nodes)] = node_ids
 
-        obj_coords = np.zeros((max_nodes, 3))
-
-        if bbox_available:
+        if self.simulaor_type == 'unity':
+            obj_coords = np.zeros((max_nodes, 3))
             obj_coords[:len(nodes)] = np.concatenate(rel_coords, 0)
         
         if plot_graph:
@@ -278,8 +277,8 @@ class GraphHelper():
         else:
             labeldict = None
             graph_viz = None
-        #print("CLASSNAMES") 
-        #print(all_class_names[:5])
+
+
         output = {
             'class_objects': all_class_names,
             'states_objects': all_node_states,
@@ -288,9 +287,11 @@ class GraphHelper():
             'mask_object': mask_nodes,
             'mask_edge': mask_edges,
             'mask_action_node': mask_action_nodes,
-            'object_coords': obj_coords,
             'node_ids': all_node_ids
         }
+
+        if self.simulaor_type == 'unity':
+            output['object_coords'] = obj_coords
         #print(node_ids[:len(nodes)])
         return output, (graph_viz, labeldict, visible_nodes)
 

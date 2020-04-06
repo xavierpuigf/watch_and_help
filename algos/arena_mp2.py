@@ -87,7 +87,7 @@ class ArenaMP(object):
 
         if logging:
             init_graph = self.env.get_graph()
-            pred = self.env.goal_spec
+            pred = self.env.goal_spec[0]
             goal_class = list(pred.keys())[0].split('_')[1]
             id2node = {node['id']: node for node in init_graph['nodes']}
             info_goals = []
