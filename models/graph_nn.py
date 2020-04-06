@@ -82,10 +82,32 @@ class RGCNLayer(nn.Module):
         g.update_all(message_func, fn.sum(msg='msg', out='h'), apply_func)
 
 
+class ClassAndStates(nn.Module):
+    def __init__(self, num_classes, num_states, h_dim):
+        super(ClassAndStates, self).__init__()
+        self.class_encoding = nn.Embedding(num_classes, int(h_dim/2))
+        self.state_embedding = nn.Linear(num_states, int(h_dim / 2))
+        inp_dim = int(h_dim / 2)
+        self.combine = nn.Sequential(nn.ReLU(),
+                                     nn.Linear(h_dim, h_dim),
+                                     nn.ReLU(),
+                                     nn.Linear(h_dim, h_dim),
+                                     nn.ReLU()
+                                     )
+
+    def forward(self, class_ids, states):
+        class_nodes = self.class_encoding(class_ids)
+        state_embedding = self.state_embedding(states)
+
+        state_and_class = torch.cat([class_nodes, state_embedding], dim=1)
+        output_embedding = self.combine(state_and_class)
+        return output_embedding
+
 class GraphModel(nn.Module):
-    def __init__(self, num_classes, num_nodes, h_dim, out_dim, num_rels,
+    def __init__(self, num_classes, num_nodes, h_dim, out_dim, num_rels, num_states,
                  num_bases=-1, num_hidden_layers=1):
         super(GraphModel, self).__init__()
+        self.num_states = num_states
         self.h_dim = h_dim
         self.out_dim = out_dim
         self.num_rels = num_rels
@@ -97,7 +119,9 @@ class GraphModel(nn.Module):
 
         # create initial features
         self.features = None # self.create_features()
-        self.feat_in = nn.Embedding(num_classes, h_dim)
+
+        self.feat_in = ClassAndStates(num_classes, num_states, h_dim)
+        #self.feat_in = nn.Embedding(num_classes, h_dim)
 
     def build_model(self):
         self.layers = nn.ModuleList()
@@ -144,6 +168,7 @@ class GraphModel(nn.Module):
             num_edges = int(mask_edges[env_id].sum().item())
 
             ids = all_class_names[env_id][:num_nodes]
+            node_states_curr = node_states[env_id][:num_nodes]
             g.add_nodes(num_nodes)
 
             if num_edges > 0:
@@ -156,7 +181,7 @@ class GraphModel(nn.Module):
                 except:
                     pdb.set_trace()
             if self.features is None:
-                g.ndata['h'] = self.feat_in(ids.long())
+                g.ndata['h'] = self.feat_in(ids.long(), node_states_curr)
             graphs.append(g)
 
         batch_graph = dgl.batch(graphs)

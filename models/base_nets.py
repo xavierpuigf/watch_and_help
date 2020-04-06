@@ -193,11 +193,11 @@ class GoalAttentionModel(NNBase):
 
 
 class GraphEncoder(nn.Module):
-    def __init__(self, hidden_size=128, max_nodes=100, num_rels=5, num_classes=100):
+    def __init__(self, hidden_size=128, max_nodes=100, num_rels=5, num_classes=100, num_states=4):
         super(GraphEncoder, self).__init__()
         self.hidden_size = hidden_size
         self.graph_encoder = GraphModel(
-            num_classes=num_classes, num_nodes=max_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels)
+            num_classes=num_classes, num_nodes=max_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, num_states=num_states)
 
     def forward(self, inputs):
         # Build the graph

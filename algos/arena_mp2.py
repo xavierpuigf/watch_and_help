@@ -15,7 +15,7 @@ class ArenaMP(object):
         self.env = environment_fn(arena_id)
 
         for agent_type_fn in agent_fn:
-            self.agents.append(agent_type_fn(self.env))
+            self.agents.append(agent_type_fn(arena_id, self.env))
 
         self.max_episode_length = self.env.max_episode_length
 

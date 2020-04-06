@@ -214,8 +214,10 @@ class GraphHelper():
         nodes = [id2node[idi] for idi in ids]
         nodes.append({'id': -1, 'class_name': 'no_obj', 'states': []})
 
-        char_coord = np.array(nodes[0]['bounding_box']['center'])
-        rel_coords = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else (np.array(node['bounding_box']['center']) - char_coord)[None, :] for node in nodes]
+        bbox_available = 'bounding_box' in nodes[0].keys()
+        if bbox_available:
+            char_coord = np.array(nodes[0]['bounding_box']['center'])
+            rel_coords = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else (np.array(node['bounding_box']['center']) - char_coord)[None, :] for node in nodes]
 
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
@@ -263,7 +265,9 @@ class GraphHelper():
         all_node_ids[:len(nodes)] = node_ids
 
         obj_coords = np.zeros((max_nodes, 3))
-        obj_coords[:len(nodes)] = np.concatenate(rel_coords, 0)
+
+        if bbox_available:
+            obj_coords[:len(nodes)] = np.concatenate(rel_coords, 0)
         
         if plot_graph:
             graph_viz = DGLGraph()
