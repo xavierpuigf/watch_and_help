@@ -73,11 +73,14 @@ class A2C():
                     agent.epsilon = eps
 
             time_prerout = time.time()
-            c_r_all, info_rollout = self.rollout(logging=(episode_id % 10 == 0))
+            c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
 
             episode_rewards = c_r_all
 
             num_steps = info_rollout['nsteps']
+
+            total_num_steps += num_steps
+
             action_space = info_rollout['action_space']
             obs_space = info_rollout['observation_space']
             successes = info_rollout['success']
@@ -90,7 +93,7 @@ class A2C():
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 
             if self.logger:
-                if episode_id % 10 == 0:
+                if episode_id % self.args.log_interval == 0:
                     num_steps = info_rollout['nsteps']
                     epsilon = info_rollout['epsilon']
                     dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
@@ -101,15 +104,16 @@ class A2C():
                         'target': info_rollout['target'],
                         'info_step': info_rollout['step_info'],
                     }
-                    info_ep.append(info_episode)
-                    file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
+                    if episode_id % max(self.args.log_interval, 10):
+                        info_ep.append(info_episode)
+                        file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
                     with open(file_name_log, 'w+') as f:
                         f.write(json.dumps(info_ep, indent=4))
-                info_episodes = [{'success': successes,
-                                  'goal': list(self.env.task_goal[0].keys())[0],
-                                  'apt': self.env.env_id}]
-                self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
-                                     dist_entropy, epsilon, successes, info_episodes)
+                    info_episodes = [{'success': successes,
+                                      'goal': info_rollout['goals'][0],
+                                      'apt': info_rollout['env_id']}]
+                    self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
+                                         dist_entropy, epsilon, successes, info_episodes)
 
 
 
@@ -184,7 +188,7 @@ class A2C():
             t_fb = time.time() - t_pfb
             print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(num_steps, t_rollout, t_steps, t_reset, t_fb))
             if not self.args.debug and episode_id % self.args.save_interval == 0:
-                self.logger.save_model(episode_id, self.agents[0].actor_critic)
+                self.logger.save_model(episode_id, self.arenas[0].agents[0].actor_critic)
 
 
     def _train(self,

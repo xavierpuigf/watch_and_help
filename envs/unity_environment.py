@@ -76,7 +76,7 @@ class UnityEnvironment(BaseEnvironment):
             0: 'Chars/Female1',
             1: 'Chars/Male1'
         }
-        self.task_goal, self.goal_spec = {0: {}, 1: {}}, {}
+        self.task_goal, self.goal_spec = {0: {}, 1: {}}, {0: {}, 1: {}}
 
         self.changed_graph = False
         self.rooms = None
@@ -111,9 +111,9 @@ class UnityEnvironment(BaseEnvironment):
     def reward(self):
         reward = 0.
         done = True
-        satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec)
+        satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec[0])
         for key, value in satisfied.items():
-            preds_needed, mandatory, reward_per_pred = self.goal_spec[key]
+            preds_needed, mandatory, reward_per_pred = self.goal_spec[0][key]
             # How many predicates achieved
             value_pred = min(len(value), preds_needed)
             reward += value_pred * reward_per_pred
@@ -231,7 +231,8 @@ class UnityEnvironment(BaseEnvironment):
         # np.random.seed(seed)
 
         # TODO: in the future we may want different goals
-        self.goal_spec = self.get_goal(self.task_goal[0], self.agent_goals[0])
+        self.goal_spec = {agent_id: self.get_goal(self.task_goal[agent_id], self.agent_goals[agent_id])
+                          for agent_id in range(self.num_agents)}
         print("Goal: ", self.goal_spec)
 
         # pdb.set_trace()

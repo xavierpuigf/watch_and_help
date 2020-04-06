@@ -45,39 +45,11 @@ if __name__ == '__main__':
             env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
-    #env_task_set = [env for env in env_task_set if env['env_id'] == 0]
     print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'grab'
     if args.task_type == 'put':
         agent_goal = 'put'
-
-
-
-    # args_mcts = dict(unity_env=env,
-    #                    recursive=True,
-    #                    max_episode_length=5,
-    #                    num_simulation=100,
-    #                    max_rollout_steps=3,
-    #                    c_init=0.1,
-    #                    c_base=1000000,
-    #                    num_samples=1,
-    #                    num_processes=1,
-    #                    logging=True)
-
-
-    graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
-                                              max_num_edges=args.max_num_edges, current_task=None, simulator_type=args.simulator_type)
-
-    args_agent1 = {'agent_id': 1, 'char_index': 0}
-
-
-
-    def RL_agent_fn(arena_id, env):
-        args_agent2 = {'agent_id': 1, 'char_index': 0,
-                       'args': args, 'graph_helper': graph_helper}
-        args_agent2['seed'] = arena_id
-        return RL_agent(**args_agent2)
 
     def env_fn(env_id):
         return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
@@ -86,26 +58,21 @@ if __name__ == '__main__':
                                 observation_types=[args.obs_type],
                                 seed=env_id)
 
-    # args_agent1.update(args_mcts)
+
+    graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
+                                              max_num_edges=args.max_num_edges, current_task=None,
+                                              simulator_type=args.simulator_type)
 
 
-    #args_agent2.update(args_common)
-    #agents = [MCTS_agent(**args_agent1), RL_agent(**args_agent2)]
-    #agents = [RL_agent(**args_agent2)]
+    def RL_agent_fn(arena_id, env):
+        args_agent2 = {'agent_id': 1, 'char_index': 0,
+                       'args': args, 'graph_helper': graph_helper}
+        args_agent2['seed'] = arena_id
+        return RL_agent(**args_agent2)
 
     agents = [RL_agent_fn]
-
-    #arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
     arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
-
     a2c = A2C(arenas, graph_helper, args)
-
     a2c.train()
     pdb.set_trace()
-    # try:
-    #     a2c = A2C(arenas, graph_helper, args)
-    # except:
-    #     for arena in arenas:
-    #         del(arena)
-    #     pdb.set_trace()
-    #ray.shutdown()
+

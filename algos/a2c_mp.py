@@ -145,8 +145,10 @@ class A2C:
                         'target': info_rollout['target'],
                         'info_step': info_rollout['step_info'],
                     }
-                    info_ep.append(info_episode)
-                    file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
+
+                    if episode_id % max(self.args.log_interval, 10):
+                        info_ep.append(info_episode)
+                        file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
                     with open(file_name_log, 'w+') as f:
                         f.write(json.dumps(info_ep, indent=4))
 

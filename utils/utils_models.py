@@ -155,7 +155,8 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/mode.{}-algo.{}-attention.{}-gamma.{}-lr{}'.format(
+        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/'\
+                          'mode.{}-algo.{}-base.{}-gamma.{}-lr{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,
@@ -164,9 +165,12 @@ class Logger():
             args.task_set,
             args.train_mode,
             args.algo,
-            args.attention_type,
+            args.base_net,
             args.gamma,
             args.lr)
+
+        if args.debug:
+            experiment_name += 'debug'
         return experiment_name
 
     def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, epsilon, successes, info_episodes):
