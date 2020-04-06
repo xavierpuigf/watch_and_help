@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
 
     graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
-                                              max_num_edges=args.max_num_edges, current_task=None, simulator_type='unity')
+                                              max_num_edges=args.max_num_edges, current_task=None, simulator_type=args.simulator_type)
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
 

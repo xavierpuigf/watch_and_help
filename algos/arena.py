@@ -1,6 +1,7 @@
 import random
 import pdb
 import copy
+import time
 
 class Arena:
     def __init__(self, agent_types, environment):
@@ -34,6 +35,119 @@ class Arena:
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec if it == 0 else self.task_goal[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
+    def rollout(self, logging=False, record=False):
+        t1 = time.time()
+        self.reset()
+        t2 = time.time()
+        t_reset = t2 - t1
+        c_r_all = [0] * self.num_agents
+        success_r_all = [0] * self.num_agents
+        done = False
+        actions = []
+        nb_steps = 0
+        info_rollout = {}
+        entropy_action, entropy_object = [], []
+        observation_space, action_space = [], []
+
+        info_rollout['step_info'] = []
+        info_rollout['script'] = []
+
+        rollout_agent = {}
+
+        for agent_id in range(self.num_agents):
+            agent = self.agents[agent_id]
+            if agent.agent_type == 'RL':
+                rollout_agent[agent_id] = []
+
+        if logging:
+            init_graph = self.env.get_graph()
+            pred = self.env.goal_spec
+            goal_class = list(pred.keys())[0].split('_')[1]
+            id2node = {node['id']: node for node in init_graph['nodes']}
+            info_goals = []
+            info_goals.append([node for node in init_graph['nodes'] if node['class_name'] == goal_class])
+            ids_target = [node['id'] for node in init_graph['nodes'] if node['class_name'] == goal_class]
+            info_goals.append([(id2node[edge['to_id']]['class_name'],
+                                edge['to_id'],
+                                edge['relation_type'],
+                                edge['from_id']) for edge in init_graph['edges'] if edge['from_id'] in ids_target])
+            info_rollout['target'] = [pred, info_goals]
+
+        while not done and nb_steps < self.max_episode_length:
+            (obs, reward, done, env_info), agent_actions, agent_info = self.step()
+            if logging:
+                node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
+                edges_char = [(id2node[edge['to_id']]['class_name'],
+                                edge['to_id'],
+                                edge['relation_type']) for edge in init_graph['edges'] if edge['from_id'] == 1]
+
+                info_rollout['step_info'].append((node_id, edges_char))
+                info_rollout['script'].append(agent_actions[0])
+
+            nb_steps += 1
+            for agent_index in agent_info.keys():
+                # currently single reward for both agents
+                c_r_all[agent_index] += reward
+                # action_dict[agent_index] = agent_info[agent_index]['action']
+
+            entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
+            entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
+            observation_space.append(agent_info[0]['num_objects'])
+            action_space.append(agent_info[0]['num_objects_action'])
+            if record:
+                actions.append(agent_actions)
+
+            # append to memory
+            for agent_id in range(self.num_agents):
+                if self.agents[agent_id].agent_type == 'RL':
+                    state = agent_info[agent_id]['state_inputs']
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                    action = agent_info[agent_id]['actions']
+                    rewards = reward
+
+                    rollout_agent[agent_id].append((state, policy, action, rewards, 1))
+
+
+        t_steps = time.time() - t2
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
+        info_rollout['action_space'] = np.mean(action_space)
+        info_rollout['t_reset'] = t_reset
+        info_rollout['t_steps'] = t_steps
+
+        for agent_index in agent_info.keys():
+            success_r_all[agent_index] = env_info['finished']
+
+        info_rollout['success'] = success_r_all[0]
+        info_rollout['nsteps'] = nb_steps
+        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['entropy'] = (entropy_action, entropy_object)
+        info_rollout['observation_space'] = np.mean(observation_space)
+        info_rollout['action_space'] = np.mean(action_space)
+
+        info_rollout['env_id'] = self.env.env_id
+        info_rollout['goals'] = list(self.env.task_goal[0].keys())
+        # padding
+        # TODO: is this correct? Padding that is valid?
+        while nb_steps < self.max_episode_length:
+            nb_steps += 1
+            for agent_id in range(self.num_agents):
+                if self.agents[agent_id].agent_type == 'RL':
+                    state = agent_info[agent_id]['state_inputs']
+                    if 'edges' in obs.keys():
+                        pdb.set_trace()
+                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                    action = agent_info[agent_id]['actions']
+                    rewards = reward
+                    rollout_agent[agent_id].append((state, policy, action, 0, 0))
+
+        return c_r_all, info_rollout, rollout_agent
 
     def step(self):
         obs = self.env.get_observations()

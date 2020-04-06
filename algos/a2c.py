@@ -76,13 +76,15 @@ class A2C():
             c_r_all, info_rollout = self.rollout(logging=(episode_id % 10 == 0))
 
             episode_rewards = c_r_all
+
+            num_steps = info_rollout['nsteps']
             action_space = info_rollout['action_space']
             obs_space = info_rollout['observation_space']
             successes = info_rollout['success']
 
             end_time = time.time()
             print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
-                episode_id, self.env.steps,
+                episode_id, num_steps,
                 [c_r_all[agent_id] for agent_id in trainable_agents],
                 info_rollout['success'],
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
@@ -121,20 +123,20 @@ class A2C():
                 for replay_id in range(nb_replays):
                     for agent_id in trainable_agents:
                         if self.args.balanced_sample:
-                            trajs = self.memory_all[agent_id].sample_batch_balanced(
+                            trajs = self.memory_all.sample_batch_balanced(
                                 self.args.batch_size,
                                 self.args.neg_ratio,
                                 maxlen=self.args.max_episode_length,
                                 cutoff_positive=5.0)
                         else:
-                            trajs = self.memory_all[agent_id].sample_batch(
+                            trajs = self.memory_all.sample_batch(
                                 self.args.batch_size,
                                 maxlen=self.args.max_episode_length)
                         N = len(trajs[0])
                         policies, actions, rewards, Vs, old_policies, dones, masks = \
                             [], [], [], [], [], [], []
 
-                        hx = torch.zeros(N, self.agents[agent_id].hidden_size).to(self.device)
+                        hx = torch.zeros(N, self.arenas[0].agents[agent_id].hidden_size).to(self.device)
 
                         state_keys = trajs[0][0].state.keys()
                         for t in range(len(trajs) - 1):
@@ -156,7 +158,7 @@ class A2C():
                             reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
 
                             # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
-                            v, _, policy, hx = self.agents[agent_id].actor_critic.act(inputs, hx, mask, action_indices=action)
+                            v, _, policy, hx = self.arenas[0].agents[agent_id].actor_critic.act(inputs, hx, mask, action_indices=action)
 
 
                             [array.append(element) for array, element in
@@ -168,7 +170,7 @@ class A2C():
 
                             if (t + 1) % self.args.t_max == 0:  # maximum bptt length
                                 hx = hx.detach()
-                        self._train(self.agents[agent_id].actor_critic,
+                        self._train(self.arenas[0].agents[agent_id].actor_critic,
                                     self.optimizers[agent_id],
                                     policies,
                                     Vs,
@@ -180,7 +182,7 @@ class A2C():
                                     verbose=1)
 
             t_fb = time.time() - t_pfb
-            print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(self.env.steps, t_rollout, t_steps, t_reset, t_fb))
+            print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(num_steps, t_rollout, t_steps, t_reset, t_fb))
             if not self.args.debug and episode_id % self.args.save_interval == 0:
                 self.logger.save_model(episode_id, self.agents[0].actor_critic)
 

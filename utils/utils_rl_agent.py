@@ -158,16 +158,18 @@ class GraphHelper():
                         self.obj1_affordance[action_id, ids_goal2] = 1
 
         # self.obj1_affordance[:,self.object_dict.get_id('kitchencounterdrawer')] = 0
-        self.obj1_affordance[self.action_dict.get_id('open'),self.object_dict.get_id('kitchencounterdrawer')] = 0
-        self.obj1_affordance[self.action_dict.get_id('close'),self.object_dict.get_id('kitchencounterdrawer')] = 0
-        self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('kitchencounterdrawer')] = 0
-        #self.obj1_affordance[self.action_dict.get_id('walktowards'),self.object_dict.get_id('character')] = 0
-        #self.obj1_affordance[:, id_no_obj] = 0
 
+        self.obj1_affordance[self.action_dict.get_id('open'), self.object_dict.get_id('kitchencounterdrawer')] = 0
+        self.obj1_affordance[self.action_dict.get_id('close'), self.object_dict.get_id('kitchencounterdrawer')] = 0
 
         if self.simulaor_type == 'unity':
+            self.obj1_affordance[
+                self.action_dict.get_id('walktowards'), self.object_dict.get_id('kitchencounterdrawer')] = 0
             for action_no_args in self.actions_no_args:
                 self.obj1_affordance[self.action_dict.get_id(action_no_args), id_no_obj] = 1
+        else:
+            self.obj1_affordance[
+                self.action_dict.get_id('walk'), self.object_dict.get_id('kitchencounterdrawer')] = 0
 
         # if np.sum(self.obj1_affordance.sum(0) == 0) > 0:
         #     pdb.set_trace()
@@ -214,7 +216,7 @@ class GraphHelper():
         nodes = [id2node[idi] for idi in ids]
         nodes.append({'id': -1, 'class_name': 'no_obj', 'states': []})
 
-        bbox_available = 'bounding_box' in nodes[0].keys()
+        bbox_available = 'bounding_box' in nodes[0].keys() and nodes[0]['bounding_box'] is not None
         if bbox_available:
             char_coord = np.array(nodes[0]['bounding_box']['center'])
             rel_coords = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else (np.array(node['bounding_box']['center']) - char_coord)[None, :] for node in nodes]
@@ -292,7 +294,7 @@ class GraphHelper():
         #print(node_ids[:len(nodes)])
         return output, (graph_viz, labeldict, visible_nodes)
 
-def can_perform_action(action, o1, o1_id, agent_id, graph):
+def can_perform_action(action, o1, o1_id, agent_id, graph, teleport=True):
     if action == 'no_action':
         return None
     # if action in ['open', 'close', 'grab', 'putback']:
@@ -360,7 +362,8 @@ def can_perform_action(action, o1, o1_id, agent_id, graph):
             action = 'putin'
         elif 'SURFACES' in id2node[o1_id]['properties']:
             action = 'putback'
-    if action.startswith('walk'):
+
+    if action.startswith('walk') and teleport:
         action = 'walkto'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
 

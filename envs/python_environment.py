@@ -85,7 +85,8 @@ class PythonEnvironment(BaseEnvironment):
         return reward, done, {}
 
     def step(self, action_dict):
-        self.env.step(action_dict)
+        new_action_dict = {char_id: action for char_id, action in action_dict.items() if action is not None}
+        self.env.step(new_action_dict)
         self.changed_graph = True
 
 

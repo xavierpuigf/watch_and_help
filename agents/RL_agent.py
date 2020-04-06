@@ -130,9 +130,10 @@ class RL_agent:
         #############
         # DEBUGGING
         # This is for debugging
-        id_glass = 459
-        perc_correct_actions = 1.0
         if self.args.use_gt_actions:
+
+            id_glass = 459
+            perc_correct_actions = 1.0
             if len([edge for edge in observation['edges'] if
                     edge['from_id'] == 1 and edge['to_id'] == id_glass and edge['relation_type'] == 'CLOSE']) > 0:
                 # Grab
@@ -154,13 +155,14 @@ class RL_agent:
 
 
     def get_action_instr(self, action, visible_objects, current_graph):
+        python_env = self.args.simulator_type == 'python'
         action_name = self.graph_helper.action_dict.get_el(action[0].item())
         object_id = action[1].item()
 
         (o1, o1_id) = visible_objects[object_id]
         if o1 == 'no_obj':
             o1 = None
-        action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph)
+        action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph, teleport=(not python_env))
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
         #print('{: <40} --> {}'.format(action_try, action))
         return action
