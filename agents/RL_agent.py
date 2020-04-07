@@ -127,6 +127,8 @@ class RL_agent:
         info_model['num_objects'] = inputs['mask_object'].sum(-1)
         info_model['num_objects_action'] = inputs['mask_action_node'].sum(-1)
 
+        info_model['visible_ids'] = [node[1] for node in visible_objects]
+
         #############
         # DEBUGGING
         # This is for debugging
@@ -147,8 +149,8 @@ class RL_agent:
                 info_model['actions'] = [torch.tensor(action_id)[None, None], torch.tensor(object_id)[None, None]]
 
 
-        action_str = self.get_action_instr(info_model['actions'], visible_objects, observation)
-
+        action_str, action_tried = self.get_action_instr(info_model['actions'], visible_objects, observation)
+        info_model['action_tried'] = action_tried
         # print('ACTIONS', info_model['actions'], action_str, action_probs[0],
         #       'IDS', inputs_tensor['node_ids'][0, :4])
         return action_str, info_model
@@ -164,5 +166,5 @@ class RL_agent:
             o1 = None
         action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph, teleport=(not python_env))
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
-        print('{: <40} --> {}'.format(action_try, action))
-        return action
+        #print('{: <40} --> {}'.format(action_try, action))
+        return action, action_try

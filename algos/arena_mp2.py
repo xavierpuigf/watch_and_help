@@ -77,6 +77,8 @@ class ArenaMP(object):
 
         info_rollout['step_info'] = []
         info_rollout['script'] = []
+        info_rollout['action_tried'] = []
+
 
         rollout_agent = {}
 
@@ -102,13 +104,18 @@ class ArenaMP(object):
         while not done and nb_steps < self.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             if logging:
+                #pdb.set_trace()
+                curr_graph = env_info['graph']
+                observed_nodes = agent_info[0]['visible_ids']
                 node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
                 edges_char = [(id2node[edge['to_id']]['class_name'],
                                 edge['to_id'],
-                                edge['relation_type']) for edge in init_graph['edges'] if edge['from_id'] == 1]
+                                edge['relation_type']) for edge in curr_graph['edges'] if edge['from_id'] == 1 and edge['to_id'] in observed_nodes]
 
                 info_rollout['step_info'].append((node_id, edges_char))
                 info_rollout['script'].append(agent_actions[0])
+
+                info_rollout['action_tried'].append(agent_info[0]['action_tried'])
 
             nb_steps += 1
             for agent_index in agent_info.keys():
@@ -150,12 +157,6 @@ class ArenaMP(object):
         for agent_index in agent_info.keys():
             success_r_all[agent_index] = env_info['finished']
 
-        info_rollout['success'] = success_r_all[0]
-        info_rollout['nsteps'] = nb_steps
-        info_rollout['epsilon'] = self.agents[0].epsilon
-        info_rollout['entropy'] = (entropy_action, entropy_object)
-        info_rollout['observation_space'] = np.mean(observation_space)
-        info_rollout['action_space'] = np.mean(action_space)
 
         info_rollout['env_id'] = self.env.env_id
         info_rollout['goals'] = list(self.env.task_goal[0].keys())

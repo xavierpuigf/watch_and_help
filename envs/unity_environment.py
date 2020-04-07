@@ -176,10 +176,13 @@ class UnityEnvironment(BaseEnvironment):
         self.python_graph_reset(graph)
         self.steps += 1
         info['finished'] = done
+        info['graph'] = graph
         if self.steps == self.max_episode_length:
             done = True
         # if done:
         #     pdb.set_trace()
+
+        #pdb.set_trace()
         return obs, reward, done, info
 
     def python_graph_reset(self, graph):

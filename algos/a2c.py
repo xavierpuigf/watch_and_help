@@ -34,22 +34,20 @@ class A2C():
 
 
         # # TODO: comment
-        info_envs = []
-        info_envs.append(self.arenas[0].rollout(logging, record))
-
+        info_envs = self.arenas[0].rollout(logging, record)
         rewards = []
-        for process_data in info_envs:
-            rewards.append(process_data[0])
-            # successes.append(process_data[1]['success'])
-            rollout_memory = process_data[2]
+        process_data = info_envs
 
-            # Add into memory
-            for mem in rollout_memory[0]:
-                self.memory_all.append(*mem)
-            self.memory_all.append(None, None, None, 0, 0)
+        rewards.append(process_data[0])
+        rollout_memory = process_data[2]
 
-        # only get info form one process
-        info_rollout = info_envs[0][1]
+        # Add into memory
+        for mem in rollout_memory[0]:
+            self.memory_all.append(*mem)
+        self.memory_all.append(None, None, None, 0, 0)
+
+        # only get info form one process:
+        info_rollout = info_envs[1]
         return rewards, info_rollout
 
 
@@ -74,7 +72,6 @@ class A2C():
 
             time_prerout = time.time()
             c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
-
             episode_rewards = c_r_all
 
             num_steps = info_rollout['nsteps']
@@ -92,8 +89,23 @@ class A2C():
                 info_rollout['success'],
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 
-            if self.logger:
-                if episode_id % self.args.log_interval == 0:
+            if episode_id % self.args.log_interval == 0:
+                script_done = info_rollout['script']
+                script_tried = info_rollout['action_tried']
+
+                print("Target:")
+                print(info_rollout['target'][1])
+                for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
+                    info_step = ''
+                    for relation in ['CLOSE', 'INSIDE', 'ON']:
+                        info_step += '  {}:  {}'.format(relation, ' '.join(['{}.{}'.format(x[0], x[1]) for x in info_rollout['step_info'][iti][1] if x[2] == relation]))
+
+                    if script_d is None:
+                        script_d = ''
+                    char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
+                    print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
+                pdb.set_trace()
+                if self.logger:
                     num_steps = info_rollout['nsteps']
                     epsilon = info_rollout['epsilon']
                     dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
