@@ -142,7 +142,11 @@ class RL_agent:
                 action_id = self.graph_helper.action_dict.get_id('grab')
             else:
                 # Walk to
-                action_id = self.graph_helper.action_dict.get_id('walktowards')
+                if not self.args.simulator_type == 'python':
+                    action_id = self.graph_helper.action_dict.get_id('walktowards')
+                else:
+                    action_id = self.graph_helper.action_dict.get_id('walk')
+
             object_id = [it for it, node in enumerate(visible_objects) if node[1] == id_glass][0]
 
             if random.random() < perc_correct_actions:

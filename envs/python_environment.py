@@ -95,6 +95,7 @@ class PythonEnvironment(BaseEnvironment):
         obs = self.get_observations()
         self.steps += 1
         info['finished'] = done
+        info['graph'] = self.get_graph()
         if self.steps == self.max_episode_length:
             done = True
         # if done:

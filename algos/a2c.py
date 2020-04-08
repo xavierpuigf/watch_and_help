@@ -102,9 +102,14 @@ class A2C():
 
                     if script_d is None:
                         script_d = ''
-                    char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
-                    print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
-                pdb.set_trace()
+
+                    if info_rollout['step_info'][iti][0] is not None:
+                        char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
+                        print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
+                    else:
+                        print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+
+
                 if self.logger:
                     num_steps = info_rollout['nsteps']
                     epsilon = info_rollout['epsilon']

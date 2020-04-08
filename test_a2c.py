@@ -3,6 +3,7 @@ sys.path.append('../virtualhome/')
 sys.path.append('../vh_mdp/')
 sys.path.append('../virtualhome/simulation/')
 
+from envs.python_environment import PythonEnvironment
 from envs.unity_environment import UnityEnvironment
 import pdb
 import pickle
@@ -38,6 +39,9 @@ if __name__ == '__main__':
 
         if args.obs_type == 'mcts':
             env_task_set['init_rooms'] = ['kitchen']
+
+        env_task_set['init_rooms'] = ['kitchen']
+
         env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
         env_task_set = [env_task_set]
     else:
@@ -53,19 +57,25 @@ if __name__ == '__main__':
         agent_goal = 'put'
 
     def env_fn(env_id):
-        return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
-                               env_task_set=env_task_set,
-                               agent_goals=[agent_goal],
-                               observation_types=[args.obs_type],
-                               use_editor=args.use_editor,
-                               executable_args=executable_args,
-                               base_port=args.base_port)
-
-
+        if args.simulator_type == 'unity':
+            return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+                                   env_task_set=env_task_set,
+                                   agent_goals=[agent_goal],
+                                   observation_types=[args.obs_type],
+                                   use_editor=args.use_editor,
+                                   executable_args=executable_args,
+                                   base_port=args.base_port)
+        else:
+            return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+                                    env_task_set=env_task_set,
+                                    agent_goals=[agent_goal],
+                                    observation_types=[args.obs_type],
+                                    seed=env_id)
 
 
     graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
-                                              max_num_edges=args.max_num_edges, current_task=None, simulator_type='unity')
+                                              max_num_edges=args.max_num_edges, current_task=None,
+                                              simulator_type=args.simulator_type)
 
     def RL_agent_fn(arena_id, env):
         args_agent2 = {'agent_id': 1, 'char_index': 0,

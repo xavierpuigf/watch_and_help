@@ -1,5 +1,5 @@
 from torch import nn
-from .graph_nn import Transformer, GraphModel
+from .graph_nn import Transformer, GraphModel, GraphModelGGNN
 import pdb
 from utils.utils_models import init
 import torch
@@ -41,54 +41,56 @@ class NNBase(nn.Module):
             x = x.squeeze(0)
             hxs = hxs.squeeze(0)
         else:
-            # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
-            N = hxs.size(0)
-            T = int(x.size(0) / N)
-
-            # unflatten
-            x = x.view(T, N, x.size(1))
-
-            # Same deal with masks
-            masks = masks.view(T, N)
-
-            # Let's figure out which steps in the sequence have a zero for any agent
-            # We will always assume t=0 has a zero in it as that makes the logic cleaner
-            has_zeros = ((masks[1:] == 0.0) \
-                         .any(dim=-1)
-                         .nonzero()
-                         .squeeze()
-                         .cpu())
-
-            # +1 to correct the masks[1:]
-            if has_zeros.dim() == 0:
-                # Deal with scalar
-                has_zeros = [has_zeros.item() + 1]
-            else:
-                has_zeros = (has_zeros + 1).numpy().tolist()
-
-            # add t=0 and t=T to the list
-            has_zeros = [0] + has_zeros + [T]
-
-            hxs = hxs.unsqueeze(0)
-            outputs = []
-            for i in range(len(has_zeros) - 1):
-                # We can now process steps that don't have any zeros in masks together!
-                # This is much faster
-                start_idx = has_zeros[i]
-                end_idx = has_zeros[i + 1]
-
-                rnn_scores, hxs = self.gru(
-                    x[start_idx:end_idx],
-                    hxs * masks[start_idx].view(1, -1, 1))
-
-                outputs.append(rnn_scores)
-
-            # assert len(outputs) == T
-            # x is a (T, N, -1) tensor
-            x = torch.cat(outputs, dim=0)
-            # flatten
-            x = x.view(T * N, -1)
-            hxs = hxs.squeeze(0)
+            raise Exception
+            # pdb.set_trace()
+            # # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
+            # N = hxs.size(0)
+            # T = int(x.size(0) / N)
+            #
+            # # unflatten
+            # x = x.view(T, N, x.size(1))
+            #
+            # # Same deal with masks
+            # masks = masks.view(T, N)
+            #
+            # # Let's figure out which steps in the sequence have a zero for any agent
+            # # We will always assume t=0 has a zero in it as that makes the logic cleaner
+            # has_zeros = ((masks[1:] == 0.0) \
+            #              .any(dim=-1)
+            #              .nonzero()
+            #              .squeeze()
+            #              .cpu())
+            #
+            # # +1 to correct the masks[1:]
+            # if has_zeros.dim() == 0:
+            #     # Deal with scalar
+            #     has_zeros = [has_zeros.item() + 1]
+            # else:
+            #     has_zeros = (has_zeros + 1).numpy().tolist()
+            #
+            # # add t=0 and t=T to the list
+            # has_zeros = [0] + has_zeros + [T]
+            #
+            # hxs = hxs.unsqueeze(0)
+            # outputs = []
+            # for i in range(len(has_zeros) - 1):
+            #     # We can now process steps that don't have any zeros in masks together!
+            #     # This is much faster
+            #     start_idx = has_zeros[i]
+            #     end_idx = has_zeros[i + 1]
+            #
+            #     rnn_scores, hxs = self.gru(
+            #         x[start_idx:end_idx],
+            #         hxs * masks[start_idx].view(1, -1, 1))
+            #
+            #     outputs.append(rnn_scores)
+            #
+            # # assert len(outputs) == T
+            # # x is a (T, N, -1) tensor
+            # x = torch.cat(outputs, dim=0)
+            # # flatten
+            # x = x.view(T * N, -1)
+            # hxs = hxs.squeeze(0)
 
         return x, hxs
 
@@ -120,7 +122,7 @@ class GoalEncoder(nn.Module):
         return average_pred
 
 class GoalAttentionModel(NNBase):
-    def __init__(self, recurrent=False, hidden_size=128, num_classes=100, node_encoder=None):
+    def __init__(self, recurrent=False, hidden_size=128, num_classes=100, node_encoder=None, context_type='avg'):
         super(GoalAttentionModel, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
@@ -135,6 +137,7 @@ class GoalAttentionModel(NNBase):
 
         self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size)
         # self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
+        self.context_type = context_type
 
         self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
         self.fc_att_object = self.mlp2l(hidden_size * 2, hidden_size)
@@ -148,12 +151,17 @@ class GoalAttentionModel(NNBase):
         mask_visible = inputs['mask_object']
 
         features_obj = self.main(inputs)
+        #pdb.set_trace()
 
         # 1 x ndim. Avg pool the features for the context vec
         mask_visible = mask_visible.unsqueeze(-1)
 
         # Mean pool of transformer
-        context_vec = (features_obj * mask_visible).sum(1) / (1e-9 + mask_visible.sum(1))
+        if self.context_type == 'avg':
+            context_vec = (features_obj * mask_visible).sum(1) / (1e-9 + mask_visible.sum(1))
+        else:
+            context_vec = features_obj[:, 0, :]
+
 
         # Goal embedding
         obj_class_name = inputs['target_obj_class']  # [:, 0].long()
@@ -196,7 +204,7 @@ class GraphEncoder(nn.Module):
     def __init__(self, hidden_size=128, max_nodes=100, num_rels=5, num_classes=100, num_states=4):
         super(GraphEncoder, self).__init__()
         self.hidden_size = hidden_size
-        self.graph_encoder = GraphModel(
+        self.graph_encoder = GraphModelGGNN(
             num_classes=num_classes, num_nodes=max_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, num_states=num_states)
 
     def forward(self, inputs):
@@ -270,148 +278,3 @@ class ObjNameCoordEncode(nn.Module):
 
 
 
-
-
-
-
-
-
-#
-#
-#
-# class CNNBaseResnetDist(NNBase):
-#     def __init__(self, recurrent=False, hidden_size=512, dist_size=10):
-#         super(CNNBaseResnetDist, self).__init__(recurrent, hidden_size, hidden_size)
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0), nn.init.calculate_gain('relu'))
-#
-#         self.main = torch.nn.Sequential(
-#             *(list(models.resnet50(pretrained=True).children())[:-1]),
-#             nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
-#             nn.ReLU(),
-#             Flatten())
-#
-#         self.base_dist = torch.nn.Sequential(nn.Linear(2, dist_size), nn.ReLU())
-#         self.combine = nn.Sequential(
-#             init_(nn.Linear(hidden_size + dist_size, hidden_size)), nn.ReLU(),
-#             init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
-#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
-#
-#         self.train()
-#
-#     def forward(self, inputs, rnn_hxs, masks):
-#         x = self.main(inputs['image'])
-#         y = self.base_dist(inputs['rel_dist'])
-#         x = self.combine(torch.cat([x, y], dim=1))
-#         if self.is_recurrent:
-#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-#         return self.critic_linear(x), x, rnn_hxs
-#
-#
-# class ObjNameCoordEncode(nn.Module):
-#     def __init__(self, output_dim=128, num_classes=50):
-#         super(ObjNameCoordEncode, self).__init__()
-#         self.output_dim = output_dim
-#         self.num_classes = num_classes
-#
-#         self.class_embedding = nn.Embedding(num_classes, int(output_dim / 2))
-#         self.coord_embedding = nn.Sequential(nn.Linear(3, int(output_dim / 2)),
-#                                              nn.ReLU(),
-#                                              nn.Linear(int(output_dim / 2), int(output_dim / 2)))
-#
-#     def forward(self, class_ids, coords):
-#         class_embedding = self.class_embedding(class_ids)
-#         coord_embedding = self.coord_embedding(coords)
-#         return torch.cat([class_embedding, coord_embedding], dim=2)
-#
-#
-# class CNNBaseResnet(NNBase):
-#     def __init__(self, recurrent=False, hidden_size=128, num_classes=50):
-#         super(CNNBaseResnet, self).__init__(recurrent, hidden_size, hidden_size)
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0), nn.init.calculate_gain('relu'))
-#
-#         self.main = torch.nn.Sequential(
-#             *(list(models.resnet50(pretrained=True).children())[:-1]),
-#             nn.Conv2d(2048, hidden_size, kernel_size=(1, 1), stride=(1, 1), bias=False),
-#             Flatten())
-#
-#         self.context_size = 10
-#         self.class_embedding = nn.Embedding(num_classes, self.context_size)
-#
-#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
-#
-#         self.train()
-#
-#     def forward(self, inputs, rnn_hxs, masks):
-#         x = self.main(inputs['image'])
-#
-#         if self.is_recurrent:
-#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-#
-#         context = self.class_embedding(inputs['class_objects'].long())
-#         return self.critic_linear(x), x, context, rnn_hxs
-#
-#
-# class CNNBase(NNBase):
-#     def __init__(self, num_inputs, recurrent=False, hidden_size=512):
-#         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
-#
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0), nn.init.calculate_gain('relu'))
-#
-#         self.main = nn.Sequential(
-#             init_(nn.Conv2d(num_inputs, 32, 8, stride=4)), nn.ReLU(),
-#             init_(nn.Conv2d(32, 64, 4, stride=2)), nn.ReLU(),
-#             init_(nn.Conv2d(64, 32, 3, stride=1)), nn.ReLU(),
-#             init_(nn.Conv2d(32, 32, 3, stride=1)), nn.ReLU(), Flatten(),
-#             init_(nn.Linear(32 * 10 * 10, hidden_size)), nn.ReLU())
-#
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0))
-#
-#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
-#
-#         self.train()
-#
-#     def forward(self, inputs, rnn_hxs, masks):
-#         x = self.main(inputs)
-#
-#         if self.is_recurrent:
-#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-#
-#         return self.critic_linear(x), x, rnn_hxs
-#
-#
-# class MLPBase(NNBase):
-#     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
-#         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
-#
-#         if recurrent:
-#             num_inputs = hidden_size
-#
-#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-#                                constant_(x, 0), np.sqrt(2))
-#
-#         self.actor = nn.Sequential(
-#             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-#             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-#
-#         self.critic = nn.Sequential(
-#             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-#             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-#
-#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
-#
-#         self.train()
-#
-#     def forward(self, inputs, rnn_hxs, masks):
-#         x = inputs
-#
-#         if self.is_recurrent:
-#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-#
-#         hidden_critic = self.critic(x)
-#         hidden_actor = self.actor(x)
-#
-#         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs

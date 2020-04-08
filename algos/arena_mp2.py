@@ -104,9 +104,9 @@ class ArenaMP(object):
         while not done and nb_steps < self.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             if logging:
-                #pdb.set_trace()
                 curr_graph = env_info['graph']
                 observed_nodes = agent_info[0]['visible_ids']
+
                 node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
                 edges_char = [(id2node[edge['to_id']]['class_name'],
                                 edge['to_id'],

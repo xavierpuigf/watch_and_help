@@ -5,10 +5,101 @@ import torch.nn.functional as F
 import torch.nn.modules as modules
 from dgl import DGLGraph
 import dgl
+from torch.nn import init
 import dgl.function as fn
 from functools import partial
 
+class GatedGraphConv(nn.Module):
+    r"""Gated Graph Convolution layer from paper `Gated Graph Sequence
+    Neural Networks <https://arxiv.org/pdf/1511.05493.pdf>`__.
 
+    .. math::
+        h_{i}^{0} & = [ x_i \| \mathbf{0} ]
+
+        a_{i}^{t} & = \sum_{j\in\mathcal{N}(i)} W_{e_{ij}} h_{j}^{t}
+
+        h_{i}^{t+1} & = \mathrm{GRU}(a_{i}^{t}, h_{i}^{t})
+
+    Parameters
+    ----------
+    in_feats : int
+        Input feature size.
+    out_feats : int
+        Output feature size.
+    n_steps : int
+        Number of recurrent steps.
+    n_etypes : int
+        Number of edge types.
+    bias : bool
+        If True, adds a learnable bias to the output. Default: ``True``.
+    """
+    def __init__(self,
+                 in_feats,
+                 out_feats,
+                 n_steps,
+                 n_etypes,
+                 bias=True):
+        super(GatedGraphConv, self).__init__()
+        self._in_feats = in_feats
+        self._out_feats = out_feats
+        self._n_steps = n_steps
+        self._n_etypes = n_etypes
+        self.linears = nn.ModuleList(
+            [nn.Linear(out_feats, out_feats) for _ in range(n_etypes)]
+        )
+        self.gru = nn.GRUCell(out_feats, out_feats, bias=bias)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """Reinitialize learnable parameters."""
+        gain = init.calculate_gain('relu')
+        self.gru.reset_parameters()
+        for linear in self.linears:
+            init.xavier_normal_(linear.weight, gain=gain)
+            init.zeros_(linear.bias)
+
+    def forward(self, graph):
+        """Compute Gated Graph Convolution layer.
+
+        Parameters
+        ----------
+        graph : DGLGraph
+            The graph.
+        feat : torch.Tensor
+            The input feature of shape :math:`(N, D_{in})` where :math:`N`
+            is the number of nodes of the graph and :math:`D_{in}` is the
+            input feature size.
+        etypes : torch.LongTensor
+            The edge type tensor of shape :math:`(E,)` where :math:`E` is
+            the number of edges of the graph.
+
+        Returns
+        -------
+        torch.Tensor
+            The output feature of shape :math:`(N, D_{out})` where :math:`D_{out}`
+            is the output feature size.
+        """
+        #assert graph.is_homograph(), \
+        #    "not a homograph; convert it with to_homo and pass in the edge type as argument"
+        #graph = graph.local_var()
+        # zero_pad = feat.new_zeros((feat.shape[0], self._out_feats - feat.shape[1]))
+        # feat = th.cat([feat, zero_pad], -1)
+
+        for _ in range(self._n_steps):
+            feat = graph.ndata['h']
+            # graph.ndata['h'] = feat
+            for i in range(self._n_etypes):
+                eids = (graph.edata['rel_type'] == (i+1)).nonzero().view(-1)
+                if len(eids) > 0:
+                    graph.apply_edges(
+                        lambda edges: {'W_e*h': self.linears[i](edges.src['h'])},
+                        eids
+                    )
+            graph.update_all(fn.copy_e('W_e*h', 'm'), fn.sum('m', 'a'))
+            a = graph.ndata.pop('a') # (N, D)
+            feat = self.gru(a, feat)
+            graph.ndata['h'] = feat
+        return graph
 
 class RGCNLayer(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, num_bases=-1, bias=None,
@@ -103,6 +194,75 @@ class ClassAndStates(nn.Module):
         output_embedding = self.combine(state_and_class)
         return output_embedding
 
+
+
+class GraphModelGGNN(nn.Module):
+    def __init__(self, num_classes, num_nodes, h_dim, out_dim, num_rels, num_states, k=3):
+        super(GraphModelGGNN, self).__init__()
+        self.num_classes = num_classes
+        self.num_nodes = num_nodes
+        self.h_dim = h_dim
+        self.out_dim = out_dim
+        self.num_rels = num_rels
+        self.num_states = num_states
+        self.k = k
+
+        self.ggnn = GatedGraphConv(in_feats=h_dim,
+                                   out_feats=out_dim,
+                                   n_steps=k,
+                                   n_etypes=num_rels)
+
+
+        self.feat_in = ClassAndStates(num_classes, num_states, h_dim)
+
+
+    def forward(self, inputs):
+        keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes', 'mask_object', 'mask_edge']
+        [all_class_names, node_states,
+         all_edge_ids, all_edge_types,
+         mask_nodes, mask_edges] = [torch.unbind(inputs[key]) for key in keys]
+        num_envs = len(all_class_names)
+        hs = []
+        graphs = []
+        #print('Graphs', num_envs)
+        for env_id in range(num_envs):
+            g = DGLGraph()
+            num_nodes = int(mask_nodes[env_id].sum().item())
+            num_edges = int(mask_edges[env_id].sum().item())
+            #print(num_edges)
+            ids = all_class_names[env_id][:num_nodes]
+            node_states_curr = node_states[env_id][:num_nodes]
+            g.add_nodes(num_nodes)
+
+            if num_edges > 0:
+                edge_types = all_edge_types[env_id][:num_edges].long()
+                #try:
+                g.add_edges(all_edge_ids[env_id][:num_edges, 0].long(),
+                            all_edge_ids[env_id][:num_edges, 1].long(),
+                            {'rel_type': edge_types.long()})
+                            #     'norm': torch.ones((num_edges, 1)).to(edge_types.device)})
+                #except:
+                #    pdb.set_trace()
+            feats_in = self.feat_in(ids.long(), node_states_curr)
+            g.ndata['h'] = feats_in
+            graphs.append(g)
+        #print('----s')
+        batch_graph = dgl.batch(graphs)
+        #if len(graphs) > 1:
+        #    pdb.set_trace()
+        batch_graph = self.ggnn(batch_graph)
+        graphs = dgl.unbatch(batch_graph)
+        hs_list = []
+        # pdb.set_trace()
+        for graph in graphs:
+            curr_graph = graph.ndata.pop('h').unsqueeze(0)
+            curr_nodes = curr_graph.shape[1]
+            curr_graph = F.pad(curr_graph, (0,0,0, self.num_nodes - curr_nodes), 'constant', 0.)
+            hs_list.append(curr_graph)
+        hs = torch.cat(hs_list, dim=0)
+        return hs
+
+
 class GraphModel(nn.Module):
     def __init__(self, num_classes, num_nodes, h_dim, out_dim, num_rels, num_states,
                  num_bases=-1, num_hidden_layers=1):
@@ -134,8 +294,8 @@ class GraphModel(nn.Module):
             h2h = self.build_hidden_layer()
             self.layers.append(h2h)
         # hidden to output
-        h2o = self.build_output_layer()
-        self.layers.append(h2o)
+        #h2o = self.build_output_layer()
+        #self.layers.append(h2o)
 
     # initialize feature for each node
     def create_features(self):
@@ -162,26 +322,28 @@ class GraphModel(nn.Module):
         num_envs = len(all_class_names)
         hs = []
         graphs = []
+
         for env_id in range(num_envs):
             g = DGLGraph()
             num_nodes = int(mask_nodes[env_id].sum().item())
             num_edges = int(mask_edges[env_id].sum().item())
-
             ids = all_class_names[env_id][:num_nodes]
             node_states_curr = node_states[env_id][:num_nodes]
             g.add_nodes(num_nodes)
 
             if num_edges > 0:
+
                 edge_types = all_edge_types[env_id][:num_edges].long()
-                try:
-                    g.add_edges(all_edge_ids[env_id][:num_edges, 0].long(),
-                                all_edge_ids[env_id][:num_edges, 1].long(),
-                                {'rel_type': edge_types.long(),
-                                    'norm': torch.ones((num_edges, 1)).to(edge_types.device)})
-                except:
-                    pdb.set_trace()
+                # try:
+                g.add_edges(all_edge_ids[env_id][:num_edges, 0].long(),
+                            all_edge_ids[env_id][:num_edges, 1].long(),
+                            {'rel_type': edge_types.long(),
+                                'norm': torch.ones((num_edges, 1)).to(edge_types.device)})
+                # except:
+                #     pdb.set_trace()
             if self.features is None:
-                g.ndata['h'] = self.feat_in(ids.long(), node_states_curr)
+                feats_in = self.feat_in(ids.long(), node_states_curr)
+                g.ndata['h'] = feats_in
             graphs.append(g)
 
         batch_graph = dgl.batch(graphs)
@@ -197,6 +359,11 @@ class GraphModel(nn.Module):
             hs_list.append(curr_graph)
         hs = torch.cat(hs_list, dim=0)
         return hs
+
+
+
+
+
 
 class Transformer(nn.Module):
     def __init__(self, num_classes, num_nodes, in_feat, out_feat, dropout=0.1, activation='relu', nhead=1):
@@ -219,17 +386,6 @@ class Transformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, inputs, mask_nodes):
-        # keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes',
-        #         'mask_object', 'mask_edge', 'object_coords']
-        # # pdb.set_trace()
-        # [all_class_names, node_states,
-        #  all_edge_ids, all_edge_types,
-        #  mask_nodes, mask_edges, coords] = [inputs[key] for key in keys]
-        #
-        # # inputs, combination of class names and coordinates
-        # inputs = self.class_embedding(all_class_names.long())
-        # inputs_and_coords = torch.cat((inputs, coords), dim=2)
-        # inputs_and_coords = inputs_and_coords.transpose(0,1)
 
         outputs = self.transformer(inputs.transpose(0,1), src_key_padding_mask=mask_nodes.bool())
         outputs = outputs.squeeze(0).transpose(0,1)

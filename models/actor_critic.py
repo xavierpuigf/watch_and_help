@@ -39,19 +39,22 @@ class ActorCritic(nn.Module):
                                constant_(x, 0), nn.init.calculate_gain('relu'))
 
 
+        context_type = 'avg'
         if base_name == 'TF':
             base = base_nets.TransformerBase
         elif base_name == 'GNN':
             base = base_nets.GraphEncoder
+            context_type = 'first'
         else:
             raise NotImplementedError
 
         node_encoder = base(**base_kwargs)
         self.hidden_size = base_kwargs['hidden_size']
         self.base = base_nets.GoalAttentionModel(hidden_size=base_kwargs['hidden_size'],
-                                                   recurrent=True,
-                                                   num_classes=base_kwargs['num_classes'],
-                                                   node_encoder=node_encoder)
+                                                 recurrent=True,
+                                                 num_classes=base_kwargs['num_classes'],
+                                                 node_encoder=node_encoder,
+                                                 context_type=context_type)
         self.critic_linear = init_(nn.Linear(base_kwargs['hidden_size'], 1))
 
         # Distribution for the actions
