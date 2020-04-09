@@ -12,6 +12,7 @@ from agents import MCTS_agent, RL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c import A2C
+from algos.a2c_mp import A2C as A2C_MP
 from utils import utils_goals, utils_rl_agent
 import ray
 
@@ -19,6 +20,9 @@ if __name__ == '__main__':
     args = get_args()
     #args.task = 'setup_table'
     #args.num_per_apartment = '50'
+    if args.num_processes > 1:
+        ray.init()
+
     args.mode = 'full'
     num_agents = 1
     args.dataset_path = 'initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode)
@@ -59,12 +63,13 @@ if __name__ == '__main__':
     def env_fn(env_id):
         if args.simulator_type == 'unity':
             return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
-                                   env_task_set=env_task_set,
-                                   agent_goals=[agent_goal],
-                                   observation_types=[args.obs_type],
-                                   use_editor=args.use_editor,
-                                   executable_args=executable_args,
-                                   base_port=args.base_port)
+                                    port_id=env_id,
+                                    env_task_set=env_task_set,
+                                    agent_goals=[agent_goal],
+                                    observation_types=[args.obs_type],
+                                    use_editor=args.use_editor,
+                                    executable_args=executable_args,
+                                    base_port=args.base_port)
         else:
             return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                                     env_task_set=env_task_set,
@@ -84,7 +89,12 @@ if __name__ == '__main__':
         return RL_agent(**args_agent2)
 
     agents = [RL_agent_fn]
-    arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
-    a2c = A2C(arenas, graph_helper, args)
+    if args.num_processes > 1:
+        ArenaMP = ray.remote(ArenaMP)
+        arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+        a2c = A2C_MP(arenas, graph_helper, args)
+    else:
+        arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+        a2c = A2C(arenas, graph_helper, args)
     a2c.train()
     pdb.set_trace()

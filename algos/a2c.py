@@ -10,7 +10,7 @@ import json
 from utils.utils_models import Logger
 from utils import utils_models
 
-class A2C():
+class A2C:
     def __init__(self, arenas, graph_helper, args):
         self.arenas = arenas
         arena = self.arenas[0]

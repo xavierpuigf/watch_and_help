@@ -24,7 +24,8 @@ class A2C:
 
         }
         num_actions = graph_helper.num_actions
-        action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(args.max_num_objects)))
+        action_space = spaces.Tuple((spaces.Discrete(num_actions),
+                                     spaces.Discrete(args.max_num_objects)))
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
 
@@ -47,7 +48,6 @@ class A2C:
     def close(self):
         print('closing')
         del(self.arenas[0])
-        pdb.set_trace()
 
     def rollout(self, logging=False, record=False):
         """ Reward for an episode, get the cum reward """
@@ -131,6 +131,30 @@ class A2C:
                 info_rollout['success'],
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 
+            if episode_id % self.args.log_interval == 0:
+                script_done = info_rollout['script']
+                script_tried = info_rollout['action_tried']
+
+                print("Target:")
+                print(info_rollout['target'][1])
+                for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
+                    info_step = ''
+                    for relation in ['CLOSE', 'INSIDE', 'ON']:
+                        if relation == 'INSIDE':
+                            if len([x for x in info_rollout['step_info'][iti][1] if x[2] == relation]) == 0:
+                                pdb.set_trace()
+
+                        info_step += '  {}:  {}'.format(relation, ' '.join(['{}.{}'.format(x[0], x[1]) for x in info_rollout['step_info'][iti][1] if x[2] == relation]))
+
+                    if script_d is None:
+                        script_d = ''
+
+                    if info_rollout['step_info'][iti][0] is not None:
+                        char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
+                        print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
+                    else:
+                        print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+
             if self.logger:
                 if episode_id % self.args.log_interval == 0:
 
@@ -192,7 +216,6 @@ class A2C:
                         # TODO: decompose here
                         inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]).to(self.device) for state_key in state_keys}
 
-                        pdb.set_trace()
                         action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
                                             for i in range(N)]) for action_index in range(2)]
 

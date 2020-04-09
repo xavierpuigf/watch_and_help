@@ -1,91 +1,336 @@
-Fri Mar 27 19:59:22 2020       
-+-----------------------------------------------------------------------------+
-| NVIDIA-SMI 418.87.01    Driver Version: 418.87.01    CUDA Version: 10.1     |
-|-------------------------------+----------------------+----------------------+
-| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
-|===============================+======================+======================|
-|   0  GeForce GTX 1080    Off  | 00000000:04:00.0 Off |                  N/A |
-| 28%   35C    P8     7W / 180W |     67MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   1  GeForce GTX 1080    Off  | 00000000:05:00.0 Off |                  N/A |
-| 27%   39C    P8     7W / 180W |     66MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   2  GeForce GTX 1080    Off  | 00000000:08:00.0 Off |                  N/A |
-| 30%   43C    P8     8W / 180W |   5084MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   3  GeForce GTX 1080    Off  | 00000000:09:00.0 Off |                  N/A |
-| 28%   37C    P8     7W / 180W |   8093MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   4  GeForce GTX 1080    Off  | 00000000:84:00.0 Off |                  N/A |
-| 27%   37C    P8     7W / 180W |   3454MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   5  GeForce GTX 1080    Off  | 00000000:85:00.0 Off |                  N/A |
-| 28%   36C    P8     8W / 180W |     66MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   6  GeForce GTX 1080    Off  | 00000000:88:00.0 Off |                  N/A |
-| 27%   36C    P8     7W / 180W |   3460MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-|   7  GeForce GTX 1080    Off  | 00000000:89:00.0 Off |                  N/A |
-| 27%   36C    P8     8W / 180W |   3460MiB /  8119MiB |      0%      Default |
-+-------------------------------+----------------------+----------------------+
-                                                                               
-+-----------------------------------------------------------------------------+
-| Processes:                                                       GPU Memory |
-|  GPU       PID   Type   Process name                             Usage      |
-|=============================================================================|
-|    0      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    0      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    0      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    0      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    0     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    0     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    1     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    2     40721      C   python3                                     5009MiB |
-|    2     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3     18613      C   python                                      3615MiB |
-|    3     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    3     40721      C   python3                                     4403MiB |
-|    3     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4     18613      C   python                                      3379MiB |
-|    4     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    4     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    5     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6     18613      C   python                                      3385MiB |
-|    6     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    6     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7      3456      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7      5370      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7      6469      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7      9887      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7     18613      C   python                                      3385MiB |
-|    7     27069      G   /usr/lib/xorg/Xorg                            10MiB |
-|    7     44064      G   /usr/lib/xorg/Xorg                            10MiB |
-+-----------------------------------------------------------------------------+
+1d0
+< from .arena import Arena
+8a8
+> import ray
+11a12,14
+> import models.actor_critic as actor_critic
+> from gym import spaces
+> import atexit
+16c19,35
+<         arena = self.arenas[0]
+---
+>         base_kwargs = {
+>             'hidden_size': args.hidden_size,
+>             'max_nodes': args.max_num_objects,
+>             'num_classes': graph_helper.num_objects,
+>             'num_states': graph_helper.num_states
+> 
+>         }
+>         num_actions = graph_helper.num_actions
+>         action_space = spaces.Tuple((spaces.Discrete(num_actions), spaces.Discrete(args.max_num_objects)))
+> 
+>         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
+> 
+>         # self.actor_critic = self.arenas[0].agents[0].actor_critic
+>         self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
+> 
+>         self.actor_critic.to(self.device)
+> 
+20,23c39
+< 
+<         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
+<         self.optimizers = [optim.RMSprop(agent.actor_critic.parameters(), lr=args.lr)
+<                            for agent in arena.agents]
+---
+>         self.optimizer = optim.RMSprop(self.actor_critic.parameters(), lr=args.lr)
+29,30c45,50
+<     def reset(self):
+<         super(A2C, self).reset()
+---
+>         atexit.register(self.close)
+> 
+>     def close(self):
+>         print('closing')
+>         del(self.arenas[0])
+>         pdb.set_trace()
+34a55,63
+>         # Reset hidden state of agents
+>         # TODO: uncomment
+>         async_routs = []
+>         for arena in self.arenas:
+>             async_routs.append(arena.rollout.remote(logging, record))
+> 
+>         info_envs = []
+>         for async_rout in async_routs:
+>             info_envs.append(ray.get(async_rout))
+37,39c66,67
+<         info_envs = self.arenas[0].rollout(logging, record)
+<         rewards = []
+<         process_data = info_envs
+---
+>         # info_envs = []
+>         # info_envs.append(self.arenas[0].rollout(logging, record))
+41,47c69,78
+<         rewards.append(process_data[0])
+<         rollout_memory = process_data[2]
+< 
+<         # Add into memory
+<         for mem in rollout_memory[0]:
+<             self.memory_all.append(*mem)
+<         self.memory_all.append(None, None, None, 0, 0)
+---
+>         rewards = []
+>         for process_data in info_envs:
+>             rewards.append(process_data[0])
+>             # successes.append(process_data[1]['success'])
+>             rollout_memory = process_data[2]
+> 
+>             # Add into memory
+>             for mem in rollout_memory[0]:
+>                 self.memory_all.append(*mem)
+>             self.memory_all.append(None, None, None, 0, 0)
+49,50c80,81
+<         # only get info form one process:
+<         info_rollout = info_envs[1]
+---
+>         # only get info form one process
+>         info_rollout = info_envs[0][1]
+55,56d85
+<         if trainable_agents is None:
+<             trainable_agents = [0]
+69,71d97
+<             for agent in self.arenas[0].agents:
+<                 if agent.agent_type == 'RL':
+<                     agent.epsilon = eps
+74,75c100,114
+<             if episode_id >= 20:
+<                 self.args.use_gt_actions = False
+---
+> 
+>             # TODO: Uncomment
+>             curr_model = self.actor_critic.state_dict()
+> 
+>             for k, v in curr_model.items():
+>                curr_model[k] = v.cpu()
+> 
+>             # ray.register_custom_serializer(torch.Tensor, serializer=serializer, deserializer=deserializer)
+>             # ray.register_custom_serializer(torch.LongTensor, serializer=serializer, deserializer=deserializer)
+>             # ray.register_custom_serializer(torch.FloatTensor, serializer=serializer, deserializer=deserializer)
+>             #
+>             m_id = ray.put(curr_model)
+> 
+>             # TODO: Uncomment
+>             ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
+77d115
+<             episode_rewards = c_r_all
+79d116
+<             num_steps = info_rollout['nsteps']
+80a118,119
+>             episode_rewards = c_r_all
+>             num_steps = info_rollout['nsteps']
+82a122,123
+>             end_time = time.time()
+> 
+87d127
+<             end_time = time.time()
+90c130
+<                 [c_r_all[agent_id] for agent_id in trainable_agents],
+---
+>                 [c_r_all[0][0]],
+94,117c134,135
+<             if episode_id % self.args.log_interval == 0:
+<                 script_done = info_rollout['script']
+<                 script_tried = info_rollout['action_tried']
+< 
+<                 print("Target:")
+<                 print(info_rollout['target'][1])
+<                 for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
+<                     info_step = ''
+<                     for relation in ['CLOSE', 'INSIDE', 'ON']:
+<                         if relation == 'INSIDE':
+<                             if len([x for x in info_rollout['step_info'][iti][1] if x[2] == relation]) == 0:
+<                                 pdb.set_trace()
+< 
+<                         info_step += '  {}:  {}'.format(relation, ' '.join(['{}.{}'.format(x[0], x[1]) for x in info_rollout['step_info'][iti][1] if x[2] == relation]))
+< 
+<                     if script_d is None:
+<                         script_d = ''
+< 
+<                     if info_rollout['step_info'][iti][0] is not None:
+<                         char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
+<                         print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
+<                     else:
+<                         print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+< 
+---
+>             if self.logger:
+>                 if episode_id % self.args.log_interval == 0:
+119d136
+<                 if self.logger:
+122a140
+>                     # pdb.set_trace()
+129a148
+> 
+134a154,159
+> 
+>                     #list(self.env.task_goal[0].keys())
+>                     # self.env.env_id
+>                     # goal =
+>                     # apt = self.arena.get_goal
+> 
+138c163
+<                     self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards,
+---
+>                     self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards[0],
+143,146d167
+<             t_pfb = time.time()
+<             t_rollout = t_pfb - time_prerout
+<             t_steps = info_rollout['t_steps']
+<             t_reset = info_rollout['t_reset']
+151,214c172,233
+<                     for agent_id in trainable_agents:
+<                         if self.args.balanced_sample:
+<                             trajs = self.memory_all.sample_batch_balanced(
+<                                 self.args.batch_size,
+<                                 self.args.neg_ratio,
+<                                 maxlen=self.args.max_episode_length,
+<                                 cutoff_positive=5.0)
+<                         else:
+<                             trajs = self.memory_all.sample_batch(
+<                                 self.args.batch_size,
+<                                 maxlen=self.args.max_episode_length)
+< 
+<                         N = len(trajs[0])
+<                         policies, actions, rewards, Vs, old_policies, dones, masks = \
+<                             [], [], [], [], [], [], []
+< 
+<                         hx = torch.zeros(N, self.arenas[0].agents[agent_id].hidden_size).to(self.device)
+< 
+<                         state_keys = trajs[0][0].state.keys()
+<                         for t in range(len(trajs) - 1):
+< 
+<                             # TODO: decompose here
+<                             inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]) for state_key in state_keys}
+< 
+<                             # TODO: delete
+< 
+<                             action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
+<                                                for i in range(N)]) for action_index in range(2)]
+< 
+< 
+<                             old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
+<                                                     for i in range(N)]) for policy_index in range(2)]
+<                             done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
+<                                 0).to(self.device)
+<                                               for i in range(N)])
+<                             mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
+<                                               for i in range(N)])
+<                             reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
+< 
+<                             # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
+<                             v, _, policy, hx = self.arenas[0].agents[agent_id].actor_critic.act(inputs, hx, mask, action_indices=action)
+< 
+< 
+<                             [array.append(element) for array, element in
+<                              zip((policies, actions, rewards, Vs, old_policies, dones, masks),
+<                                  (policy, action, reward, v, old_policy, done, mask))]
+< 
+< 
+<                             dones.append(done)
+< 
+<                             if (t + 1) % self.args.t_max == 0:  # maximum bptt length
+<                                 hx = hx.detach()
+< 
+<                         self._train(self.arenas[0].agents[agent_id].actor_critic,
+<                                     self.optimizers[agent_id],
+<                                     policies,
+<                                     Vs,
+<                                     actions,
+<                                     rewards,
+<                                     dones,
+<                                     masks,
+<                                     old_policies,
+<                                     verbose=1,
+<                                     use_ce_loss=False)
+---
+>                     if self.args.balanced_sample:
+>                         trajs = self.memory_all.sample_batch_balanced(
+>                             self.args.batch_size,
+>                             self.args.neg_ratio,
+>                             maxlen=self.args.max_episode_length,
+>                             cutoff_positive=5.0)
+>                     else:
+>                         trajs = self.memory_all.sample_batch(
+>                             self.args.batch_size,
+>                             maxlen=self.args.max_episode_length)
+>                     N = len(trajs[0])
+>                     policies, actions, rewards, Vs, old_policies, dones, masks = \
+>                         [], [], [], [], [], [], []
+> 
+>                     hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
+> 
+>                     state_keys = trajs[0][0].state.keys()
+> 
+>                     for t in range(len(trajs) - 1):
+> 
+>                         # TODO: decompose here
+>                         inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]).to(self.device) for state_key in state_keys}
+> 
+>                         pdb.set_trace()
+>                         action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
+>                                             for i in range(N)]) for action_index in range(2)]
+> 
+> 
+>                         old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
+>                                                 for i in range(N)]) for policy_index in range(2)]
+>                         done = torch.cat([torch.Tensor([trajs[t + 1][i].action is None]).unsqueeze(1).unsqueeze(
+>                             0).to(self.device)
+>                                           for i in range(N)])
+>                         mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
+>                                           for i in range(N)])
+>                         reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
+> 
+>                         # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
+>                         v, _, policy, hx = self.actor_critic.act(inputs, hx, mask, action_indices=action)
+> 
+> 
+>                         [array.append(element) for array, element in
+>                          zip((policies, actions, rewards, Vs, old_policies, dones, masks),
+>                              (policy, action, reward, v, old_policy, done, mask))]
+> 
+> 
+>                         dones.append(done)
+> 
+>                         if (t + 1) % self.args.t_max == 0:  # maximum bptt length
+>                             hx = hx.detach()
+> 
+> 
+>                     self._train(self.actor_critic,
+>                                 self.optimizer,
+>                                 policies,
+>                                 Vs,
+>                                 actions,
+>                                 rewards,
+>                                 dones,
+>                                 masks,
+>                                 old_policies,
+>                                 verbose=1)
+216,217d234
+<             t_fb = time.time() - t_pfb
+<             print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(num_steps, t_rollout, t_steps, t_reset, t_fb))
+219c236
+<                 self.logger.save_model(episode_id, self.arenas[0].agents[0].actor_critic)
+---
+>                 self.logger.save_model(episode_id, self.actor_critic)
+232,233c249
+<                verbose=0,
+<                use_ce_loss=False):
+---
+>                verbose=0):
+238d253
+<         ce_loss = 0
+295,296d309
+<             # TODO: delete
+<             ce_loss += -log_prob.sum()
+306,307c319
+<             if use_ce_loss:
+<                 print("crossentropy_loss:", ce_loss.data.cpu().numpy())
+---
+> 
+310,313c322
+<         if not use_ce_loss:
+<             loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
+<         else:
+<             loss = ce_loss
+---
+>         loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
