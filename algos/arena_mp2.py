@@ -106,7 +106,7 @@ class ArenaMP(object):
             if logging:
                 curr_graph = env_info['graph']
                 observed_nodes = agent_info[0]['visible_ids']
-
+                # pdb.set_trace()
                 node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
                 edges_char = [(id2node[edge['to_id']]['class_name'],
                                 edge['to_id'],

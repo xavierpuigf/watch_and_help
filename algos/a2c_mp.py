@@ -192,6 +192,7 @@ class A2C:
                         # TODO: decompose here
                         inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]).to(self.device) for state_key in state_keys}
 
+                        pdb.set_trace()
                         action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
                                             for i in range(N)]) for action_index in range(2)]
 

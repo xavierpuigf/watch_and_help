@@ -71,6 +71,8 @@ class A2C():
                     agent.epsilon = eps
 
             time_prerout = time.time()
+            if episode_id >= 20:
+                self.args.use_gt_actions = False
             c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
             episode_rewards = c_r_all
 
@@ -98,6 +100,10 @@ class A2C():
                 for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
                     info_step = ''
                     for relation in ['CLOSE', 'INSIDE', 'ON']:
+                        if relation == 'INSIDE':
+                            if len([x for x in info_rollout['step_info'][iti][1] if x[2] == relation]) == 0:
+                                pdb.set_trace()
+
                         info_step += '  {}:  {}'.format(relation, ' '.join(['{}.{}'.format(x[0], x[1]) for x in info_rollout['step_info'][iti][1] if x[2] == relation]))
 
                     if script_d is None:
@@ -153,6 +159,7 @@ class A2C():
                             trajs = self.memory_all.sample_batch(
                                 self.args.batch_size,
                                 maxlen=self.args.max_episode_length)
+
                         N = len(trajs[0])
                         policies, actions, rewards, Vs, old_policies, dones, masks = \
                             [], [], [], [], [], [], []
@@ -165,8 +172,17 @@ class A2C():
                             # TODO: decompose here
                             inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]) for state_key in state_keys}
 
+                            # pdb.set_trace()
                             action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
-                                                for i in range(N)]) for action_index in range(2)]
+                                               for i in range(N)]) for action_index in range(2)]
+
+
+                            # TODO: delete
+                            action = [((inputs['node_ids'] == 459) *  torch.arange(150)[None, :]).sum(-1).long()[:, None].cuda()]
+                            action.append(torch.zeros(action[0].shape).cuda())
+
+                            action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
+                                               for i in range(N)]) for action_index in range(2)]
 
 
                             old_policy = [torch.cat([trajs[t][i].policy[policy_index].to(self.device)
@@ -191,6 +207,7 @@ class A2C():
 
                             if (t + 1) % self.args.t_max == 0:  # maximum bptt length
                                 hx = hx.detach()
+
                         self._train(self.arenas[0].agents[agent_id].actor_critic,
                                     self.optimizers[agent_id],
                                     policies,
@@ -200,7 +217,8 @@ class A2C():
                                     dones,
                                     masks,
                                     old_policies,
-                                    verbose=1)
+                                    verbose=1,
+                                    ce_loss=episode_id < 20)
 
             t_fb = time.time() - t_pfb
             print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(num_steps, t_rollout, t_steps, t_reset, t_fb))
@@ -218,11 +236,13 @@ class A2C():
                dones,
                masks,
                old_policies,
-               verbose=0):
+               verbose=0,
+               ce_loss=False):
         """training"""
 
         off_policy = old_policies is not None
         policy_loss, value_loss, entropy_loss = 0, 0, 0
+        ce_loss = 0
         args = self.args
 
         # compute returns
@@ -279,6 +299,8 @@ class A2C():
             entropy_loss += ((policies[i][0]+1e-9).log() * policies[i][0]).sum(1).mean(0)
             entropy_loss += ((policies[i][1]+1e-9).log() * policies[i][1]).sum(1).mean(0)
 
+            # TODO: delete
+            ce_loss += -log_prob.sum()
         if not args.no_time_normalization:
             policy_loss /= episode_length
             value_loss /= episode_length
@@ -288,10 +310,13 @@ class A2C():
             print("policy_loss:", policy_loss.data.cpu().numpy()[0])
             print("value_loss:", value_loss.data.cpu().numpy()[0])
             print("entropy_loss:", entropy_loss.data.cpu().numpy())
-
+            print("crossentropy_loss:", ce_loss.data.cpu().numpy())
         # updating net
         optimizer.zero_grad()
-        loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
+        if not ce_loss:
+            loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
+        else:
+            loss = ce_loss
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.max_gradient_norm, 1)
         optimizer.step()

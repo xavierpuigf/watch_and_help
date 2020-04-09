@@ -44,7 +44,7 @@ class ActorCritic(nn.Module):
             base = base_nets.TransformerBase
         elif base_name == 'GNN':
             base = base_nets.GraphEncoder
-            context_type = 'first'
+            #context_type = 'first'
         else:
             raise NotImplementedError
 

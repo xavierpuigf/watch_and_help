@@ -207,6 +207,9 @@ class GraphHelper():
         ids = list(set(ids))
         id2node = {node['id']: node for node in graph['nodes']}
 
+        # TODO: remove
+        # ids =[idi for idi in ids if id2node[idi]['class_name'] not in self.rooms]
+        # action_space_ids = [idi for idi in action_space_ids if id2node[idi]['class_name'] not in self.rooms]
 
         # Character is always the first one
         ids = [character_id] + ids
@@ -237,6 +240,7 @@ class GraphHelper():
         edge_types = np.array([self.relation_dict.get_id(edge['relation_type']) for edge in edges])
 
         if len(edges) > 0:
+            #print([edge for edge in edges if edge['relation_type'] == 'CLOSE'])
             edge_ids = np.concatenate(
                     [np.array([
                         id2index[edge['from_id']], 

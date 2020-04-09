@@ -40,7 +40,7 @@ if __name__ == '__main__':
         if args.obs_type == 'mcts':
             env_task_set['init_rooms'] = ['kitchen']
 
-        env_task_set['init_rooms'] = ['kitchen']
+        #env_task_set['init_rooms'] = ['kitchen']
 
         env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
         env_task_set = [env_task_set]
