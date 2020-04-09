@@ -245,7 +245,7 @@ class ObjNameCoordStateEncode(nn.Module):
 
         self.class_embedding = nn.Embedding(num_classes, int(output_dim / 2))
         self.state_embedding = nn.Linear(num_states, int(output_dim / 2))
-        self.coord_embedding = nn.Sequential(nn.Linear(3, int(output_dim / 2)),
+        self.coord_embedding = nn.Sequential(nn.Linear(6, int(output_dim / 2)),
                                              nn.ReLU(),
                                              nn.Linear(int(output_dim / 2), int(output_dim / 2)))
         inp_dim = int(output_dim + output_dim/2)

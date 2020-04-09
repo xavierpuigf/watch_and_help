@@ -223,7 +223,12 @@ class GraphHelper():
         if bbox_available:
             char_coord = np.array(nodes[0]['bounding_box']['center'])
             rel_coords = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else (np.array(node['bounding_box']['center']) - char_coord)[None, :] for node in nodes]
+            # for node in nodes:
+            #     if 'bounding_box' not in node:
+            #         print(node['class_name'])
 
+            bounds = [np.array([0,0,0])[None, :] if 'bounding_box' not in node.keys() else np.array(node['bounding_box']['size'])[None, :] for node in nodes]
+            rel_coords = np.concatenate([rel_coords, bounds], axis=2)
         id2index = {node['id']: it for it, node in enumerate(nodes)}
 
         class_names_str = [node['class_name'] for node in nodes]
@@ -271,7 +276,7 @@ class GraphHelper():
         all_node_ids[:len(nodes)] = node_ids
 
         if self.simulaor_type == 'unity':
-            obj_coords = np.zeros((max_nodes, 3))
+            obj_coords = np.zeros((max_nodes, 6))
             obj_coords[:len(nodes)] = np.concatenate(rel_coords, 0)
         
         if plot_graph:
