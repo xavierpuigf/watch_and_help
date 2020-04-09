@@ -172,14 +172,7 @@ class A2C():
                             # TODO: decompose here
                             inputs = {state_key: torch.cat([trajs[t][i].state[state_key] for i in range(N)]) for state_key in state_keys}
 
-                            # pdb.set_trace()
-                            action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
-                                               for i in range(N)]) for action_index in range(2)]
-
-
                             # TODO: delete
-                            action = [((inputs['node_ids'] == 459) *  torch.arange(150)[None, :]).sum(-1).long()[:, None].cuda()]
-                            action.append(torch.zeros(action[0].shape).cuda())
 
                             action = [torch.cat([torch.LongTensor([trajs[t][i].action[action_index]]).unsqueeze(0).to(self.device)
                                                for i in range(N)]) for action_index in range(2)]
@@ -218,7 +211,7 @@ class A2C():
                                     masks,
                                     old_policies,
                                     verbose=1,
-                                    ce_loss=episode_id < 20)
+                                    use_ce_loss=False)
 
             t_fb = time.time() - t_pfb
             print('Time analysis: #Steps {}. Rollout {}. Steps {}. Reset {}. Forward/Backward {}'.format(num_steps, t_rollout, t_steps, t_reset, t_fb))
@@ -237,7 +230,7 @@ class A2C():
                masks,
                old_policies,
                verbose=0,
-               ce_loss=False):
+               use_ce_loss=False):
         """training"""
 
         off_policy = old_policies is not None
@@ -310,10 +303,11 @@ class A2C():
             print("policy_loss:", policy_loss.data.cpu().numpy()[0])
             print("value_loss:", value_loss.data.cpu().numpy()[0])
             print("entropy_loss:", entropy_loss.data.cpu().numpy())
-            print("crossentropy_loss:", ce_loss.data.cpu().numpy())
+            if use_ce_loss:
+                print("crossentropy_loss:", ce_loss.data.cpu().numpy())
         # updating net
         optimizer.zero_grad()
-        if not ce_loss:
+        if not use_ce_loss:
             loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
         else:
             loss = ce_loss

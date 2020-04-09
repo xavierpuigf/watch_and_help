@@ -28,5 +28,5 @@ CUDA_VISIBLE_DEVICES=4 python test_a2c.py \
 --obs_type full --gamma 0.95 --lr 1e-4 \
 --task_type find  --task-set setup_table \
 --nb_episodes 100000 --save-interval 200 --simulator-type unity \
---base_net TF --debug --log-interval 1 \
---base-port 8184 --logging
+--base_net GNN --debug --log-interval 1 \
+--base-port 8180 --logging
