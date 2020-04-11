@@ -236,7 +236,7 @@ class UnityEnvironment(BaseEnvironment):
         # TODO: in the future we may want different goals
         self.goal_spec = {agent_id: self.get_goal(self.task_goal[agent_id], self.agent_goals[agent_id])
                           for agent_id in range(self.num_agents)}
-        print("Goal: ", self.goal_spec)
+        #print("Goal: ", self.goal_spec)
 
         # pdb.set_trace()
         if False: # old_env_id == self.env_id:
@@ -253,7 +253,7 @@ class UnityEnvironment(BaseEnvironment):
             self.max_ids[self.env_id] = max_id
 
         max_id = self.max_ids[self.env_id]
-        print(max_id)
+        #print(max_id)
         if environment_graph is not None:
             # TODO: this should be modified to extend well
             updated_graph = utils.separate_new_ids_graph(environment_graph, max_id)

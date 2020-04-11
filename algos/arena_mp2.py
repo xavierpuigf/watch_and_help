@@ -11,9 +11,13 @@ import atexit
 class ArenaMP(object):
     def __init__(self, arena_id, environment_fn, agent_fn):
         self.agents = []
-        self.num_agents = len(agent_fn)
-        self.env = environment_fn(arena_id)
+        self.env_fn = environment_fn
+        self.agent_fn = agent_fn
+        self.arena_id = arena_id
 
+        self.num_agents = len(agent_fn)
+
+        self.env = environment_fn(arena_id)
         for agent_type_fn in agent_fn:
             self.agents.append(agent_type_fn(arena_id, self.env))
 
@@ -58,8 +62,25 @@ class ArenaMP(object):
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
-    #def rollout_relaunch(self):
+    def rollout_reset(self, logging=False, record=False):
+        try:
+            res = self.rollout(logging, record)
+            return res
+        except:
+            print("Resetting...")
+            self.env.close()
+            self.env = self.environment_fn(self.arena_id)
+            self.agents = []
 
+            for agent in self.agents:
+                if agent.agent_type == 'RL':
+                    prev_eps = agent.epsilon
+                    prev_weights = agent.actor_critic.state_dict()
+            for agent_type_fn in self.agent_fn:
+                self.agents.append(agent_type_fn(self.arena_id, self.env))
+
+            self.set_weigths(prev_eps, prev_weights)
+            return self.rollout(logging, record)
 
     def rollout(self, logging=False, record=False):
         t1 = time.time()

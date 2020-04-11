@@ -1,0 +1,55 @@
+Found path: /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64
+Mono path[0] = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22_Data/Managed'
+Mono config path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22_Data/MonoBleedingEdge/etc'
+Preloaded 'ScreenSelector.so'
+Initialize engine version: 2018.4.15f1 (13f5a1bf9ca1)
+Forcing GfxDevice: Null
+GfxDevice: creating device client; threaded=0
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+Begin MonoManager ReloadAssembly
+- Completed reload, in  0.141 seconds
+UnloadTime: 1.501000 ms
+Starting
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+The referenced script on this Behaviour (Game Object 'Walls') is missing!
+ 
+(Filename:  Line: 294)
+
+Started
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Waiting for request
+ 
+(Filename: ./Runtime/Export/Debug.bindings.h Line: 45)
+
+Setting up 20 worker threads for Enlighten.
+  Thread -> id: 7f75af7fe700 -> priority: 1 
+  Thread -> id: 7f75aeffd700 -> priority: 1 
+  Thread -> id: 7f75ae7fc700 -> priority: 1 
+  Thread -> id: 7f75adffb700 -> priority: 1 
+  Thread -> id: 7f75ad7fa700 -> priority: 1 
+  Thread -> id: 7f75acff9700 -> priority: 1 
+  Thread -> id: 7f7597fff700 -> priority: 1 
+  Thread -> id: 7f75977fe700 -> priority: 1 
+  Thread -> id: 7f7596ffd700 -> priority: 1 
+  Thread -> id: 7f75967fc700 -> priority: 1 
+  Thread -> id: 7f7595ffb700 -> priority: 1 
+  Thread -> id: 7f75957fa700 -> priority: 1 
+  Thread -> id: 7f7594ff9700 -> priority: 1 
+  Thread -> id: 7f7577fff700 -> priority: 1 
+  Thread -> id: 7f75777fe700 -> priority: 1 
+  Thread -> id: 7f7576ffd700 -> priority: 1 
+  Thread -> id: 7f75767fc700 -> priority: 1 
+  Thread -> id: 7f7575ffb700 -> priority: 1 
+  Thread -> id: 7f75757fa700 -> priority: 1 
+  Thread -> id: 7f7574ff9700 -> priority: 1 

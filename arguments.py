@@ -248,7 +248,7 @@ def get_args():
     # Exec args
     parser.add_argument(
         '--executable_file', type=str,
-        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64')
+        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.11.x86_64')
 
     # default = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.26.x86_64')
     parser.add_argument(

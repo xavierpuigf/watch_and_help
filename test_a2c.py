@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     agents = [RL_agent_fn]
     if args.num_processes > 1:
-        ArenaMP = ray.remote(ArenaMP)
+        ArenaMP = ray.remote(ArenaMP) #, max_reconstructions=ray.ray_constants.INFINITE_RECONSTRUCTION)
         arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
         a2c = A2C_MP(arenas, graph_helper, args)
     else:
