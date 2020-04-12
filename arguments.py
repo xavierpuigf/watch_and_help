@@ -6,7 +6,7 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Environment type')
+    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full', 'check'], help='Environment type')
     parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
@@ -250,7 +250,10 @@ def get_args():
         '--executable_file', type=str,
         default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.11.x86_64')
 
-    # default = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.26.x86_64')
+    # parser.add_argument(
+    #     '--executable_file', type=str,
+    #     default = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64')
+
     parser.add_argument(
         '--base-port', type=int, default=8080)
 

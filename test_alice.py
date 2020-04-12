@@ -62,14 +62,18 @@ if __name__ == '__main__':
     L = [200] * len(episode_ids)
     test_results = {}
 
-    env = UnityEnvironment(num_agents=1,
-                         max_episode_length=args.max_episode_length,
-                         env_task_set=env_task_set,
-                         use_editor=args.use_editor,
-                         executable_args=executable_args)
+    def env_fn(env_id):
+        return UnityEnvironment(num_agents=1,
+                                max_episode_length=args.max_episode_length,
+                                port_id=env_id,
+                                env_task_set=env_task_set,
+                                observation_types=[args.obs_type],
+                                use_editor=args.use_editor,
+                                executable_args=executable_args,
+                                base_port=args.base_port)
 
-    args_common = dict(unity_env=env,
-                         recursive=False,
+
+    args_common = dict(recursive=False,
                          max_episode_length=5,
                          num_simulation=100,
                          max_rollout_steps=5,
@@ -85,8 +89,9 @@ if __name__ == '__main__':
     args_agent1.update(args_common)
     # args_agent2.update(args_common)
     # args_agent2.update({'recursive': True})
-    agents = [MCTS_agent(**args_agent1)]
-    arena = Arena(agents, env)
+    agents = [lambda x, y: MCTS_agent(**args_agent1)]
+
+    arena = ArenaMP(0, env_fn, agents)
 
     for iter_id in range(1):
         if iter_id > 0:
@@ -96,7 +101,8 @@ if __name__ == '__main__':
         for episode_id in episode_ids:
             if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
             print('episode:', episode_id)
-            try:
+            # try:
+            if True:
                 arena.reset(episode_id)
                 success, steps, saved_info = arena.run()
                 print('-------------------------------------')
@@ -118,7 +124,7 @@ if __name__ == '__main__':
                 else:
                     with open(args.record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
                         f.write(json.dumps(saved_info, indent=4))
-            except:
+            else:
                 pass
 
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)

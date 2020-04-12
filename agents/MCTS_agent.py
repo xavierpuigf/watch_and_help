@@ -340,8 +340,6 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
     else:
         init_vh_state = env.vh_state
 
-    print('goal_spec:', goal_spec)
-
     satisfied, unsatisfied = utils_env.check_progress(init_state, goal_spec)
     # print('get plan:', init_state)
 
@@ -393,14 +391,14 @@ class MCTS_agent:
     """
     MCTS for a single agent
     """
-    def __init__(self, unity_env, agent_id, char_index,
+    def __init__(self, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, recursive=False,
                  num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
         self.agent_type = 'MCTS'
 
         self.recursive = recursive
-        self.unity_env = unity_env
-        self.env = unity_env.env
+
+        #self.env = unity_env.env
 
         self.logging = logging
         self.logging_graphs = logging_graphs
@@ -522,23 +520,16 @@ class MCTS_agent:
         self.last_subgoal = subgoals[0] if len(subgoals) > 0 else None
         return action, info
 
-    def reset(self, graph, task_goal, seed=0, simulator_type='python', is_alice=False):
-        if self.comm is not None:
-            s, graph = self.comm.environment_graph()
-
+    def reset(self, observed_graph, gt_graph, task_goal, seed=0, simulator_type='python', is_alice=False):
 
         self.last_action = None
         self.last_subgoal = None
         """TODO: do no need this?"""
-        if simulator_type == 'unity':
-            self.env.reset(graph, task_goal)
-            self.env.to_pomdp()
-        gt_state = self.env.vh_state.to_dict()
 
         self.previous_belief_graph = None
-        self.belief = Belief.Belief(gt_state, agent_id=self.agent_id, seed=seed)
+        self.belief = Belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
         self.belief.sample_from_belief()
-        graph_belief = self.sample_belief(self.env.get_observations(char_index=self.char_index))
+        graph_belief = self.sample_belief(observed_graph) #self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(graph_belief, task_goal)
         self.sim_env.to_pomdp()
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,

@@ -111,6 +111,7 @@ class UnityEnvironment(BaseEnvironment):
     def reward(self):
         reward = 0.
         done = True
+        print(self.goal_spec)
         satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec[0])
         for key, value in satisfied.items():
             preds_needed, mandatory, reward_per_pred = self.goal_spec[0][key]
@@ -193,7 +194,7 @@ class UnityEnvironment(BaseEnvironment):
 
     def get_goal(self, task_spec, agent_goal):
         if agent_goal == 'full':
-            return task_spec
+            return {goal_k: [goal_c, True, 0] for goal_k, goal_c in task_spec.items()}
         elif agent_goal == 'grab':
             candidates = [x.split('_')[1] for x,y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
             object_grab = random.choice(candidates)

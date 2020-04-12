@@ -38,7 +38,7 @@ class ArenaMP(object):
             ob = self.env.reset(task_id=task_id)
         for it, agent in enumerate(self.agents):
             if agent.agent_type == 'MCTS':
-                agent.reset(self.env.python_graph, self.env.task_goal, seed=it)
+                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=it)
             else:
                 agent.reset(self.env.python_graph)
 
@@ -70,12 +70,14 @@ class ArenaMP(object):
             print("Resetting...")
             self.env.close()
             self.env = self.env_fn(self.arena_id)
-            self.agents = []
+
 
             for agent in self.agents:
                 if agent.agent_type == 'RL':
                     prev_eps = agent.epsilon
                     prev_weights = agent.actor_critic.state_dict()
+
+            self.agents = []
             for agent_type_fn in self.agent_fn:
                 self.agents.append(agent_type_fn(self.arena_id, self.env))
 

@@ -21,7 +21,7 @@
 
 
 # Python
-CUDA_VISIBLE_DEVICES=5 python test_a2c.py \
+CUDA_VISIBLE_DEVICES=3 python test_a2c.py \
 --num-per-apartment 3 \
 --max-num-edges 150 --max-episode-length 30 \
 --balanced_sample --neg_ratio 0.5 --batch_size 16 \
@@ -29,4 +29,4 @@ CUDA_VISIBLE_DEVICES=5 python test_a2c.py \
 --task_type find  --task-set setup_table \
 --nb_episodes 100000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 5 \
---num-processes 20 --base-port 8180
+--num-processes 20 --base-port 8180 --logging

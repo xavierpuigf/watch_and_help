@@ -12,7 +12,7 @@
 # cd ..
 
 
-python test_alice.py --max-episode-length 250 --num-per-apartment 50
+python test_alice.py --max-episode-length 250 --num-per-apartment 50 --mode check
 
 
 # cd interface
