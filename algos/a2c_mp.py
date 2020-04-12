@@ -56,7 +56,7 @@ class A2C:
         # TODO: uncomment
         async_routs = []
         for arena in self.arenas:
-            async_routs.append(arena.rollout.remote(logging, record))
+            async_routs.append(arena.rollout_reset.remote(logging, record))
 
         info_envs = []
         for async_rout in async_routs:
