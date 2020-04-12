@@ -12,7 +12,7 @@ from pathlib import Path
 from envs.unity_environment import UnityEnvironment
 from agents import MCTS_agent
 from arguments import get_args
-from algos.arena import Arena
+from algos.arena_mp2 import ArenaMP
 from utils import utils_goals
 
 
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
     # args.record_dir = 'record/Alice_test_set_30'
     env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    args.record_dir = 'record/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,

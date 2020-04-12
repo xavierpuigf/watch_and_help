@@ -69,7 +69,7 @@ class ArenaMP(object):
         except:
             print("Resetting...")
             self.env.close()
-            self.env = self.environment_fn(self.arena_id)
+            self.env = self.env_fn(self.arena_id)
             self.agents = []
 
             for agent in self.agents:
