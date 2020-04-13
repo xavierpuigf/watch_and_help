@@ -67,18 +67,21 @@ class A2C:
         # info_envs.append(self.arenas[0].rollout(logging, record))
 
         rewards = []
+        info_rollout = []
         for process_data in info_envs:
             rewards.append(process_data[0])
             # successes.append(process_data[1]['success'])
             rollout_memory = process_data[2]
+
+            # only get info form one process
+            info_rollout.append(process_data[1])
+
 
             # Add into memory
             for mem in rollout_memory[0]:
                 self.memory_all.append(*mem)
             self.memory_all.append(None, None, None, 0, 0)
 
-        # only get info form one process
-        info_rollout = info_envs[0][1]
         return rewards, info_rollout
 
 
@@ -115,77 +118,83 @@ class A2C:
             c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
 
 
-            episode_rewards = c_r_all
-            num_steps = info_rollout['nsteps']
-            total_num_steps += num_steps
+
 
             end_time = time.time()
 
-            action_space = info_rollout['action_space']
-            obs_space = info_rollout['observation_space']
-            successes = info_rollout['success']
+            action_space = []
+            obs_space = []
+            successes = []
+            num_steps = []
+            episode_rewards = [c_r_all_roll[0] for c_r_all_roll in c_r_all]
 
-            print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
-                episode_id, num_steps,
-                [c_r_all[0][0]],
-                info_rollout['success'],
-                total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
+
+            for info_rollout_ep in info_rollout:
+                num_steps.append(info_rollout_ep['nsteps'])
+                action_space.append(info_rollout_ep['action_space'])
+                obs_space.append(info_rollout_ep['observation_space'])
+                successes.append(info_rollout_ep['success'])
+
+            total_num_steps += np.sum(num_steps)
+            fps = total_num_steps*1.0/(end_time-start_time)
+            print("episode: #{} steps: {} reward: {} finished: {}/{} FPS {} #Objects {} #Objects actions {}".format(
+                episode_id, np.mean(num_steps),
+                np.mean(episode_rewards),
+                np.sum(successes), len(episode_rewards),
+                fps, np.mean(obs_space), np.mean(action_space)))
 
             if episode_id % self.args.log_interval == 0:
-                script_done = info_rollout['script']
-                script_tried = info_rollout['action_tried']
+                script_done = info_rollout[0]['script']
+                script_tried = info_rollout[0]['action_tried']
 
                 print("Target:")
-                print(info_rollout['target'][1])
+                print(info_rollout[0]['target'][1])
                 for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
                     info_step = ''
                     for relation in ['CLOSE', 'INSIDE', 'ON']:
                         if relation == 'INSIDE':
-                            if len([x for x in info_rollout['step_info'][iti][1] if x[2] == relation]) == 0:
+                            if len([x for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]) == 0:
                                 pdb.set_trace()
 
-                        info_step += '  {}:  {}'.format(relation, ' '.join(['{}.{}'.format(x[0], x[1]) for x in info_rollout['step_info'][iti][1] if x[2] == relation]))
+                        info_step += '  {}:  {}'.format(relation, ' '.join(
+                            ['{}.{}'.format(x[0], x[1]) for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]))
 
                     if script_d is None:
                         script_d = ''
 
-                    if info_rollout['step_info'][iti][0] is not None:
-                        char_info = '{:07.3f} {:07.3f}'.format(info_rollout['step_info'][iti][0]['center'][0], info_rollout['step_info'][iti][0]['center'][2])
+                    if info_rollout[0]['step_info'][iti][0] is not None:
+                        char_info = '{:07.3f} {:07.3f}'.format(info_rollout[0]['step_info'][iti][0]['center'][0],
+                                                               info_rollout[0]['step_info'][iti][0]['center'][2])
                         print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
                     else:
                         print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
 
-            if self.logger:
-                if episode_id % self.args.log_interval == 0:
-
-                    num_steps = info_rollout['nsteps']
-                    epsilon = info_rollout['epsilon']
-                    dist_entropy = (np.mean(info_rollout['entropy'][0]), np.mean(info_rollout['entropy'][1]))
-                    # pdb.set_trace()
-                    info_episode = {
-                        'success': successes,
-                        'reward': c_r_all[0],
-                        'script': info_rollout['script'],
-                        'target': info_rollout['target'],
-                        'info_step': info_rollout['step_info'],
-                    }
-
+                if self.logger:
                     if episode_id % max(self.args.log_interval, 10):
+                        info_episode = {
+                            'success': successes[0],
+                            'reward': episode_rewards[0],
+                            'script': info_rollout[0]['script'],
+                            'target': info_rollout[0]['target'],
+                            'info_step': info_rollout[0]['step_info'],
+                        }
                         info_ep.append(info_episode)
                         file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
-                    with open(file_name_log, 'w+') as f:
-                        f.write(json.dumps(info_ep, indent=4))
+                        with open(file_name_log, 'w+') as f:
+                            f.write(json.dumps(info_ep, indent=4))
 
-                    #list(self.env.task_goal[0].keys())
-                    # self.env.env_id
-                    # goal =
-                    # apt = self.arena.get_goal
 
-                    info_episodes = [{'success': successes,
-                                      'goal': info_rollout['goals'][0],
-                                      'apt': info_rollout['env_id']}]
-                    self.logger.log_data(episode_id, total_num_steps, start_time, end_time, episode_rewards[0],
-                                         dist_entropy, epsilon, successes, info_episodes)
+            if self.logger:
+                if episode_id % self.args.log_interval == 0:
+                    epsilon = info_rollout[0]['epsilon']
+
+                    dist_entropy = (np.mean([np.mean(info_rollout[it]['entropy'][0]) for it in range(len(info_rollout))]),
+                                    np.mean([np.mean(info_rollout[it]['entropy'][1]) for it in range(len(info_rollout))]))
+                    # pdb.set_trace()
+
+
+                    self.logger.log_data(episode_id, episode_id, fps, episode_rewards,
+                                         dist_entropy, epsilon, successes)
 
 
 

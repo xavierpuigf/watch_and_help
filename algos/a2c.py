@@ -80,14 +80,20 @@ class A2C:
 
             total_num_steps += num_steps
 
-            action_space = info_rollout['action_space']
-            obs_space = info_rollout['observation_space']
-            successes = info_rollout['success']
+
+            action_space = []
+            obs_space = []
+            successes = []
+            rewards = [c_r_all_roll[0] for c_r_all_roll in c_r_all]
+            for info_rollout_ep in info_rollout:
+                action_space.append(info_rollout_ep['action_space'])
+                obs_space.append(info_rollout_ep['observation_space'])
+                successes.append(info_rollout_ep['success'])
 
             end_time = time.time()
             print("episode: #{} steps: {} reward: {} finished: {} FPS {} #Objects {} #Objects actions {}".format(
                 episode_id, num_steps,
-                [c_r_all[agent_id] for agent_id in trainable_agents],
+                np.mean(rewards),
                 info_rollout['success'],
                 total_num_steps*1.0/(end_time-start_time), obs_space, action_space))
 

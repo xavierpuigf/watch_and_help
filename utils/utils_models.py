@@ -173,12 +173,12 @@ class Logger():
             experiment_name += 'debug'
         return experiment_name
 
-    def log_data(self, j, total_num_steps, start, end, episode_rewards, dist_entropy, epsilon, successes, info_episodes):
+    def log_data(self, j, total_num_steps, fps, episode_rewards, dist_entropy, epsilon, successes):
         if self.first_log:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
                 self.set_tensorboard()
-        fps = total_num_steps / (end - start)
+
         # print(
         #     "Updates {}, num timesteps {}, FPS {} "
         #     "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
@@ -192,7 +192,9 @@ class Logger():
         # self.stats.print_hist(self.tensorboard_writer)
 
         if self.tensorboard_writer is not None:
-            self.tensorboard_writer.add_scalar("sum_reward", np.sum(episode_rewards), total_num_steps)
+            self.tensorboard_writer.add_scalar("info/max_reward", np.max(episode_rewards), total_num_steps)
+            self.tensorboard_writer.add_scalar("info/mean_reward", np.mean(episode_rewards), total_num_steps)
+
             # tensorboard_writer.add_scalar("median_reward", np.median(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("min_reward", np.min(episode_rewards), total_num_steps)
             # tensorboard_writer.add_scalar("max_reward", np.max(episode_rewards), total_num_steps)
@@ -202,7 +204,7 @@ class Logger():
             # self.tensorboard_writer.add_scalar("losses/action_loss", action_loss, total_num_steps)
             self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
-            self.tensorboard_writer.add_scalar("info/success", successes, total_num_steps)
+            self.tensorboard_writer.add_scalar("info/success", np.mean(successes), total_num_steps)
             self.tensorboard_writer.add_scalar("info/fps", fps, total_num_steps)
 
     def save_model(self, j, actor_critic):

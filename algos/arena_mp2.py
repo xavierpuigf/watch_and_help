@@ -98,9 +98,10 @@ class ArenaMP(object):
         entropy_action, entropy_object = [], []
         observation_space, action_space = [], []
 
-        info_rollout['step_info'] = []
-        info_rollout['script'] = []
-        info_rollout['action_tried'] = []
+        if logging:
+            info_rollout['step_info'] = []
+            info_rollout['script'] = []
+            info_rollout['action_tried'] = []
 
 
         rollout_agent = {}
