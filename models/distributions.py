@@ -86,9 +86,11 @@ class ElementWiseCategorical(nn.Module):
         # n x dim
         x0 = x.unsqueeze(1)
         if self.method == 'dot':
+            raise Exception
             logs = torch.bmm(x0, y.transpose(1,2))[:, 0, :]
 
         elif self.method == 'fc':
+            raise Exception
             num_nodes = y.shape[1]
             comb_embed = torch.cat([x0.repeat(1, num_nodes, 1), y], dim=2)
             logs = self.layer(comb_embed).squeeze(-1)

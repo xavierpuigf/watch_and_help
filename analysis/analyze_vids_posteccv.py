@@ -40,11 +40,12 @@ def add_to_stats(dict_apartments, content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='analysis vids')
-    parser.add_argument('--record_dir', default='../../../tshu/vh_multiagent_models/record/debug_Alice_env_task_set_3_full/', type=str) 
+    parser.add_argument('--record_dir', default='../../vh_multiagent_models/record_scratch/Alice_env_task_set_50_check', type=str)
     args = parser.parse_args()
 
     dir_files = sorted(glob.glob('{}'.format(args.record_dir)))
     dict_failures = []
+    print(dir_files)
     goal_dict = {}
     destinations = []
     failed_ids = []
@@ -95,8 +96,9 @@ if __name__ == '__main__':
             # Build a hash for the goal
 
             if content['finished']:
-                if finished == 0:
-                    print(len(content['action']['0']), json_file)
+                #if finished == 0:
+                #
+                #    print(len(content['action']['0']), json_file)
 
                 finished += 1
                 #print(dir_file)
@@ -109,7 +111,12 @@ if __name__ == '__main__':
                     goal_parts = goal_name_id.split('_')
                     if len(goal_parts) < 3:
                         continue
-                    second_obj = id2node[int(goal_parts[-1])]['class_name']
+
+                    try:
+                        second_obj = id2node[int(goal_parts[-1])]['class_name']
+                    except:
+                        assert(int(goal_parts[-1]) == 1)
+                        second_obj = 'character'
                     goal_name = '_'.join(goal_parts[:-1]) + '_' + second_obj
                     transformed_goal_dict[goal_name] = goal_value
                     goal_hash.append(goal_name+'.'+str(goal_value))
@@ -171,6 +178,7 @@ if __name__ == '__main__':
                # except:
                #     pdb.set_trace()
 
+        print('\nStats')
         print(errors)
 
         print('({}/{}) ({:.2f})'.format(finished, count, finished*100./(count+1e-9)), count)
@@ -178,6 +186,8 @@ if __name__ == '__main__':
             print(i, ': {}'.format(dict_apartments[i] if i in dict_apartments.keys() else 0))
         progs_per_task[dir_file.split('/')[-1]] = dict_apartments
 
+
+    print("\nGeneral analysis failures")
     ct = Counter(dict_failures).most_common()
     print(ct)
 

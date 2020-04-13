@@ -111,7 +111,7 @@ class UnityEnvironment(BaseEnvironment):
     def reward(self):
         reward = 0.
         done = True
-        print(self.goal_spec)
+        # print(self.goal_spec)
         satisfied, unsatisfied = utils.check_progress(self.get_graph(), self.goal_spec[0])
         for key, value in satisfied.items():
             preds_needed, mandatory, reward_per_pred = self.goal_spec[0][key]

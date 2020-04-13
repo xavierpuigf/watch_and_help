@@ -96,12 +96,19 @@ class NNBase(nn.Module):
 
 
 class GoalEncoder(nn.Module):
-    def __init__(self, num_classes, output_dim):
+    def __init__(self, num_classes, output_dim, obj_class_encoder=None):
         super(GoalEncoder, self).__init__()
-        inp_dim = int(output_dim / 2)
-        self.object_embedding = nn.Embedding(num_classes, inp_dim)
+
+
+        if obj_class_encoder is None:
+            inp_dim = output_dim
+            self.object_embedding = nn.Embedding(num_classes, inp_dim)
+        else:
+            self.object_embedding = obj_class_encoder
+            inp_dim = self.object_embedding.embedding_dim
+
         self.combine_obj_loc = nn.Sequential(
-            nn.Linear(output_dim, output_dim),
+            nn.Linear(inp_dim*2, output_dim),
             nn.ReLU(),
             nn.Linear(output_dim, output_dim),
             nn.ReLU()
@@ -135,12 +142,11 @@ class GoalAttentionModel(NNBase):
 
         self.object_context_combine = self.mlp2l(2 * hidden_size, hidden_size)
 
-        self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size)
+        self.goal_encoder = GoalEncoder(num_classes, hidden_size, obj_class_encoder=self.main.object_class_encoding)
         # self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
         self.context_type = context_type
 
-        self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
-        self.fc_att_object = self.mlp2l(hidden_size * 2, hidden_size)
+        self.fc_att_action = self.mlp2l(hidden_size, hidden_size)
         self.train()
 
     def mlp2l(self, dim_in, dim_out):
@@ -150,8 +156,8 @@ class GoalAttentionModel(NNBase):
         # Use transformer to get feats for every object
         mask_visible = inputs['mask_object']
 
+        # Get features of object, through transformer or GNN
         features_obj = self.main(inputs)
-        #pdb.set_trace()
 
         # 1 x ndim. Avg pool the features for the context vec
         mask_visible = mask_visible.unsqueeze(-1)
@@ -160,6 +166,7 @@ class GoalAttentionModel(NNBase):
         if self.context_type == 'avg':
             context_vec = (features_obj * mask_visible).sum(1) / (1e-9 + mask_visible.sum(1))
         else:
+            # TODO: this should correpsond to the agent embedding
             context_vec = features_obj[:, 0, :]
 
 
@@ -170,34 +177,31 @@ class GoalAttentionModel(NNBase):
 
         goal_encoding = self.goal_encoder(obj_class_name, loc_class_name, mask_goal)
 
-        # goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
-        # goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
-        # goal_encoding = torch.cat([goal_encoding_obj, goal_encoding_loc], dim=-1)
-
 
         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
-        goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
+        context_goal = goal_mask_action * context_vec
 
         # Recurrent context
         if self.is_recurrent:
-            r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
+            r_context_vec, rnn_hxs = self._forward_gru(context_goal, rnn_hxs, masks)
         else:
-            r_context_vec = context_vec
+            r_context_vec = context_goal
 
         # h' = GA . h [bs, h]
-        context_goal = goal_mask_action * r_context_vec
 
         # Combine object representations with global representations
         r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
         r_object_vec_comb = self.object_context_combine(r_object_vec)
 
         # Sg' = GA . Sg [bs, N, h]
-        object_goal = goal_mask_object[:, None, :] * r_object_vec_comb
+        object_goal_out = r_object_vec_comb
+        context_goal_out = r_context_vec
+        #object_goal = goal_mask_object[:, None, :] * r_object_vec_comb
 
-        if torch.isnan(context_goal).any() or torch.isnan(object_goal).any():
+        if torch.isnan(context_goal_out).any() or torch.isnan(object_goal_out).any():
             pdb.set_trace()
 
-        return context_goal, object_goal, rnn_hxs
+        return context_goal_out, object_goal_out, rnn_hxs
 
 
 class GraphEncoder(nn.Module):
@@ -206,6 +210,7 @@ class GraphEncoder(nn.Module):
         self.hidden_size = hidden_size
         self.graph_encoder = GraphModelGGNN(
             num_classes=num_classes, num_nodes=max_nodes, h_dim=hidden_size, out_dim=hidden_size, num_rels=num_rels, num_states=num_states)
+        self.object_class_encoding = self.graph_encoder.class_encoding
 
     def forward(self, inputs):
         # Build the graph
@@ -221,7 +226,7 @@ class TransformerBase(nn.Module):
         self.main = Transformer(num_classes=num_classes, num_nodes=max_nodes, in_feat=hidden_size, out_feat=hidden_size)
         #self.single_object_encoding = ObjNameCoordEncode(output_dim=hidden_size, num_classes=num_classes)
         self.single_object_encoding = ObjNameCoordStateEncode(output_dim=hidden_size, num_classes=num_classes, num_states=num_states)
-
+        self.object_class_encoding = self.single_object_encoding.class_embedding
         self.train()
 
     def forward(self, inputs):

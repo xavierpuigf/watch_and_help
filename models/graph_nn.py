@@ -214,7 +214,7 @@ class GraphModelGGNN(nn.Module):
 
 
         self.feat_in = ClassAndStates(num_classes, num_states, h_dim)
-
+        self.class_encoding = self.feat_in.class_encoding
 
     def forward(self, inputs):
         keys = ['class_objects', 'states_objects', 'edge_tuples', 'edge_classes', 'mask_object', 'mask_edge']

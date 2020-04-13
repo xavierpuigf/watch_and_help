@@ -29,4 +29,4 @@ CUDA_VISIBLE_DEVICES=3 python test_a2c.py \
 --task_type find  --task-set setup_table \
 --nb_episodes 100000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 5 \
---num-processes 20 --base-port 8180 --logging
+--num-processes 1 --base-port 8180
