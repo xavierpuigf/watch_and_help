@@ -102,7 +102,11 @@ class ArenaMP(object):
             info_rollout['step_info'] = []
             info_rollout['script'] = []
             info_rollout['action_tried'] = []
-
+            info_rollout['pred_goal'] = []
+            info_rollout['pred_close'] = []
+            info_rollout['gt_goal'] = []
+            info_rollout['gt_close'] = []
+            info_rollout['mask_nodes'] = []
 
         rollout_agent = {}
 
@@ -138,7 +142,11 @@ class ArenaMP(object):
 
                 info_rollout['step_info'].append((node_id, edges_char))
                 info_rollout['script'].append(agent_actions[0])
-
+                info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
+                info_rollout['pred_close'].append(agent_info[0]['pred_close'])
+                info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
+                info_rollout['gt_close'].append(agent_info[0]['gt_close'])
+                info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
                 info_rollout['action_tried'].append(agent_info[0]['action_tried'])
 
             nb_steps += 1

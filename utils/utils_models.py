@@ -5,6 +5,7 @@ import datetime
 import numpy as np
 import torch
 import json
+import pdb
 import torch.nn as nn
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
@@ -156,7 +157,7 @@ class Logger():
     def get_experiment_name(self):
         args = self.args
         experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/'\
-                          'mode.{}-algo.{}-base.{}-gamma.{}-lr{}'.format(
+                          'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,
@@ -167,13 +168,15 @@ class Logger():
             args.algo,
             args.base_net,
             args.gamma,
+            args.c_loss_close,
+            args.c_loss_goal,
             args.lr)
 
         if args.debug:
             experiment_name += 'debug'
         return experiment_name
 
-    def log_data(self, j, total_num_steps, fps, episode_rewards, dist_entropy, epsilon, successes):
+    def log_data(self, j, total_num_steps, fps, episode_rewards, dist_entropy, epsilon, successes, info_aux):
         if self.first_log:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
@@ -192,6 +195,18 @@ class Logger():
         # self.stats.print_hist(self.tensorboard_writer)
 
         if self.tensorboard_writer is not None:
+            self.tensorboard_writer.add_scalar("aux_info/accuracy_goal", np.max(info_aux['accuracy_goal']), total_num_steps)
+            self.tensorboard_writer.add_scalar("aux_info/precision_close", np.mean(info_aux['precision_close']), total_num_steps)
+            self.tensorboard_writer.add_scalar("aux_info/recall_close", np.mean(info_aux['recall_close']), total_num_steps)
+
+            self.tensorboard_writer.add_scalar("losses/loss_close", np.mean(info_aux['loss_close']), total_num_steps)
+            self.tensorboard_writer.add_scalar("losses/loss_goal", np.mean(info_aux['loss_goal']), total_num_steps)
+            #
+            # self.tensorboard_writer.add_scalar("losses/loss_close", np.mean(info_aux['loss_close']), total_num_steps)
+            # self.tensorboard_writer.add_scalar("losses/loss_goal", np.mean(info_aux['loss_goal']), total_num_steps)
+
+
+
             self.tensorboard_writer.add_scalar("info/max_reward", np.max(episode_rewards), total_num_steps)
             self.tensorboard_writer.add_scalar("info/mean_reward", np.mean(episode_rewards), total_num_steps)
 

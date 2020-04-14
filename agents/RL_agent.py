@@ -16,7 +16,7 @@ class RL_agent:
         self.agent_type = 'RL'
         self.max_num_objects = args.max_num_objects
         self.num_actions = graph_helper.num_actions
-        self.num_object_classes = graph_helper.num_objects
+        self.num_object_classes = graph_helper.num_classes
         self.num_states = graph_helper.num_states
 
         # TODO: encode states
@@ -101,7 +101,8 @@ class RL_agent:
             'affordance_matrix': self.graph_helper.obj1_affordance,
             'target_obj_class': target_obj_class,
             'target_loc_class': target_loc_class,
-            'mask_goal_pred': mask_goal_pred
+            'mask_goal_pred': mask_goal_pred,
+            'gt_goal': obj_class_id
         })
 
         inputs_tensor = {}
@@ -112,12 +113,14 @@ class RL_agent:
             inputs_tensor[input_name] = inp_tensor
 
 
-        value, action, action_probs, rnn_state = self.actor_critic.act(inputs_tensor,
-                                                                           rnn_hxs,
-                                                                           masks,
-                                                                           deterministic=self.deterministic,
-                                                                           epsilon=self.epsilon,
-                                                                           action_indices=action_indices)
+        value, action, action_probs, rnn_state, out_dict = self.actor_critic.act(
+            inputs_tensor,
+            rnn_hxs,
+            masks,
+            deterministic=self.deterministic,
+            epsilon=self.epsilon,
+            action_indices=action_indices)
+
         self.hidden_state = rnn_state
         info_model = {}
         info_model['probs'] = action_probs
@@ -128,6 +131,13 @@ class RL_agent:
         info_model['num_objects_action'] = inputs['mask_action_node'].sum(-1)
 
         info_model['visible_ids'] = [node[1] for node in visible_objects]
+
+        aux_out = self.actor_critic.auxiliary_pred(out_dict)
+        info_model['pred_goal'] = aux_out['pred_goal']
+        info_model['pred_close'] = aux_out['pred_close']
+        info_model['gt_close'] = inputs_tensor['gt_close']
+        info_model['gt_goal'] = inputs_tensor['gt_goal']
+        info_model['mask_nodes'] = inputs_tensor['mask_object']
 
         #############
         # DEBUGGING

@@ -244,6 +244,8 @@ class GraphHelper():
 
         edge_types = np.array([self.relation_dict.get_id(edge['relation_type']) for edge in edges])
 
+        close_ids = [edge['to_id'] for edge in edges if edge['relation_type'] == 'CLOSE' and edge['from_id'] == 1]
+
         if len(edges) > 0:
             #print([edge for edge in edges if edge['relation_type'] == 'CLOSE'])
             edge_ids = np.concatenate(
@@ -259,6 +261,7 @@ class GraphHelper():
         all_edge_types = np.zeros((max_edges))
 
         mask_nodes = np.zeros((max_nodes))
+        close_nodes = np.zeros((max_nodes))
         mask_action_nodes = np.zeros((max_nodes))
         all_class_names = np.zeros((max_nodes)).astype(np.int32)
         all_node_states = np.zeros((max_nodes, len(self.states)))
@@ -274,6 +277,7 @@ class GraphHelper():
         all_class_names[:len(nodes)] = class_names
         all_node_states[:len(nodes)] = node_states
         all_node_ids[:len(nodes)] = node_ids
+        close_nodes[:len(nodes)] = [1 if node_id in close_ids else 0 for node_id in node_ids]
 
         if self.simulaor_type == 'unity':
             obj_coords = np.zeros((max_nodes, 6))
@@ -296,7 +300,8 @@ class GraphHelper():
             'mask_object': mask_nodes,
             'mask_edge': mask_edges,
             'mask_action_node': mask_action_nodes,
-            'node_ids': all_node_ids
+            'node_ids': all_node_ids,
+            'gt_close': close_nodes
         }
 
         if self.simulaor_type == 'unity':

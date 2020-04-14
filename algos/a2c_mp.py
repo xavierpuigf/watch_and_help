@@ -23,19 +23,22 @@ class A2C:
             'num_states': graph_helper.num_states
 
         }
+
+        self.args = args
         num_actions = graph_helper.num_actions
         action_space = spaces.Tuple((spaces.Discrete(num_actions),
                                      spaces.Discrete(args.max_num_objects)))
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
 
-        # self.actor_critic = self.arenas[0].agents[0].actor_critic
-        self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
+        if self.args.num_processes == 1:
+            self.actor_critic = self.arenas[0].agents[0].actor_critic
+        else:
+            self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
 
         self.actor_critic.to(self.device)
 
         self.memory_capacity_episodes = args.memory_capacity_episodes
-        self.args = args
         self.memory_all = []
         self.optimizer = optim.RMSprop(self.actor_critic.parameters(), lr=args.lr)
 
@@ -54,13 +57,17 @@ class A2C:
 
         # Reset hidden state of agents
         # TODO: uncomment
-        async_routs = []
-        for arena in self.arenas:
-            async_routs.append(arena.rollout_reset.remote(logging, record))
 
-        info_envs = []
-        for async_rout in async_routs:
-            info_envs.append(ray.get(async_rout))
+        if self.args.num_processes == 1:
+            info_envs = [self.arenas[0].rollout(logging, record)]
+        else:
+            async_routs = []
+            for arena in self.arenas:
+                async_routs.append(arena.rollout_reset.remote(logging, record))
+
+            info_envs = []
+            for async_rout in async_routs:
+                info_envs.append(ray.get(async_rout))
 
         # # TODO: comment
         # info_envs = []
@@ -102,19 +109,14 @@ class A2C:
             time_prerout = time.time()
 
             # TODO: Uncomment
-            curr_model = self.actor_critic.state_dict()
+            if self.args.num_processes > 1:
+                curr_model = self.actor_critic.state_dict()
+                for k, v in curr_model.items():
+                   curr_model[k] = v.cpu()
+                m_id = ray.put(curr_model)
+                # TODO: Uncomment
+                ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
 
-            for k, v in curr_model.items():
-               curr_model[k] = v.cpu()
-
-            # ray.register_custom_serializer(torch.Tensor, serializer=serializer, deserializer=deserializer)
-            # ray.register_custom_serializer(torch.LongTensor, serializer=serializer, deserializer=deserializer)
-            # ray.register_custom_serializer(torch.FloatTensor, serializer=serializer, deserializer=deserializer)
-            #
-            m_id = ray.put(curr_model)
-
-            # TODO: Uncomment
-            ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
             c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
 
 
@@ -147,30 +149,37 @@ class A2C:
                 script_done = info_rollout[0]['script']
                 script_tried = info_rollout[0]['action_tried']
 
-                print("Target:")
-                print(info_rollout[0]['target'][1])
-                for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
-                    info_step = ''
-                    for relation in ['CLOSE', 'INSIDE', 'ON']:
-                        if relation == 'INSIDE':
-                            if len([x for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]) == 0:
-                                pdb.set_trace()
+                # Auxiliary task
+                pred_close = torch.cat(info_rollout[0]['pred_close'], 0)
+                gt_close = torch.cat(info_rollout[0]['gt_close'], 0)
+                pred_goal = torch.cat(info_rollout[0]['pred_goal'], 0)
+                gt_goal = torch.cat(info_rollout[0]['gt_goal'], 0)
+                mask_nodes = torch.cat(info_rollout[0]['mask_nodes'], 0)
 
-                        info_step += '  {}:  {}'.format(relation, ' '.join(
-                            ['{}.{}'.format(x[0], x[1]) for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]))
+                if episode_id % max(self.args.log_interval, 10) == 0:
+                    print("Target:")
+                    print(info_rollout[0]['target'][1])
+                    for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
+                        info_step = ''
+                        for relation in ['CLOSE', 'INSIDE', 'ON']:
+                            if relation == 'INSIDE':
+                                if len([x for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]) == 0:
+                                    pdb.set_trace()
 
-                    if script_d is None:
-                        script_d = ''
+                            info_step += '  {}:  {}'.format(relation, ' '.join(
+                                ['{}.{}'.format(x[0], x[1]) for x in info_rollout[0]['step_info'][iti][1] if x[2] == relation]))
 
-                    if info_rollout[0]['step_info'][iti][0] is not None:
-                        char_info = '{:07.3f} {:07.3f}'.format(info_rollout[0]['step_info'][iti][0]['center'][0],
-                                                               info_rollout[0]['step_info'][iti][0]['center'][2])
-                        print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
-                    else:
-                        print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+                        if script_d is None:
+                            script_d = ''
 
-                if self.logger:
-                    if episode_id % max(self.args.log_interval, 10):
+                        if info_rollout[0]['step_info'][iti][0] is not None:
+                            char_info = '{:07.3f} {:07.3f}'.format(info_rollout[0]['step_info'][iti][0]['center'][0],
+                                                                   info_rollout[0]['step_info'][iti][0]['center'][2])
+                            print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
+                        else:
+                            print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+
+                    if self.logger:
                         info_episode = {
                             'success': successes[0],
                             'reward': episode_rewards[0],
@@ -191,10 +200,20 @@ class A2C:
                     dist_entropy = (np.mean([np.mean(info_rollout[it]['entropy'][0]) for it in range(len(info_rollout))]),
                                     np.mean([np.mean(info_rollout[it]['entropy'][1]) for it in range(len(info_rollout))]))
                     # pdb.set_trace()
-
-
+                    info_aux = {}
+                    pred_closem = (pred_close.squeeze(-1) > 0.5).float().cpu()
+                    tp = (mask_nodes.float() * gt_close.float() * pred_closem.float()).sum()
+                    p = (mask_nodes.float() * gt_close.float()).sum()
+                    fp = (mask_nodes.float() * (1. - gt_close.float()) * pred_closem.float()).sum()
+                    info_aux['accuracy_goal'] = (gt_goal.cpu() == pred_goal.argmax(1).cpu()).float().mean().numpy()
+                    info_aux['precision_close'] = (tp/(1e-9 + tp + fp)).numpy()
+                    info_aux['recall_close'] = (tp/(1e-9 + p)).numpy()
+                    info_aux['loss_close'] = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1).cpu(),
+                                                                                            gt_close,
+                                                                                            mask_nodes).detach().numpy()
+                    info_aux['loss_goal'] = nn.functional.cross_entropy(pred_goal.cpu(), gt_goal).detach().numpy()
                     self.logger.log_data(episode_id, episode_id, fps, episode_rewards,
-                                         dist_entropy, epsilon, successes)
+                                         dist_entropy, epsilon, successes, info_aux)
 
 
 
@@ -213,8 +232,8 @@ class A2C:
                             self.args.batch_size,
                             maxlen=self.args.max_episode_length)
                     N = len(trajs[0])
-                    policies, actions, rewards, Vs, old_policies, dones, masks = \
-                        [], [], [], [], [], [], []
+                    policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals = \
+                        [], [], [], [], [], [], [], [], []
 
                     hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
 
@@ -239,12 +258,19 @@ class A2C:
                         reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
 
                         # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
-                        v, _, policy, hx = self.actor_critic.act(inputs, hx, mask, action_indices=action)
+                        v, _, policy, hx, out_dict = self.actor_critic.act(inputs, hx, mask, action_indices=action)
+                        auxiliary_out = self.actor_critic.auxiliary_pred((out_dict))
+                        pred_goal, pred_close = auxiliary_out['pred_goal'], auxiliary_out['pred_close']
 
+                        gt_close = inputs['gt_close']
+                        gt_goal = inputs['gt_goal']
+                        mask_nodes = inputs['mask_object']
+                        loss_close = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1), gt_close, mask_nodes)
+                        loss_goal = nn.functional.cross_entropy(pred_goal, gt_goal)
 
                         [array.append(element) for array, element in
-                         zip((policies, actions, rewards, Vs, old_policies, dones, masks),
-                             (policy, action, reward, v, old_policy, done, mask))]
+                         zip((policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals),
+                             (policy, action, reward, v, old_policy, done, mask, loss_close, loss_goal))]
 
 
                         dones.append(done)
@@ -261,6 +287,8 @@ class A2C:
                                 rewards,
                                 dones,
                                 masks,
+                                loss_goals,
+                                loss_closes,
                                 old_policies,
                                 verbose=1)
 
@@ -277,12 +305,14 @@ class A2C:
                rewards,
                dones,
                masks,
+               loss_closes,
+               loss_goals,
                old_policies,
                verbose=0):
         """training"""
 
         off_policy = old_policies is not None
-        policy_loss, value_loss, entropy_loss = 0, 0, 0
+        policy_loss, value_loss, entropy_loss, loss_close, loss_goal = 0, 0, 0, 0, 0
         args = self.args
 
         # compute returns
@@ -304,6 +334,8 @@ class A2C:
             log_prob_object = policies[i][1].gather(1, actions[i][1]).log()
             log_prob = log_prob_action + log_prob_object
 
+            loss_close += loss_closes[i]
+            loss_goal += loss_goals[i]
 
             #print(log_prob_action, log_prob_object)
             if off_policy:
@@ -343,15 +375,20 @@ class A2C:
             policy_loss /= episode_length
             value_loss /= episode_length
             entropy_loss /= episode_length
+            loss_goal /= episode_length
+            loss_close /= episode_length
 
         if verbose:
             print("policy_loss:", policy_loss.data.cpu().numpy()[0])
             print("value_loss:", value_loss.data.cpu().numpy()[0])
             print("entropy_loss:", entropy_loss.data.cpu().numpy())
+            print("loss_goal:", loss_goal.data.cpu().numpy())
+            print("loss_close:", loss_close.data.cpu().numpy())
 
         # updating net
         optimizer.zero_grad()
         loss = policy_loss + value_loss + entropy_loss * args.entropy_coef
+        loss = loss + loss_close * args.c_loss_close + loss_goal * args.c_loss_goal
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), args.max_gradient_norm, 1)
         optimizer.step()

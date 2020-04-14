@@ -292,6 +292,11 @@ def get_args():
     parser.add_argument('--use-gt-actions', action='store_true', default=False,
                         help='debugging mode')
 
+
+    parser.add_argument('--c_loss_close', type=float, default=0., help='coefficient auxiliary loss goal close')
+    parser.add_argument('--c_loss_goal', type=float, default=0., help='coefficient auxiliary loss goal obj')
+
+
     args = parser.parse_args()
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()

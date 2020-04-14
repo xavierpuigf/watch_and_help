@@ -95,6 +95,6 @@ if __name__ == '__main__':
         a2c = A2C_MP(arenas, graph_helper, args)
     else:
         arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
-        a2c = A2C(arenas, graph_helper, args)
+        a2c = A2C_MP(arenas, graph_helper, args)
     a2c.train()
     pdb.set_trace()

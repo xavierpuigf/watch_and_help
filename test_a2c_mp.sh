@@ -15,6 +15,6 @@ CUDA_VISIBLE_DEVICES=3 python test_a2c_mp.py \
 --obs_type full --gamma 0.95 --lr 1e-5 \
 --base-port 8080 --task_type find  --task-set setup_table \
 --nb_episodes 100000 --save-interval 200 --log-interval 1 \
---num-processes 20 --logging
+--num-processes 20
 
 

@@ -147,6 +147,7 @@ class GoalAttentionModel(NNBase):
         self.context_type = context_type
 
         self.fc_att_action = self.mlp2l(hidden_size, hidden_size)
+        self.fc_att_object = self.mlp2l(hidden_size, hidden_size)
         self.train()
 
     def mlp2l(self, dim_in, dim_out):
@@ -177,7 +178,7 @@ class GoalAttentionModel(NNBase):
 
         goal_encoding = self.goal_encoder(obj_class_name, loc_class_name, mask_goal)
 
-
+        goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
         context_goal = goal_mask_action * context_vec
 
@@ -190,7 +191,7 @@ class GoalAttentionModel(NNBase):
         # h' = GA . h [bs, h]
 
         # Combine object representations with global representations
-        r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
+        r_object_vec = torch.cat([features_obj * goal_mask_object[:, None, :], r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
         r_object_vec_comb = self.object_context_combine(r_object_vec)
 
         # Sg' = GA . Sg [bs, N, h]

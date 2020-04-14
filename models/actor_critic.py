@@ -69,6 +69,15 @@ class ActorCritic(nn.Module):
 
         self.dist = nn.ModuleList(dist)
 
+        # auxiliary nets
+        num_classes = base_kwargs['num_classes']
+        self.pred_close_net = nn.Sequential(nn.Linear(self.hidden_size, self.hidden_size),
+                                           nn.ReLU(),
+                                           nn.Linear(self.hidden_size, 1))
+        self.pred_goal_net = nn.Sequential(nn.Linear(self.hidden_size, self.hidden_size),
+                                           nn.ReLU(),
+                                           nn.Linear(self.hidden_size, num_classes))
+
     @property
     def is_recurrent(self):
         return self.base.is_recurrent
@@ -147,7 +156,22 @@ class ActorCritic(nn.Module):
 
             #pdb.set_trace()
             #print('PROBABILITY', actions_probs[action])
-        return value, actions, actions_probs, rnn_hxs
+        outputs = {
+            'context_goal': context_goal,
+            'object_goal': object_goal
+        }
+        return value, actions, actions_probs, rnn_hxs, outputs
+
+
+    def auxiliary_pred(self, inputs):
+        pred_close = self.pred_close_net(inputs['object_goal'])
+        pred_goal = self.pred_goal_net(inputs['context_goal'])
+
+        outputs = {
+            'pred_goal': pred_goal,
+            'pred_close': pred_close
+        }
+        return outputs
 
     def get_value(self, inputs, rnn_hxs, masks):
 
