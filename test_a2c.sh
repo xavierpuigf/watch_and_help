@@ -30,4 +30,4 @@ CUDA_VISIBLE_DEVICES=3 python test_a2c.py \
 --nb_episodes 1000 --max-exp-episodes 1000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 1 \
 --num-processes 1 --base-port 8080 --logging \
---c_loss_close 0 --c_loss_goal 0.0 --debug
+--c_loss_close 0 --c_loss_goal 1.0 --debug
