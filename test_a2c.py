@@ -8,6 +8,7 @@ from envs.unity_environment import UnityEnvironment
 import pdb
 import pickle
 import random
+import copy
 from agents import MCTS_agent, RL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
@@ -38,16 +39,44 @@ if __name__ == '__main__':
         env_task_set = pickle.load(f)
 
     if args.debug:
-        env_task_set = env_task_set[0]
-        single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
+        # # debug 1: 1 predicate, 1 room
+        # env_task_set = env_task_set[0]
+        # single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
+
+        # if args.obs_type == 'mcts':
+        #     env_task_set['init_rooms'] = ['kitchen']
+        # env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
+        # env_task_set = [env_task_set]
+
+        # debug 2: multiple predicates, 1 room
+        env_task_set0 = copy.deepcopy(env_task_set)
+        env_task_set = []
+        env_task = env_task_set0[0]
+        single_goals = [x for x,y in env_task_set0[0]['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
 
         if args.obs_type == 'mcts':
-            env_task_set['init_rooms'] = ['kitchen']
+            env_task['init_rooms'] = ['kitchen']
 
-        #env_task_set['init_rooms'] = ['kitchen']
+        for single_goal in single_goals:
+            env_task_new = copy.deepcopy(env_task)
+            env_task_new['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
+            env_task_set.append(env_task_new)
 
-        env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
-        env_task_set = [env_task_set]
+        print('# env_task for debug:', len(env_task_set))
+        for env_task in env_task_set:
+            print(env_task['task_goal'][0])
+
+        # # debug 3: 1 predicate, multiple rooms
+        # env_task_set0 = copy.deepcopy(env_task_set)
+        # env_task_set = []
+        # for env_task in env_task_set0:
+        #   if env_task['task_name'] == 'setup_table':
+        #     single_goal = [x for x, y in env_task['task_goal'][0].items() if y > 0 and x.split('_')[1] == 'plate']  
+        #     if len(single_goal) == 1:
+        #       env_task_new = copy.deepcopy(env_task)
+        #       env_task_new['task_goal'] = {0: {single_goal[0]: 1}, 1: {single_goal[0]: 1}}
+        #       env_task_set.append(env_task_new)
+        # print('# env_task for debug:', len(env_task_set))
     else:
         if args.task_set != 'full':
             env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]

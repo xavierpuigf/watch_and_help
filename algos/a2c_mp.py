@@ -87,7 +87,7 @@ class A2C:
             # Add into memory
             for mem in rollout_memory[0]:
                 self.memory_all.append(*mem)
-            self.memory_all.append(None, None, None, 0, 0)
+            self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0)
 
         return rewards, info_rollout
 
@@ -222,7 +222,7 @@ class A2C:
                 nb_replays = 1
                 for replay_id in range(nb_replays):
                     if self.args.balanced_sample:
-                        trajs = self.memory_all.sample_batch_balanced(
+                        trajs = self.memory_all.sample_batch_balanced_multitask(
                             self.args.batch_size,
                             self.args.neg_ratio,
                             maxlen=self.args.max_episode_length,

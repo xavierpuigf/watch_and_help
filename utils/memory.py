@@ -20,6 +20,7 @@ class MemoryMask():
         self.c_reward = [0]
         self.episode_counts = 0
         random.seed(seed)
+        self.goal_types = []
 
 
     def reset(self):
@@ -29,7 +30,9 @@ class MemoryMask():
         self.position = 0
         self.max_reward = [-10]
         self.c_reward = [0]
+        self.goal = [None]
         self.episode_counts = 0
+        self.goal_types = []
 
 
     def save(self, path):
@@ -48,8 +51,15 @@ class MemoryMask():
                 self.append(*tran)
 
 
-    def append(self, state, policy, action, reward, mask):
+    def append(self, goal_spec, state, policy, action, reward, mask):
         """add new transition"""
+        if isinstance(goal_spec, dict): 
+          goal = list(goal_spec.keys())[0].split('_')[1]
+        else:
+          goal = goal_spec
+        self.goal[self.position] = goal
+        if goal not in self.goal_types:
+          self.goal_types.append(goal)
         self.memory[self.position].append(Transition(state, policy, action, reward, mask))
         if reward > self.max_reward[self.position]:
           self.max_reward[self.position] = reward
@@ -67,6 +77,7 @@ class MemoryMask():
           self.memory.append([])
           self.max_reward.append(-10)
           self.c_reward.append(0)
+          self.goal.append(None)
 
 
     def sample(self, maxlen=0):
@@ -155,6 +166,45 @@ class MemoryMask():
 
         batch = [self.sample_pos(maxlen=maxlen) for _ in range(pos_batch_size)] \
               + [self.sample_neg(maxlen=maxlen) for _ in range(neg_batch_size)]
+
+        return list(map(list, zip(*batch)))
+
+    def sample_batch_balanced_multitask(self, batch_size, neg_ratio, maxlen = 0, cutoff_positive=0.):
+        """TODO: currently assume that batch size is large enough to contain all goals in a single batch
+        also assume that number of goal types will not change after removing old episodes
+        """
+        batch_size_per_goal = int(batch_size // len(self.goal_types))
+        batch = []
+        N = 0
+        goal_types = list(self.goal_types)
+        random.shuffle(goal_types)
+        for goal_id, goal_type in enumerate(goal_types):
+          N_pos, N_neg = 0, 0
+          if goal_id == len(goal_types) - 1:
+            N = batch_size - goal_id * batch_size_per_goal
+          else:
+            N = batch_size_per_goal
+          self.list_pos, self.list_neg = [], []
+          for e in range(self.episode_counts):
+            # if self.max_reward[e] > 0:
+            if self.goal[e] != goal_type:
+              continue
+            if self.c_reward[e] > cutoff_positive:
+              N_pos += 1
+              self.list_pos.append(e)
+            elif len(self.memory[e]) > 0:
+              N_neg += 1
+              self.list_neg.append(e)
+          print('goal type:', goal_type)
+          print("pos:", N_pos)
+          print("neg:", N_neg)
+          if N_pos * N_neg == 0:
+            batch += [self.sample(maxlen=maxlen) for _ in range(N)]
+          else:
+            neg_batch_size = int(N * neg_ratio)
+            pos_batch_size = N - neg_batch_size
+            batch += ([self.sample_pos(maxlen=maxlen) for _ in range(pos_batch_size)] \
+                    + [self.sample_neg(maxlen=maxlen) for _ in range(neg_batch_size)])
 
         return list(map(list, zip(*batch)))
 
