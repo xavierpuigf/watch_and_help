@@ -27,6 +27,7 @@ CUDA_VISIBLE_DEVICES=2 python test_a2c.py \
 --balanced_sample --neg_ratio 0.5 --batch_size 16 \
 --obs_type full --gamma 0.95 --lr 1e-4 \
 --task_type find  --task-set setup_table \
---nb_episodes 100000 --save-interval 200 --simulator-type unity \
+--nb_episodes 1000 --max-exp-episodes 1000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 1 \
---num-processes 1 --base-port 8180 --logging
+--num-processes 1 --base-port 8080 --logging \
+--c_loss_close 0 --c_loss_goal 1.0 --debug
