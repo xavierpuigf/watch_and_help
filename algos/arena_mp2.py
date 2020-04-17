@@ -182,7 +182,7 @@ class ArenaMP(object):
                     action = agent_info[agent_id]['actions']
                     rewards = reward
 
-                    rollout_agent[agent_id].append((state, policy, action, rewards, 1))
+                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, rewards, 1))
 
 
         t_steps = time.time() - t2
@@ -216,7 +216,7 @@ class ArenaMP(object):
                     policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
                     action = agent_info[agent_id]['actions']
                     rewards = reward
-                    rollout_agent[agent_id].append((state, policy, action, 0, 0))
+                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, 0, 0))
 
         return c_r_all, info_rollout, rollout_agent
 
