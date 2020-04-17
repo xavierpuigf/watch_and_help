@@ -52,18 +52,19 @@ class A2C:
         print('closing')
         del(self.arenas[0])
 
-    def rollout(self, logging=False, record=False):
+    def rollout(self, logging_value=0, record=False):
         """ Reward for an episode, get the cum reward """
 
         # Reset hidden state of agents
         # TODO: uncomment
 
         if self.args.num_processes == 1:
-            info_envs = [self.arenas[0].rollout(logging, record)]
+            info_envs = [self.arenas[0].rollout(logging_value, record)]
         else:
             async_routs = []
-            for arena in self.arenas:
-                async_routs.append(arena.rollout_reset.remote(logging, record))
+            for arena_id, arena in enumerate(self.arenas):
+                curr_log = 0 if arena_id > 0 else logging_value
+                async_routs.append(arena.rollout_reset.remote(curr_log, record))
 
             info_envs = []
             for async_rout in async_routs:
@@ -117,7 +118,12 @@ class A2C:
                 # TODO: Uncomment
                 ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
 
-            c_r_all, info_rollout = self.rollout(logging=(episode_id % self.args.log_interval == 0))
+            logging_value = 0
+            if episode_id % self.args.log_interval == 0:
+                logging_value = 1
+                if episode_id % self.args.long_log == 0:
+                    logging_value = 2
+            c_r_all, info_rollout = self.rollout(logging_value=logging_value)
 
 
 
@@ -146,8 +152,7 @@ class A2C:
                 fps, np.mean(obs_space), np.mean(action_space)))
 
             if episode_id % self.args.log_interval == 0:
-                script_done = info_rollout[0]['script']
-                script_tried = info_rollout[0]['action_tried']
+
 
                 # Auxiliary task
                 pred_close = torch.cat(info_rollout[0]['pred_close'], 0)
@@ -156,9 +161,11 @@ class A2C:
                 gt_goal = torch.cat(info_rollout[0]['gt_goal'], 0)
                 mask_nodes = torch.cat(info_rollout[0]['mask_nodes'], 0)
 
-                if episode_id % max(self.args.log_interval, 10) == 0:
+                if episode_id % self.args.long_log == 0:
                     print("Target:")
                     print(info_rollout[0]['target'][1])
+                    script_done = info_rollout[0]['script']
+                    script_tried = info_rollout[0]['action_tried']
                     for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):
                         info_step = ''
                         for relation in ['CLOSE', 'INSIDE', 'ON']:
@@ -180,17 +187,21 @@ class A2C:
                             print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
 
                     if self.logger:
+
                         info_episode = {
+                            'episode': episode_id,
                             'success': successes[0],
                             'reward': episode_rewards[0],
-                            'script': info_rollout[0]['script'],
+                            'script_tried': info_rollout[0]['action_tried'],
+                            'script_done': info_rollout[0]['script'],
                             'target': info_rollout[0]['target'],
                             'info_step': info_rollout[0]['step_info'],
+                            'pred_close': info_rollout[0]['pred_close'],
+                            'graph': info_rollout[0]['graph'],
+                            'visible_ids': info_rollout[0]['visible_ids'],
+                            'action_ids': info_rollout[0]['action_space_ids'],
                         }
-                        info_ep.append(info_episode)
-                        file_name_log = '{}/{}/log.json'.format(self.logger.save_dir, self.logger.experiment_name)
-                        with open(file_name_log, 'w+') as f:
-                            f.write(json.dumps(info_ep, indent=4))
+                        self.logger.log_info(info_episode)
 
 
             if self.logger:

@@ -84,7 +84,7 @@ class ArenaMP(object):
             self.set_weigths(prev_eps, prev_weights)
             return self.rollout(logging, record)
 
-    def rollout(self, logging=False, record=False):
+    def rollout(self, logging=0, record=False):
         t1 = time.time()
         self.reset()
         t2 = time.time()
@@ -98,15 +98,21 @@ class ArenaMP(object):
         entropy_action, entropy_object = [], []
         observation_space, action_space = [], []
 
-        if logging:
-            info_rollout['step_info'] = []
-            info_rollout['script'] = []
-            info_rollout['action_tried'] = []
+
+        if logging > 0:
             info_rollout['pred_goal'] = []
             info_rollout['pred_close'] = []
             info_rollout['gt_goal'] = []
             info_rollout['gt_close'] = []
             info_rollout['mask_nodes'] = []
+
+        if logging > 1:
+            info_rollout['step_info'] = []
+            info_rollout['script'] = []
+            info_rollout['graph'] = []
+            info_rollout['action_space_ids'] = []
+            info_rollout['visible_ids'] = []
+            info_rollout['action_tried'] = []
 
         rollout_agent = {}
 
@@ -140,14 +146,20 @@ class ArenaMP(object):
                                 edge['to_id'],
                                 edge['relation_type']) for edge in curr_graph['edges'] if edge['from_id'] == 1 and edge['to_id'] in observed_nodes]
 
-                info_rollout['step_info'].append((node_id, edges_char))
-                info_rollout['script'].append(agent_actions[0])
-                info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
-                info_rollout['pred_close'].append(agent_info[0]['pred_close'])
-                info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
-                info_rollout['gt_close'].append(agent_info[0]['gt_close'])
-                info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
-                info_rollout['action_tried'].append(agent_info[0]['action_tried'])
+                if logging > 0:
+                    info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
+                    info_rollout['pred_close'].append(agent_info[0]['pred_close'])
+                    info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
+                    info_rollout['gt_close'].append(agent_info[0]['gt_close'])
+                    info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
+
+                if logging > 1:
+                    info_rollout['step_info'].append((node_id, edges_char))
+                    info_rollout['script'].append(agent_actions[0])
+                    info_rollout['action_tried'].append(agent_info[0]['action_tried'])
+                    info_rollout['graph'].append(curr_graph)
+                    info_rollout['action_space_ids'].append(agent_info[0]['action_space_ids'])
+                    info_rollout['visible_ids'].append(agent_info[0]['visible_ids'])
 
             nb_steps += 1
             for agent_index in agent_info.keys():

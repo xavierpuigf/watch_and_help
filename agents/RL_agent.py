@@ -74,6 +74,7 @@ class RL_agent:
                                                      action_space_ids=action_space_ids,
                                                      character_id=self.agent_id)
         visible_objects = info[-1]
+        action_space_ids = info[-2]
 
         target_obj_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
         target_loc_class = [self.graph_helper.object_dict.get_id('no_obj')] * 6
@@ -131,6 +132,7 @@ class RL_agent:
         info_model['num_objects_action'] = inputs['mask_action_node'].sum(-1)
 
         info_model['visible_ids'] = [node[1] for node in visible_objects]
+        info_model['action_space_ids'] = action_space_ids
 
         aux_out = self.actor_critic.auxiliary_pred(out_dict)
         info_model['pred_goal'] = aux_out['pred_goal']

@@ -307,7 +307,7 @@ class GraphHelper():
         if self.simulaor_type == 'unity':
             output['object_coords'] = obj_coords
         #print(node_ids[:len(nodes)])
-        return output, (graph_viz, labeldict, visible_nodes)
+        return output, (graph_viz, labeldict, action_space_ids, visible_nodes)
 
 def can_perform_action(action, o1, o1_id, agent_id, graph, teleport=True):
     if action == 'no_action':

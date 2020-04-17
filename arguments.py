@@ -75,6 +75,11 @@ def get_args():
         default=20,
         help='number of bptt steps (default: 20)')
 
+    parser.add_argument(
+        '--long-log',
+        type=int,
+        default=10,
+        help='log interval, one log per n updates (default: 10)')
 
     parser.add_argument(
         '--log-interval',
