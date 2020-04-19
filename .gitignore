@@ -1,4 +1,5 @@
 .DS_Store
+rl/*
 logs_exec/*
 trained_models/*
 *.png

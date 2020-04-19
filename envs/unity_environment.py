@@ -172,9 +172,12 @@ class UnityEnvironment(BaseEnvironment):
 
 
         reward, done, info = self.reward()
-        obs = self.get_observations()
+
         graph = self.get_graph()
         self.python_graph_reset(graph)
+        obs = self.get_observations()
+        # if 'sit' in script_list[0]:
+        #     pdb.set_trace()
         self.steps += 1
         info['finished'] = done
         info['graph'] = graph

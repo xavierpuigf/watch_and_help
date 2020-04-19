@@ -1,4 +1,7 @@
 import sys
+import os
+from ray.util import ActorPool
+
 sys.path.append('../virtualhome/')
 sys.path.append('../vh_mdp/')
 sys.path.append('../virtualhome/simulation/')
@@ -6,6 +9,7 @@ import pdb
 import pickle
 import json
 import random
+import ray
 import numpy as np
 from pathlib import Path
 
@@ -16,8 +20,26 @@ from algos.arena_mp2 import ArenaMP
 from utils import utils_goals
 
 
+class MCTSArena(ArenaMP):
+
+    def run_and_save(self, episode_id, record_dir):
+        self.reset(episode_id)
+        success, steps, saved_info = self.run()
+
+        Path(record_dir).mkdir(parents=True, exist_ok=True)
+        if len(saved_info['obs']) > 0:
+            pickle.dump(saved_info, open(record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
+        else:
+            with open(record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
+                f.write(json.dumps(saved_info, indent=4))
+
+        is_finished = 1 if success else 0
+        return (episode_id, is_finished, steps)
+
 if __name__ == '__main__':
     args = get_args()
+    # ray.init()
+    # MCTSArena = ray.remote(MCTSArena)
     # args.task = 'setup_table'
     # args.num_per_apartment = '50'
     # args.mode = 'full'
@@ -27,6 +49,7 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
     # args.record_dir = 'record/Alice_test_set_30'
+    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.18.x86_64'
     env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
     args.record_dir = 'record_scratch/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
@@ -35,28 +58,9 @@ if __name__ == '__main__':
                     'no_graphics': True
     }
 
-    # env_task_set = []
-    # for task_id, problem_setup in enumerate(data):
-    #     env_id = problem_setup['apartment'] - 1
-    #     task_name = problem_setup['task_name']
-    #     init_graph = problem_setup['init_graph']
-    #     goal = problem_setup['goal'][task_name]
-
-    #     goals = utils_goals.convert_goal_spec(task_name, goal, init_graph,
-    #                                           exclude=['cutleryknife'])
-    #     print('env_id:', env_id)
-    #     print('task_name:', task_name)
-    #     print('goals:', goals)
-
-    #     task_goal = {}
-    #     for i in range(2):
-    #         task_goal[i] = goals
-
-    #     env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph,
-    #                          'task_goal': task_goal,
-    #                          'level': 0, 'init_rooms': [0, 0]})
-
+    id_run = 5
     episode_ids = list(range(len(env_task_set)))
+    random.seed(id_run)
     random.shuffle(episode_ids)
     S = [0] * len(episode_ids)
     L = [200] * len(episode_ids)
@@ -91,14 +95,31 @@ if __name__ == '__main__':
     # args_agent2.update({'recursive': True})
     agents = [lambda x, y: MCTS_agent(**args_agent1)]
 
-    arena = ArenaMP(0, env_fn, agents)
+    # num_proc = 1
+    # arenas = [MCTSArena.remote(it, env_fn, agents) for it in range(num_proc)]
+    # [ray.get(arena.reset.remote(0)) for arena in arenas]
+    # pool = ActorPool(arenas)
+    # res = pool.map(lambda actor, index: actor.run_and_save.remote(index, args.record_dir), [0,1])
+    # # pool.join()
+    # pdb.set_trace()
+    #
+    # ray.shutdown()
+
+
+    arena = ArenaMP(id_run, env_fn, agents)
 
     for iter_id in range(1):
-        if iter_id > 0:
-            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
+        #if iter_id > 0:
+
         cnt = 0
         steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
+            if episode_id not in [1424]:
+                continue
+            if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
+                test_results = {}
+            else:
+                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
             if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
             print('episode:', episode_id)
             # try:
@@ -114,10 +135,7 @@ if __name__ == '__main__':
                 else:
                     steps_list.append(steps)
                 is_finished = 1 if success else 0
-                S[episode_id] = is_finished
-                L[episode_id] = steps
-                test_results[episode_id] = {'S': is_finished, 
-                                            'L': steps}
+
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
                 if len(saved_info['obs']) > 0:
                     pickle.dump(saved_info, open(args.record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
@@ -126,6 +144,13 @@ if __name__ == '__main__':
                         f.write(json.dumps(saved_info, indent=4))
             else:
                 pass
+
+            S[episode_id] = is_finished
+            L[episode_id] = steps
+            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
+            test_results[episode_id] = {'S': is_finished,
+                                        'L': steps}
+            pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
 
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)

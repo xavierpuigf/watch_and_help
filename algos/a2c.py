@@ -36,6 +36,7 @@ class A2C:
         # # TODO: comment
         info_envs = self.arenas[0].rollout(logging, record)
         rewards = []
+        rewards = []
         process_data = info_envs
 
         rewards.append(process_data[0])

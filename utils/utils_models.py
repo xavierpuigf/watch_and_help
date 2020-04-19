@@ -8,6 +8,7 @@ import json
 import pdb
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from .utils_plot import Plotter
 plt.switch_backend('agg')
 
 
@@ -140,10 +141,14 @@ class Logger():
         self.stats = AggregatedStats()
 
         save_path = os.path.join(self.save_dir, self.experiment_name)
+        self.plot = Plotter()
+        self.info_episodes = []
         try:
             os.makedirs(save_path)
         except OSError:
             pass
+
+        self.file_name_log = '{}/{}/log.json'.format(self.save_dir, self.experiment_name)
         with open('{}/{}/args.txt'.format(self.save_dir, self.experiment_name), 'w+') as f:
             dict_args = vars(args)
             f.writelines(json.dumps(dict_args, indent=4))
@@ -182,18 +187,6 @@ class Logger():
             if self.args.tensorboard_logdir is not None:
                 self.set_tensorboard()
 
-        # print(
-        #     "Updates {}, num timesteps {}, FPS {} "
-        #     "\n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n"
-        #         .format(j, total_num_steps,
-        #                 int(total_num_steps / (end - start)),
-        #                 len(episode_rewards), np.mean(episode_rewards),
-        #                 np.median(episode_rewards), np.min(episode_rewards),
-        #                 np.max(episode_rewards), dist_entropy, value_loss,
-        #                 action_loss))
-        # self.stats.add_list(info_episodes)
-        # self.stats.print_hist(self.tensorboard_writer)
-
         if self.tensorboard_writer is not None:
             self.tensorboard_writer.add_scalar("aux_info/accuracy_goal", np.max(info_aux['accuracy_goal']), total_num_steps)
             self.tensorboard_writer.add_scalar("aux_info/precision_close", np.mean(info_aux['precision_close']), total_num_steps)
@@ -221,6 +214,15 @@ class Logger():
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
             self.tensorboard_writer.add_scalar("info/success", np.mean(successes), total_num_steps)
             self.tensorboard_writer.add_scalar("info/fps", fps, total_num_steps)
+
+    def log_info(self, info_ep):
+        info_ep = {key: val for key, val in info_ep.items() if key not in ['pred_close']}
+        self.info_episodes.append(info_ep)
+        self.plot.add_episode(info_ep)
+        with open(self.file_name_log, 'w+') as f:
+            f.write(json.dumps(info_ep, indent=4))
+        print("Dumped in {}".format(self.file_name_log))
+        self.plot.render()
 
     def save_model(self, j, actor_critic):
         save_path = os.path.join(self.save_dir, self.experiment_name)

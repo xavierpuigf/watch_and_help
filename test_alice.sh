@@ -14,7 +14,6 @@
 
 python test_alice.py --max-episode-length 250 --num-per-apartment 50 --mode check
 
-
 # cd interface
 # python main_bob.py --task read_book --num-per-apartment 1 --mode full --use-editor
 # cd ..
