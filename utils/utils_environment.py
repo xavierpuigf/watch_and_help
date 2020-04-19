@@ -166,7 +166,7 @@ def check_progress(state, goal_spec):
                     satisfied[key].append(predicate)
                     unsatisfied[key] -= 1
             elif elements[0] == 'sit':
-                if edge['relation_type'].lower().startswith('on') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
+                if edge['relation_type'].lower().startswith('sit') and edge['to_id'] == int(elements[2]) and edge['from_id'] == int(elements[1]):
                     predicate = '{}_{}_{}'.format(elements[0], edge['to_id'], elements[2])
                     satisfied[key].append(predicate)
                     unsatisfied[key] -= 1

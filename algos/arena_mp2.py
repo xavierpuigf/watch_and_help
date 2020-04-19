@@ -17,6 +17,7 @@ class ArenaMP(object):
 
         self.num_agents = len(agent_fn)
 
+        print("Init Env")
         self.env = environment_fn(arena_id)
         for agent_type_fn in agent_fn:
             self.agents.append(agent_type_fn(arena_id, self.env))

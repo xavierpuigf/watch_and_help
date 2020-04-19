@@ -323,9 +323,10 @@ def clean_graph(state, goal_spec, last_opened):
     return new_graph
 
 
-def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, last_action, opponent_subgoal=None):
+def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, last_action, opponent_subgoal=None, verbose=True):
     init_state = env.state
-    print('get plan, ')
+    if verbose:
+        print('get plan, ')
     # ipdb.set_trace()
     # if mcts.last_opened is not None:
     #     ipdb.set_trace()
@@ -395,7 +396,7 @@ class MCTS_agent:
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, recursive=False,
                  num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
         self.agent_type = 'MCTS'
-
+        self.verbose = False
         self.recursive = recursive
 
         #self.env = unity_env.env

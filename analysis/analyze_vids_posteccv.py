@@ -129,54 +129,54 @@ if __name__ == '__main__':
                 task_name_to_predicates[task_name].append(goal_hash_string)
             else:
                 #continue
-
+                print(json_file)
                #try:
-               failed_ids.append(content['task_id'])
-               no_errors = True
-               actions = content['action']['0']
-               if None in actions:
-                   errors['null'] += 1
-                   no_errors = False
+                failed_ids.append(content['task_id'])
+                no_errors = True
+                actions = content['action']['0']
+                if None in actions:
+                    errors['null'] += 1
+                    no_errors = False
 
-               if detect_bad_placing(actions):
-                   errors['bad_placing'] += 1
-                   no_errors = False
+                if detect_bad_placing(actions):
+                    errors['bad_placing'] += 1
+                    no_errors = False
 
-               obj_walk = detect_bad_walk(actions)
-               if obj_walk is not None:
-                   obj_walk_curr = obj_walk.split('<')[1].split('>')[0]
-                   obj_id = int(obj_walk.split('(')[1].split(')')[0])
-                   if 'GRABBABLE' in id2node[obj_id]['properties']:
-                       edge = [edge for edge in content['init_unity_graph']['edges']
+                obj_walk = detect_bad_walk(actions)
+                if obj_walk is not None:
+                    obj_walk_curr = obj_walk.split('<')[1].split('>')[0]
+                    obj_id = int(obj_walk.split('(')[1].split(')')[0])
+                    if 'GRABBABLE' in id2node[obj_id]['properties']:
+                        edge = [edge for edge in content['init_unity_graph']['edges']
                                if edge['from_id'] == obj_id and edge['to_id'] not in rooms]
 
-                       if len(edge) == 0:
-                           pass
-                           #print(id2node[obj_id]['class_name'], content['env_id'])
-                       else:
-                           dest = id2node[edge[0]['to_id']]['class_name']
-                           destinations.append(dest + str(content['env_id']))
+                        if len(edge) == 0:
+                            pass
+                            #print(id2node[obj_id]['class_name'], content['env_id'])
+                        else:
+                            dest = id2node[edge[0]['to_id']]['class_name']
+                            destinations.append(dest + str(content['env_id']))
 
-                           print(dest + str(content['env_id']), obj_walk_curr)
+                            print(dest + str(content['env_id']), obj_walk_curr)
                            #pdb.set_trace()
 
-                   # if content['env_id'] == 6:
-                   #     # if obj_walk_curr == 'kitchencabinets':
-                   #     #     pdb.set_trace()
-                   obj_and_env = 'WALK_' + obj_walk_curr + '_' + str(content['env_id'])
-                   #if 'kitchencabinets' in obj_walk_curr:
-                   print(obj_walk_curr, json_file, content['action']['0'][-1], content['task_id'])
-                   dict_failures.append(obj_and_env)
+                    # if content['env_id'] == 6:
+                    #     # if obj_walk_curr == 'kitchencabinets':
+                    #     #     pdb.set_trace()
+                    obj_and_env = 'WALK_' + obj_walk_curr + '_' + str(content['env_id'])
+                    #if 'kitchencabinets' in obj_walk_curr:
+                    print(obj_walk_curr, json_file, content['action']['0'][-1], content['task_id'])
+                    dict_failures.append(obj_and_env)
 
-                   errors['bad_walk'] += 1
-                   no_errors = False
+                    errors['bad_walk'] += 1
+                    no_errors = False
 
-               if no_errors:
-                   add_to_stats(dict_apartments, content)
-                   # pdb.set_trace()
-                   errors['other'] += 1
-               # except:
-               #     pdb.set_trace()
+                if no_errors:
+                    add_to_stats(dict_apartments, content)
+                    # pdb.set_trace()
+                    errors['other'] += 1
+                # except:
+                #     pdb.set_trace()
 
         print('\nStats')
         print(errors)
