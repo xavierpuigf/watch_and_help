@@ -52,7 +52,8 @@ class RL_agent:
 
     def init_hidden_state(self):
         h_state = torch.zeros(1, self.hidden_size)
-        return h_state
+        c_state = torch.zeros(1, self.hidden_size)
+        return (h_state, c_state)
 
     def reset(self, graph):
 
@@ -66,9 +67,9 @@ class RL_agent:
     def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None):
         rnn_hxs = self.hidden_state
 
-        masks = torch.ones(rnn_hxs.shape).type(rnn_hxs.type())
+        masks = torch.ones(rnn_hxs[0].shape).type(rnn_hxs[0].type())
         if torch.cuda.is_available():
-            rnn_hxs = rnn_hxs.cuda()
+            rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
             masks = masks.cuda()
         inputs, info = self.graph_helper.build_graph(observation,
                                                      action_space_ids=action_space_ids,

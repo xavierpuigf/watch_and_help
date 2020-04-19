@@ -4,6 +4,97 @@ import pdb
 from utils.utils_models import init
 import torch
 
+# class NNBase(nn.Module):
+#     def __init__(self, recurrent, recurrent_input_size, hidden_size):
+#         super(NNBase, self).__init__()
+
+#         self._hidden_size = hidden_size
+#         self._recurrent = recurrent
+
+#         if recurrent:
+#             self.gru = nn.GRU(recurrent_input_size, hidden_size)
+#             for name, param in self.gru.named_parameters():
+#                 if 'bias' in name:
+#                     nn.init.constant_(param, 0)
+#                 elif 'weight' in name:
+#                     nn.init.orthogonal_(param)
+
+#     @property
+#     def is_recurrent(self):
+#         return self._recurrent
+
+#     @property
+#     def recurrent_hidden_state_size(self):
+#         if self._recurrent:
+#             return self._hidden_size
+#         return 1
+
+#     @property
+#     def output_size(self):
+#         return self._hidden_size
+
+#     def _forward_gru(self, x, hxs, masks):
+#         if x.size(0) == hxs.size(0):
+
+#             assert(x.ndim == 2 and hxs.ndim == 2)
+#             x, hxs = self.gru(x.unsqueeze(0), (hxs * masks).unsqueeze(0))
+#             x = x.squeeze(0)
+#             hxs = hxs.squeeze(0)
+#         else:
+#             raise Exception
+#             # pdb.set_trace()
+#             # # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
+#             # N = hxs.size(0)
+#             # T = int(x.size(0) / N)
+#             #
+#             # # unflatten
+#             # x = x.view(T, N, x.size(1))
+#             #
+#             # # Same deal with masks
+#             # masks = masks.view(T, N)
+#             #
+#             # # Let's figure out which steps in the sequence have a zero for any agent
+#             # # We will always assume t=0 has a zero in it as that makes the logic cleaner
+#             # has_zeros = ((masks[1:] == 0.0) \
+#             #              .any(dim=-1)
+#             #              .nonzero()
+#             #              .squeeze()
+#             #              .cpu())
+#             #
+#             # # +1 to correct the masks[1:]
+#             # if has_zeros.dim() == 0:
+#             #     # Deal with scalar
+#             #     has_zeros = [has_zeros.item() + 1]
+#             # else:
+#             #     has_zeros = (has_zeros + 1).numpy().tolist()
+#             #
+#             # # add t=0 and t=T to the list
+#             # has_zeros = [0] + has_zeros + [T]
+#             #
+#             # hxs = hxs.unsqueeze(0)
+#             # outputs = []
+#             # for i in range(len(has_zeros) - 1):
+#             #     # We can now process steps that don't have any zeros in masks together!
+#             #     # This is much faster
+#             #     start_idx = has_zeros[i]
+#             #     end_idx = has_zeros[i + 1]
+#             #
+#             #     rnn_scores, hxs = self.gru(
+#             #         x[start_idx:end_idx],
+#             #         hxs * masks[start_idx].view(1, -1, 1))
+#             #
+#             #     outputs.append(rnn_scores)
+#             #
+#             # # assert len(outputs) == T
+#             # # x is a (T, N, -1) tensor
+#             # x = torch.cat(outputs, dim=0)
+#             # # flatten
+#             # x = x.view(T * N, -1)
+#             # hxs = hxs.squeeze(0)
+
+#         return x, hxs
+
+
 class NNBase(nn.Module):
     def __init__(self, recurrent, recurrent_input_size, hidden_size):
         super(NNBase, self).__init__()
@@ -12,8 +103,8 @@ class NNBase(nn.Module):
         self._recurrent = recurrent
 
         if recurrent:
-            self.gru = nn.GRU(recurrent_input_size, hidden_size)
-            for name, param in self.gru.named_parameters():
+            self.lstm = nn.LSTM(recurrent_input_size, hidden_size)
+            for name, param in self.lstm.named_parameters():
                 if 'bias' in name:
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
@@ -33,66 +124,18 @@ class NNBase(nn.Module):
     def output_size(self):
         return self._hidden_size
 
-    def _forward_gru(self, x, hxs, masks):
-        if x.size(0) == hxs.size(0):
+    def _forward_lstm(self, x, hidden, masks):
+        if x.size(0) == hidden[0].size(0):
 
-            assert(x.ndim == 2 and hxs.ndim == 2)
-            x, hxs = self.gru(x.unsqueeze(0), (hxs * masks).unsqueeze(0))
+            assert(x.ndim == 2 and hidden[0].ndim == 2)
+            x, (h, c) = self.lstm(x.unsqueeze(0), ((hidden[0] * masks).unsqueeze(0), (hidden[1] * masks).unsqueeze(0)))
             x = x.squeeze(0)
-            hxs = hxs.squeeze(0)
+            h = h.squeeze(0)
+            c = c.squeeze(0)
         else:
             raise Exception
-            # pdb.set_trace()
-            # # x is a (T, N, -1) tensor that has been flatten to (T * N, -1)
-            # N = hxs.size(0)
-            # T = int(x.size(0) / N)
-            #
-            # # unflatten
-            # x = x.view(T, N, x.size(1))
-            #
-            # # Same deal with masks
-            # masks = masks.view(T, N)
-            #
-            # # Let's figure out which steps in the sequence have a zero for any agent
-            # # We will always assume t=0 has a zero in it as that makes the logic cleaner
-            # has_zeros = ((masks[1:] == 0.0) \
-            #              .any(dim=-1)
-            #              .nonzero()
-            #              .squeeze()
-            #              .cpu())
-            #
-            # # +1 to correct the masks[1:]
-            # if has_zeros.dim() == 0:
-            #     # Deal with scalar
-            #     has_zeros = [has_zeros.item() + 1]
-            # else:
-            #     has_zeros = (has_zeros + 1).numpy().tolist()
-            #
-            # # add t=0 and t=T to the list
-            # has_zeros = [0] + has_zeros + [T]
-            #
-            # hxs = hxs.unsqueeze(0)
-            # outputs = []
-            # for i in range(len(has_zeros) - 1):
-            #     # We can now process steps that don't have any zeros in masks together!
-            #     # This is much faster
-            #     start_idx = has_zeros[i]
-            #     end_idx = has_zeros[i + 1]
-            #
-            #     rnn_scores, hxs = self.gru(
-            #         x[start_idx:end_idx],
-            #         hxs * masks[start_idx].view(1, -1, 1))
-            #
-            #     outputs.append(rnn_scores)
-            #
-            # # assert len(outputs) == T
-            # # x is a (T, N, -1) tensor
-            # x = torch.cat(outputs, dim=0)
-            # # flatten
-            # x = x.view(T * N, -1)
-            # hxs = hxs.squeeze(0)
 
-        return x, hxs
+        return x, (h, c)
 
 
 class GoalEncoder(nn.Module):
@@ -124,9 +167,101 @@ class GoalEncoder(nn.Module):
         norm_mask = (mask_goal_pred/num_preds.unsqueeze(-1)).unsqueeze(-1)
 
         average_pred = (object_location * norm_mask).sum(1)
+
         if torch.isnan(average_pred).any():
             pdb.set_trace()
         return average_pred
+
+    # def forward(self, object_class_name, loc_class_name, mask_goal_pred):
+    #     obj_embedding = self.object_embedding(object_class_name)
+    #     loc_embedding = self.object_embedding(loc_class_name)
+    #     obj_loc = torch.cat([obj_embedding, loc_embedding], axis=2)
+    #     object_location = self.combine_obj_loc(obj_loc)
+        
+    #     sum_pred = (object_location * mask_goal_pred).sum(1)
+
+    #     if torch.isnan(sum_pred).any():
+    #         pdb.set_trace()
+    #     return sum_pred
+
+
+# class GoalAttentionModel(NNBase):
+#     def __init__(self, recurrent=False, hidden_size=128, num_classes=100, node_encoder=None, context_type='avg'):
+#         super(GoalAttentionModel, self).__init__(recurrent, hidden_size, hidden_size)
+
+#         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+#                                constant_(x, 0), nn.init.calculate_gain('relu'))
+
+
+#         self.main = node_encoder
+#         self.context_size = hidden_size
+#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+#         self.object_context_combine = self.mlp2l(2 * hidden_size, hidden_size)
+
+#         self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size, obj_class_encoder=self.main.object_class_encoding)
+#         # self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
+#         self.context_type = context_type
+
+#         self.fc_att_action = self.mlp2l(hidden_size * 2, hidden_size)
+#         self.fc_att_object = self.mlp2l(hidden_size * 2, hidden_size)
+#         self.train()
+
+#     def mlp2l(self, dim_in, dim_out):
+#         return nn.Sequential(nn.Linear(dim_in, dim_out), nn.ReLU(), nn.Linear(dim_out, dim_out))
+
+#     def forward(self, inputs, rnn_hxs, masks):
+#         # Use transformer to get feats for every object
+#         mask_visible = inputs['mask_object']
+
+#         features_obj = self.main(inputs)
+#         #pdb.set_trace()
+
+#         # 1 x ndim. Avg pool the features for the context vec
+#         mask_visible = mask_visible.unsqueeze(-1)
+
+#         # Mean pool of transformer
+#         if self.context_type == 'avg':
+#             context_vec = (features_obj * mask_visible).sum(1) / (1e-9 + mask_visible.sum(1))
+#         else:
+#             context_vec = features_obj[:, 0, :]
+
+
+#         # Goal embedding
+#         obj_class_name = inputs['target_obj_class']  # [:, 0].long()
+#         loc_class_name = inputs['target_loc_class']  # [:, 0].long()
+#         mask_goal = inputs['mask_goal_pred']
+
+#         goal_encoding = self.goal_encoder(obj_class_name, loc_class_name, mask_goal)
+
+#         # goal_encoding_obj = self.goal_encoder(obj_class_name).squeeze(1)
+#         # goal_encoding_loc = self.goal_encoder(loc_class_name).squeeze(1)
+#         # goal_encoding = torch.cat([goal_encoding_obj, goal_encoding_loc], dim=-1)
+
+
+#         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
+#         goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
+
+#         # Recurrent context
+#         if self.is_recurrent:
+#             r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
+#         else:
+#             r_context_vec = context_vec
+
+#         # h' = GA . h [bs, h]
+#         context_goal = goal_mask_action * r_context_vec
+
+#         # Combine object representations with global representations
+#         r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
+#         r_object_vec_comb = self.object_context_combine(r_object_vec)
+
+#         # Sg' = GA . Sg [bs, N, h]
+#         object_goal = goal_mask_object[:, None, :] * r_object_vec_comb
+
+#         if torch.isnan(context_goal).any() or torch.isnan(object_goal).any():
+#             pdb.set_trace()
+
+#         return context_goal, object_goal, rnn_hxs
 
 
 class GoalAttentionModel(NNBase):
@@ -143,7 +278,7 @@ class GoalAttentionModel(NNBase):
 
         self.object_context_combine = self.mlp2l(2 * hidden_size, hidden_size)
 
-        self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size)
+        self.goal_encoder = GoalEncoder(num_classes, 2 * hidden_size)#, obj_class_encoder=self.main.object_class_encoding)
         # self.goal_encoder = nn.EmbeddingBag(num_classes, hidden_size, mode='sum')
         self.context_type = context_type
 
@@ -186,26 +321,23 @@ class GoalAttentionModel(NNBase):
         goal_mask_action = torch.sigmoid(self.fc_att_action(goal_encoding))
         goal_mask_object = torch.sigmoid(self.fc_att_object(goal_encoding))
 
+       # h' = GA . h [bs, h]
+        context_goal = goal_mask_action * context_vec
+
         # Recurrent context
         if self.is_recurrent:
-            r_context_vec, rnn_hxs = self._forward_gru(context_vec, rnn_hxs, masks)
+            r_context_vec, rnn_hxs = self._forward_lstm(context_goal, rnn_hxs, masks)
         else:
-            r_context_vec = context_vec
-
-        # h' = GA . h [bs, h]
-        context_goal = goal_mask_action * r_context_vec
+            r_context_vec = context_goal
 
         # Combine object representations with global representations
-        r_object_vec = torch.cat([features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
+        r_object_vec = torch.cat([goal_mask_object[:, None, :] * features_obj, r_context_vec.unsqueeze(1).repeat(1, features_obj.shape[1], 1)], 2)
         r_object_vec_comb = self.object_context_combine(r_object_vec)
 
-        # Sg' = GA . Sg [bs, N, h]
-        object_goal = goal_mask_object[:, None, :] * r_object_vec_comb
-
-        if torch.isnan(context_goal).any() or torch.isnan(object_goal).any():
+        if torch.isnan(r_context_vec).any() or torch.isnan(r_object_vec_comb).any():
             pdb.set_trace()
 
-        return context_goal, object_goal, rnn_hxs
+        return r_context_vec, r_object_vec_comb, rnn_hxs
 
 
 class GraphEncoder(nn.Module):

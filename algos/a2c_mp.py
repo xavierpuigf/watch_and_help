@@ -236,6 +236,7 @@ class A2C:
                         [], [], [], [], [], [], [], [], []
 
                     hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
+                    cx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
 
                     state_keys = trajs[0][0].state.keys()
 
@@ -258,7 +259,7 @@ class A2C:
                         reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
 
                         # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
-                        v, _, policy, hx, out_dict = self.actor_critic.act(inputs, hx, mask, action_indices=action)
+                        v, _, policy, (hx, cx), out_dict = self.actor_critic.act(inputs, (hx, cx), mask, action_indices=action)
                         auxiliary_out = self.actor_critic.auxiliary_pred((out_dict))
                         pred_goal, pred_close = auxiliary_out['pred_goal'], auxiliary_out['pred_close']
 
@@ -277,6 +278,7 @@ class A2C:
 
                         if (t + 1) % self.args.t_max == 0:  # maximum bptt length
                             hx = hx.detach()
+                            cx = cx.detach()
 
 
                     self._train(self.actor_critic,
