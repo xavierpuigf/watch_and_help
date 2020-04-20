@@ -302,8 +302,8 @@ class A2C:
                                 rewards,
                                 dones,
                                 masks,
-                                loss_goals,
                                 loss_closes,
+                                loss_goals,
                                 old_policies,
                                 verbose=1)
 
