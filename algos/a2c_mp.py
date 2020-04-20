@@ -117,6 +117,10 @@ class A2C:
                 m_id = ray.put(curr_model)
                 # TODO: Uncomment
                 ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
+            else:
+                for agent in self.arenas[0].agents:
+                    if agent.agent_type == 'RL':
+                        agent.epsilon = eps
 
             logging_value = 0
             if episode_id % self.args.log_interval == 0:
@@ -124,8 +128,6 @@ class A2C:
                 if episode_id % self.args.long_log == 0:
                     logging_value = 2
             c_r_all, info_rollout = self.rollout(logging_value=logging_value)
-
-
 
 
             end_time = time.time()
@@ -300,8 +302,8 @@ class A2C:
                                 rewards,
                                 dones,
                                 masks,
-                                loss_goals,
                                 loss_closes,
+                                loss_goals,
                                 old_policies,
                                 verbose=1)
 
