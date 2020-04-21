@@ -117,6 +117,10 @@ class A2C:
                 m_id = ray.put(curr_model)
                 # TODO: Uncomment
                 ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
+            else:
+                for agent in self.arenas[0].agents:
+                    if agent.agent_type == 'RL':
+                        agent.epsilon = eps
 
             logging_value = 0
             if episode_id % self.args.log_interval == 0:
@@ -356,7 +360,8 @@ class A2C:
                 log_prob_object_old = old_policies[i][1].gather(1, actions[i][1]).log()
                 log_prob_old = log_prob_action_old + log_prob_object_old
 
-                rho = torch.exp(log_prob.data - log_prob_old.data + 13.8).clamp(max=10.0)
+                # rho = torch.exp(log_prob.data - log_prob_old.data).clamp(max=10.0)
+                rho = (torch.exp(log_prob.data) / (torch.exp(log_prob_old.data) + 1e-6)).clamp(max=10.0)
             else:
                 rho = 1.0
 
