@@ -2,7 +2,7 @@ import glob
 import shutil
 import os
 file_names = [
-     '../../../SyntheticVideos/Output/logs_agent_3_put_fridge/0',
+     '/Users/xavierpuig/Desktop/benchmark/SyntheticVideos/Output//logs_agent_1584_read_book3PERSON_FROM_BACK/0',
     # '/Users/xavierpuig/Desktop/MultiAgentBench/SyntheticVideos/Output/logs_agent_2_put_fridge/0',
 ]
 def generate_video(image_syn, output_folder, vid_folder, frame_rate):
@@ -10,6 +10,8 @@ def generate_video(image_syn, output_folder, vid_folder, frame_rate):
     import subprocess
     # curr_folder = os.path.dirname(os.path.realpath(__file__))
     # vid_folder = '{}/../{}/{}/'.format(curr_folder, output_folder, prefix)
+
+    print(output_folder)
     for vid_mod in image_syn:
         subprocess.call(['ffmpeg',
                          '-framerate', str(frame_rate),
