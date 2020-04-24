@@ -351,17 +351,20 @@ class A2C:
             log_prob_object = policies[i][1].gather(1, actions[i][1]).log()
             log_prob = log_prob_action + log_prob_object
 
+
             loss_close += loss_closes[i]
             loss_goal += loss_goals[i]
 
             #print(log_prob_action, log_prob_object)
             if off_policy:
-                log_prob_action_old = old_policies[i][0].gather(1, actions[i][0]).log()
-                log_prob_object_old = old_policies[i][1].gather(1, actions[i][1]).log()
-                log_prob_old = log_prob_action_old + log_prob_object_old
+                prob = policies[i][0].gather(1, actions[i][0]).data * policies[i][1].gather(1, actions[i][1]).data
+
+                prob_action_old = old_policies[i][0].gather(1, actions[i][0]).data
+                prob_object_old = old_policies[i][1].gather(1, actions[i][1]).data
+                prob_old = prob_action_old * prob_object_old + 1e-6
 
                 # rho = torch.exp(log_prob.data - log_prob_old.data).clamp(max=10.0)
-                rho = (torch.exp(log_prob.data) / (torch.exp(log_prob_old.data) + 1e-6)).clamp(max=10.0)
+                rho = (prob / prob_old).clamp(max=10.0)
             else:
                 rho = 1.0
 
@@ -395,6 +398,9 @@ class A2C:
             entropy_loss /= episode_length
             loss_goal /= episode_length
             loss_close /= episode_length
+
+        if torch.isnan(policy_loss).any():
+            pdb.set_trace()
 
         if verbose:
             print("policy_loss:", policy_loss.data.cpu().numpy()[0])
