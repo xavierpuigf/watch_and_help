@@ -1,5 +1,5 @@
 import json
-import pickle
+import pickle as pkl
 import pdb
 import sys
 sys.path.append('../../../virtualhome/simulation')
@@ -62,12 +62,18 @@ from unity_simulator import comm_unity
 
 
 def write_video(log_file, out_file, comm):
-    with open(log_file, 'r') as f:
-        content = json.load(f)
+    if 'json' in out_file:
+        with open(log_file, 'r') as f:
+            content = json.load(f)
+    else:
+        with open(log_file, 'rb') as f:
+            content = pkl.load(f)
 
-    print(out_file)
     env_id = content['env_id']
     actions = content['action']
+    first_obs = content['obs'][0]
+
+
     graph = content['init_unity_graph']
     livingroom_center = \
     [node['bounding_box']['center'] for node in graph['nodes'] if node['class_name'] == 'livingroom'][0]
@@ -75,12 +81,13 @@ def write_video(log_file, out_file, comm):
     s, env_graph = comm.environment_graph()
     max_id = sorted([node['id'] for node in env_graph['nodes']])[-1]
 
-    action_1 = content['action']['0']
-    action_2 = content['action']['1']
+    action_1 = content['action'][0]
+    action_2 = content['action'][1]
 
     character_pos1 = [x for x, y in
-                      zip([node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0],
+                      zip([node['bounding_box']['center'] for node in first_obs if node['id'] == 1][0],
                           livingroom_center)]
+    # pdb.set_trace()
     character_pos2 = None
     if len(action_2) > 0:
         # pdb.set_trace()
@@ -93,45 +100,47 @@ def write_video(log_file, out_file, comm):
     graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in [1, 2]]
     graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in [1, 2] and edge['to_id'] not in [1, 2]]
 
-    # shift node
-    for node in graph['nodes']:
-        if node['id'] > max_id:
-            node['id'] = node['id'] - max_id + 1000
-    for edge in graph['edges']:
-        if edge['from_id'] > max_id:
-            edge['from_id'] = edge['from_id'] - max_id + 1000
-        if edge['to_id'] > max_id:
-            edge['to_id'] = edge['to_id'] - max_id + 1000
+    # # shift node
+    # for node in graph['nodes']:
+    #     if node['id'] > max_id:
+    #         node['id'] = node['id'] - max_id + 1000
+    # for edge in graph['edges']:
+    #     if edge['from_id'] > max_id:
+    #         edge['from_id'] = edge['from_id'] - max_id + 1000
+    #     if edge['to_id'] > max_id:
+    #         edge['to_id'] = edge['to_id'] - max_id + 1000
 
     comm.expand_scene(graph)
 
     character_pos1[1] = 0.
     comm.add_character('Chars/Female1', position=character_pos1)
-
+    # pdb.set_trace()
 
 
     if character_pos2 is not None:
         comm.add_character(position=character_pos2)
 
     positions = []
-
-    for it, action in enumerate(action_1):
+    actions = []
+    for it, action in enumerate(action_1[:40]):
         positions.append((action, character_pos1))
         action_str = '<char0> {}'.format(action).replace('walk', 'walktowards')
         if len(action_2) > 0:
             action_str += '| <char1> {}'.format(action_2[it]).replace('walk', 'walktowards')
         print('Rendeer...')
-        comm.render_script([action_str],
-                           recording=True, gen_vid=False, camera_mode="PERSON_TOP",
-                           smooth_walk=True, file_name_prefix=out_file, processing_time_limit=50)
-        s, graph = comm.environment_graph()
-        character_pos1 = [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0]
+        cam = "PERSON_FROM_BACK"
+        actions.append(action_str)
+    comm.render_script(actions,
+                       recording=True, gen_vid=False, camera_mode=cam,
+                       smooth_walk=True, file_name_prefix=out_file+'4'+cam, processing_time_limit=50, time_scale=1.)
+        # # pdb.set_trace()
+        # s, graph = comm.environment_graph()
+        # character_pos1 = [node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 1][0]
 
 
 if __name__ == '__main__':
-    file_name = '../logs_bob/logs_agent_2_read_book.json'
     file_names = [
-            '../../record/init7_put_fridge_1_full/logs_agent_3_put_fridge.json'
+            '../../record_scratch/Alice_env_task_set_50_check/logs_agent_1584_read_book.pik'
             ]
     #comm = comm_unity.UnityCommunication(x_display="3", port="8079",
     #                                     file_name='../../../executables/exec_linux03.1/exec_linux03.1.x86_64')

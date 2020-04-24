@@ -10,7 +10,7 @@ import argparse
 
 random.seed(10)
 
-home_path = '../../'
+home_path = '../../../'
 sys.path.append(home_path+'/vh_mdp')
 sys.path.append(home_path+'/virtualhome')
 
@@ -847,7 +847,7 @@ class SetInitialGoal:
 
 
 def debug_function(comm):
-    with open('data/object_info.json', 'r') as file:
+    with open('../data/object_info.json', 'r') as file:
         obj_position = json.load(file)
 
 
@@ -946,7 +946,7 @@ if __name__ == "__main__":
     ## -------------------------------------------------------------
     ## load task from json, the json file contain max number of objects for each task
     ## -------------------------------------------------------------
-    with open('data/init_pool.json') as file:
+    with open('../data/init_pool.json') as file:
         init_pool = json.load(file)
 
     comm = comm_unity.UnityCommunication()
@@ -990,7 +990,7 @@ if __name__ == "__main__":
 
     ## -------------------------------------------------------------
     ## step3 load object size
-    with open('data/class_name_size.json', 'r') as file:
+    with open('../data/class_name_size.json', 'r') as file:
         class_name_size = json.load(file)
 
     ## -------------------------------------------------------------

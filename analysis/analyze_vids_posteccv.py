@@ -4,6 +4,7 @@ import copy
 import pdb
 import glob
 import argparse
+import pickle as pkl
 from collections import Counter
 import random
 
@@ -40,7 +41,7 @@ def add_to_stats(dict_apartments, content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='analysis vids')
-    parser.add_argument('--record_dir', default='../../vh_multiagent_models/record_scratch/Alice_env_task_set_50_check', type=str)
+    parser.add_argument('--record_dir', default='../record_scratch/rec_good/Alice_env_task_set_50_check', type=str)
     args = parser.parse_args()
 
     dir_files = sorted(glob.glob('{}'.format(args.record_dir)))
@@ -73,14 +74,20 @@ if __name__ == '__main__':
         print('\n', dir_file)
         print('======')
         json_files = sorted(glob.glob('{}/*.json'.format(dir_file)))
+        if len(json_files) == 0:
+            json_files = sorted(glob.glob('{}/logs*.pik'.format(dir_file)))
+
         for json_file in tqdm(json_files):
             if 'Bob' in json_file:
                 continue
             count += 1
             try:
-                with open(json_file, 'r') as f:
-                    content = json.load(f)
-
+                if 'json' in json_file:
+                    with open(json_file, 'r') as f:
+                        content = json.load(f)
+                else:
+                    with open(json_file, 'rb') as f:
+                        content = pkl.load(f)
             except:
                 print('Cannot read')
                 pdb.set_trace()
@@ -96,9 +103,6 @@ if __name__ == '__main__':
             # Build a hash for the goal
 
             if content['finished']:
-                #if finished == 0:
-                #
-                #    print(len(content['action']['0']), json_file)
 
                 finished += 1
                 #print(dir_file)
@@ -133,7 +137,7 @@ if __name__ == '__main__':
                #try:
                 failed_ids.append(content['task_id'])
                 no_errors = True
-                actions = content['action']['0']
+                actions = content['action'][0]
                 if None in actions:
                     errors['null'] += 1
                     no_errors = False
@@ -165,7 +169,7 @@ if __name__ == '__main__':
                     #     #     pdb.set_trace()
                     obj_and_env = 'WALK_' + obj_walk_curr + '_' + str(content['env_id'])
                     #if 'kitchencabinets' in obj_walk_curr:
-                    print(obj_walk_curr, json_file, content['action']['0'][-1], content['task_id'])
+                    print(obj_walk_curr, json_file, content['action'][0][-1], content['task_id'])
                     dict_failures.append(obj_and_env)
 
                     errors['bad_walk'] += 1
@@ -196,27 +200,27 @@ if __name__ == '__main__':
 
     print(failed_ids)
     # Set train/Test
-    # train_preds, test_preds = [], []
-    # train_all = []
-    # test_all = []
-    # for task_name, lpreds in task_name_to_predicates.items():
-    #     preds = list(set(lpreds))
-    #     num_preds = len(preds)
-    #     random.shuffle(preds)
-    #     test_index = int(num_preds * 0.3)
-    #     test_preds += preds[:test_index]
-    #     train_preds += preds[test_index:]
-    #
-    # for t in test_preds:
-    #     test_all += goal_dict[t][1]
-    #
-    # for t in train_preds:
-    #     train_all += goal_dict[t][1]
-    #
-    # pdb.set_trace()
-    # dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates,
-    #         'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
-    # pdb.set_trace()
+    train_preds, test_preds = [], []
+    train_all = []
+    test_all = []
+    for task_name, lpreds in task_name_to_predicates.items():
+        preds = list(set(lpreds))
+        num_preds = len(preds)
+        random.shuffle(preds)
+        test_index = int(num_preds * 0.3)
+        test_preds += preds[:test_index]
+        train_preds += preds[test_index:]
 
-    #with open('info_demo_scenes_2.json', 'w+') as f:
-    #    f.write(json.dumps(dict_info, indent=4))
+    for t in test_preds:
+        test_all += goal_dict[t][1]
+
+    for t in train_preds:
+        train_all += goal_dict[t][1]
+
+    pdb.set_trace()
+    dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates,
+            'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
+    pdb.set_trace()
+
+    with open('info_demo_scenes_posteccv.json', 'w+') as f:
+       f.write(json.dumps(dict_info, indent=4))

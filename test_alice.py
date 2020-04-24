@@ -9,7 +9,7 @@ import pdb
 import pickle
 import json
 import random
-import ray
+# import ray
 import numpy as np
 from pathlib import Path
 
@@ -51,14 +51,14 @@ if __name__ == '__main__':
     # args.record_dir = 'record/Alice_test_set_30'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.18.x86_64'
     env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    args.record_dir = 'record_scratch/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
                     'no_graphics': True
     }
 
-    id_run = 5
+    id_run = 6
     episode_ids = list(range(len(env_task_set)))
     random.seed(id_run)
     random.shuffle(episode_ids)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
                          num_samples=1,
                          num_processes=1,
                          logging=True,
-                         logging_graphs=False)
+                         logging_graphs=True)
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
     # args_agent2 = {'agent_id': 2, 'char_index': 1}
@@ -114,8 +114,7 @@ if __name__ == '__main__':
         cnt = 0
         steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
-            if episode_id not in [1424]:
-                continue
+
             if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
                 test_results = {}
             else:
@@ -147,7 +146,9 @@ if __name__ == '__main__':
 
             S[episode_id] = is_finished
             L[episode_id] = steps
-            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
+
+            if os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
+                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
             test_results[episode_id] = {'S': is_finished,
                                         'L': steps}
             pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
