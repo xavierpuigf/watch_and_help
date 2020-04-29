@@ -29,7 +29,7 @@ parser.add_argument('--display', type=int, default=0, help='Task name')
 parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Task name')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--exec_file', type=str,
-                    default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.18.x86_64',
+                    default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.25.x86_64',
                     help='Use unity editor')
 
 if __name__ == "__main__":
@@ -41,7 +41,6 @@ if __name__ == "__main__":
     ## -------------------------------------------------------------
     with open('data/init_pool.json') as file:
         init_pool = json.load(file)
-
     # comm = comm_unity.UnityCommunication()
     if args.use_editor:
         comm = comm_unity.UnityCommunication()
@@ -164,7 +163,6 @@ if __name__ == "__main__":
                 graph = copy.deepcopy(original_graph)
 
                 # pdb.set_trace()
-
                 ## -------------------------------------------------------------
                 ## debug
                 ## -------------------------------------------------------------
@@ -194,6 +192,7 @@ if __name__ == "__main__":
                 if success_setup:
                     # If all objects were well added
                     success, message = comm.expand_scene(init_graph)
+                    # pdb.set_trace()
                     print('----------------------------------------------------------------------')
                     print(task_name, success, message, set_init_goal.num_other_obj)
                     # print(env_goal)
@@ -315,7 +314,8 @@ if __name__ == "__main__":
                                                            'init_graph': init_graph,
                                                            'original_graph': original_graph,
                                                            'goal': env_goal})
-
+                else:
+                    pdb.set_trace()
                 print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i + 1, num_test))
                 if count_success >= num_per_apartment:
                     break

@@ -41,7 +41,9 @@ def add_to_stats(dict_apartments, content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='analysis vids')
-    parser.add_argument('--record_dir', default='../record_scratch/rec_good/Alice_env_task_set_50_check', type=str)
+    #parser.add_argument('--record_dir', default='../record_scratch/rec_good/Alice_env_task_set_50_check', type=str)
+    parser.add_argument('--record_dir', default='../record_scratch/rec_good/Alice_env_task_set_300_check_neurips', type=str)
+
     args = parser.parse_args()
 
     dir_files = sorted(glob.glob('{}'.format(args.record_dir)))
@@ -58,9 +60,8 @@ if __name__ == '__main__':
         if 'Bob' in dir_file:
             continue
 
-        task_name = dir_file.split('/')[-1].replace('50', '').replace('init', '').replace('full', '').replace('simple', '')
-        if task_name not in task_name_to_predicates:
-            task_name_to_predicates[task_name] = []
+        #task_name = dir_file.split('/')[-1].replace('50', '').replace('init', '').replace('full', '').replace('simple', '')
+
                  
         dict_apartments = {}
         finished = 0
@@ -103,12 +104,15 @@ if __name__ == '__main__':
             # Build a hash for the goal
 
             if content['finished']:
+                task_name = content['task_name']
+                if task_name not in task_name_to_predicates:
+                    task_name_to_predicates[task_name] = []
+
 
                 finished += 1
                 #print(dir_file)
                 #pdb.set_trace()
                 add_to_stats(dict_apartments, content)
-
                 transformed_goal_dict = {}
                 goal_hash = []
                 for goal_name_id, goal_value in content['goals'].items():
@@ -119,6 +123,7 @@ if __name__ == '__main__':
                     try:
                         second_obj = id2node[int(goal_parts[-1])]['class_name']
                     except:
+                        # pdb.set_trace()
                         assert(int(goal_parts[-1]) == 1)
                         second_obj = 'character'
                     goal_name = '_'.join(goal_parts[:-1]) + '_' + second_obj
@@ -128,11 +133,11 @@ if __name__ == '__main__':
                 goal_hash_string = ','.join(sorted(goal_hash))
                 if goal_hash_string not in goal_dict.keys():
                     goal_dict[goal_hash_string] = [copy.deepcopy(transformed_goal_dict), []]
-                goal_dict[goal_hash_string][1].append(json_file)
+                goal_dict[goal_hash_string][1].append((json_file, content['env_id']))
 
                 task_name_to_predicates[task_name].append(goal_hash_string)
             else:
-                #continue
+                continue
                 print(json_file)
                #try:
                 failed_ids.append(content['task_id'])
@@ -200,27 +205,28 @@ if __name__ == '__main__':
 
     print(failed_ids)
     # Set train/Test
-    train_preds, test_preds = [], []
-    train_all = []
-    test_all = []
-    for task_name, lpreds in task_name_to_predicates.items():
-        preds = list(set(lpreds))
-        num_preds = len(preds)
-        random.shuffle(preds)
-        test_index = int(num_preds * 0.3)
-        test_preds += preds[:test_index]
-        train_preds += preds[test_index:]
+    # train_preds, test_preds = [], []
+    # train_all = []
+    # test_all = []
+    # for task_name, lpreds in task_name_to_predicates.items():
+    #     preds = list(set(lpreds))
+    #     num_preds = len(preds)
+    #     random.shuffle(preds)
+    #     test_index = int(num_preds * 0.3)
+    #     test_preds += preds[:test_index]
+    #     train_preds += preds[test_index:]
+    #
+    # for t in test_preds:
+    #     test_all += goal_dict[t][1]
+    #
+    # for t in train_preds:
+    #     train_all += goal_dict[t][1]
 
-    for t in test_preds:
-        test_all += goal_dict[t][1]
-
-    for t in train_preds:
-        train_all += goal_dict[t][1]
-
-    pdb.set_trace()
-    dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates,
-            'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all}}
-    pdb.set_trace()
-
+    #pdb.set_trace()
+    dict_info = {'goal_dict': goal_dict, 'stats': progs_per_task, 'task_name_to_predicates': task_name_to_predicates}
+            #'split': {'train': train_preds, 'test': test_preds, 'test_prog': test_all, 'train_prog': train_all},
+                # 'pred': preds}
+    #pdb.set_trace()
+    #
     with open('info_demo_scenes_posteccv.json', 'w+') as f:
        f.write(json.dumps(dict_info, indent=4))

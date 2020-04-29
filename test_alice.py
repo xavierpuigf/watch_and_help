@@ -20,6 +20,8 @@ from algos.arena_mp2 import ArenaMP
 from utils import utils_goals
 
 
+import random
+
 class MCTSArena(ArenaMP):
 
     def run_and_save(self, episode_id, record_dir):
@@ -41,15 +43,16 @@ if __name__ == '__main__':
     # ray.init()
     # MCTSArena = ray.remote(MCTSArena)
     # args.task = 'setup_table'
-    # args.num_per_apartment = '50'
-    # args.mode = 'full'
+    args.num_per_apartment = '300'
+    args.mode = 'check_neurips'
     # args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_30.pik', 'rb'))
     # args.record_dir = 'record/Alice_test_set_30'
-    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.18.x86_64'
+    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.25.2.x86_64'
+
     env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
     args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
@@ -58,10 +61,12 @@ if __name__ == '__main__':
                     'no_graphics': True
     }
 
-    id_run = 6
-    episode_ids = list(range(len(env_task_set)))
+    id_run = 51
     random.seed(id_run)
+    episode_ids = list(range(len(env_task_set)))
     random.shuffle(episode_ids)
+
+
     S = [0] * len(episode_ids)
     L = [200] * len(episode_ids)
     test_results = {}
@@ -108,6 +113,11 @@ if __name__ == '__main__':
 
     arena = ArenaMP(id_run, env_fn, agents)
 
+    # episode_ids = [656]
+    # g = env_task_set[3351]['init_graph']
+    # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
+    # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
+    # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
     for iter_id in range(1):
         #if iter_id > 0:
 

@@ -416,11 +416,12 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
     :return:
     """
 
-    inf_val = 1e9
+    inf_val = 1e9 # log(prob(obj_non_visible)) = -1e9
     if i == 1:
         # Deciding on the object
         mask_and_class = mask_observations * (object_classes > 0)
-        log_probs =  log_probs * mask_and_class + (1.-mask_and_class) * -inf_val
+        log_probs = log_probs * mask_and_class + (1.-mask_and_class) * -inf_val
+        # log_probs = clamp(log_probs) * mask_and_class + (1. - mask_and_class) * -inf_val
         # check if an object cannot in no class
 
         # b x num_classes

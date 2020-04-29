@@ -6,7 +6,7 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
-    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full', 'check'], help='Environment type')
+    parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full', 'check', 'check_neurips'], help='Environment type')
     parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
@@ -78,8 +78,8 @@ def get_args():
     parser.add_argument(
         '--long-log',
         type=int,
-        default=100,
-        help='log interval, one log per n updates (default: 100)')
+        default=10,
+        help='log interval, one log per n updates (default: 10)')
 
     parser.add_argument(
         '--log-interval',
