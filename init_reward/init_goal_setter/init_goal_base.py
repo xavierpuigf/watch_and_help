@@ -79,7 +79,14 @@ class SetInitialGoal:
                 count+=v
         '''
         if self.goal_template is not None:
-            self.goal = copy.deepcopy(self.goal_template)
+            self.goal = {}
+            for predicate, count in self.goal_template.items():
+                elements = predicate.split('_')
+                for e in elements:
+                    if e in self.init_pool:
+                        self.goal[e] = count
+            print(self.goal_template)
+            print(self.goal)
         else:
             while 1:
                 self.goal = {}

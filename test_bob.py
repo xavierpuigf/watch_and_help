@@ -4,6 +4,7 @@ sys.path.append('../vh_mdp/')
 sys.path.append('../virtualhome/simulation/')
 import pdb
 import pickle
+import os
 import json
 import random
 import numpy as np
@@ -13,6 +14,7 @@ from envs.unity_environment import UnityEnvironment
 from agents import MCTS_agent
 from arguments import get_args
 from algos.arena import Arena
+from algos.arena_mp2 import ArenaMP
 from utils import utils_goals
 
 
@@ -25,8 +27,23 @@ if __name__ == '__main__':
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    args.record_dir = 'record/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.max_episode_length = 250
+    args.num_per_apartment = '20'
+    args.mode = 'check_neurips_test_recursive'
+    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
+
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+
+    for env in env_task_set:
+        if env['env_id'] == 6:
+            g = env['init_graph']
+            door_ids = [302, 213]
+            g['nodes'] = [node for node in g['nodes'] if node['id'] not in door_ids]
+            g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
+
+
+    args.record_dir = 'record_scratch/rec_good_test/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -54,20 +71,25 @@ if __name__ == '__main__':
     #                          'task_goal': task_goal,
     #                          'level': 0, 'init_rooms': [0, 0]})
 
+    id_run = 12
+    random.seed(id_run)
     episode_ids = list(range(len(env_task_set)))
     random.shuffle(episode_ids)
     S = [0] * len(episode_ids)
     L = [200] * len(episode_ids)
     test_results = {}
 
-    env = UnityEnvironment(num_agents=2,
-                         max_episode_length=args.max_episode_length,
-                         env_task_set=env_task_set,
-                         use_editor=args.use_editor,
-                         executable_args=executable_args)
+    def env_fn(env_id):
+        return UnityEnvironment(num_agents=2,
+                               max_episode_length=args.max_episode_length,
+                               port_id=env_id,
+                               env_task_set=env_task_set,
+                               observation_types=[args.obs_type, args.obs_type],
+                               use_editor=args.use_editor,
+                               executable_args=executable_args,
+                               base_port=args.base_port)
 
-    args_common = dict(unity_env=env,
-                         recursive=False,
+    args_common = dict(recursive=False,
                          max_episode_length=5,
                          num_simulation=100,
                          max_rollout_steps=5,
@@ -76,17 +98,17 @@ if __name__ == '__main__':
                          num_samples=1,
                          num_processes=1,
                          logging=True,
-                         logging_graphs=False)
+                         logging_graphs=True)
 
     args_agent1 = {'agent_id': 1, 'char_index': 0}
     args_agent2 = {'agent_id': 2, 'char_index': 1}
     args_agent1.update(args_common)
     args_agent2.update(args_common)
     args_agent2.update({'recursive': True})
-    agents = [MCTS_agent(**args_agent1), MCTS_agent(**args_agent2)]
-    arena = Arena(agents, env)
+    agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
+    arena = ArenaMP(id_run, env_fn, agents)
 
-    for iter_id in range(10):
+    for iter_id in range(1):
         if iter_id > 0:
             test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
         cnt = 0
@@ -119,6 +141,11 @@ if __name__ == '__main__':
             except:
                 pass
 
+            if os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
+                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
+            test_results[episode_id] = {'S': is_finished,
+                                        'L': steps}
+            pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
         print('AL:', np.array(L).mean())

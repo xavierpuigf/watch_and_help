@@ -131,7 +131,10 @@ class MCTS:
             if subgoal[0] == last_subgoal:
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]
                 actions, costs = heuristic(self.agent_id, self.char_index, unsatisfied, curr_state_tmp, self.env, last_subgoal)
-                plan = [self.get_action_str(action) for action in actions] 
+                if actions is None:
+                    plan = []
+                else:
+                    plan = [self.get_action_str(action) for action in actions]
                 if len(plan) > 0:
                     elements = plan[0].split(' ')               
                     if need_to_close and (elements[0] == '[walk]' or elements[0] == '[open]' and elements[2] != self.last_opened[1]):

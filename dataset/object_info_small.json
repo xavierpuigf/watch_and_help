@@ -1,6 +1,13 @@
 
 {
-    "objects_inside": ["bathroomcabinet", "kitchencabinets", "cabinet", "fridge", "stove", "dishwasher", "microwave"],
+    "objects_inside": [
+      "bathroomcabinet",
+      "kitchencabinets",
+      "cabinet",
+      "fridge",
+      "stove",
+      "dishwasher",
+      "microwave"],
     "objects_surface": ["bench",
                          "cabinet",
                          "chair",

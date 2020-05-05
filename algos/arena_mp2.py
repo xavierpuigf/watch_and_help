@@ -40,12 +40,14 @@ class ArenaMP(object):
         for it, agent in enumerate(self.agents):
             if agent.agent_type == 'MCTS':
                 agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=it)
+            elif agent.agent_type == 'RL_MCTS':
+                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=it)
             else:
                 agent.reset(self.env.python_graph)
 
     def set_weigths(self, epsilon, weights):
         for agent in self.agents:
-            if agent.agent_type == 'RL':
+            if 'RL' in agent.agent_type:
                 agent.epsilon = epsilon
                 agent.actor_critic.load_state_dict(weights)
 
@@ -59,7 +61,7 @@ class ArenaMP(object):
                     opponent_subgoal = self.agents[1 - it].last_subgoal
 
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], opponent_subgoal)
-            elif agent.agent_type == 'RL':
+            elif 'RL' in agent.agent_type:
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
 
@@ -74,7 +76,7 @@ class ArenaMP(object):
 
 
             for agent in self.agents:
-                if agent.agent_type == 'RL':
+                if 'RL' in agent.agent_type:
                     prev_eps = agent.epsilon
                     prev_weights = agent.actor_critic.state_dict()
 
@@ -119,7 +121,7 @@ class ArenaMP(object):
 
         for agent_id in range(self.num_agents):
             agent = self.agents[agent_id]
-            if agent.agent_type == 'RL':
+            if 'RL' in agent.agent_type:
                 rollout_agent[agent_id] = []
 
         if logging:
@@ -148,11 +150,12 @@ class ArenaMP(object):
                                 edge['relation_type']) for edge in curr_graph['edges'] if edge['from_id'] == 1 and edge['to_id'] in observed_nodes]
 
                 if logging > 0:
-                    info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
-                    info_rollout['pred_close'].append(agent_info[0]['pred_close'])
-                    info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
-                    info_rollout['gt_close'].append(agent_info[0]['gt_close'])
-                    info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
+                    if 'pred_goal' in agent_info[0].keys():
+                        info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
+                        info_rollout['pred_close'].append(agent_info[0]['pred_close'])
+                        info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
+                        info_rollout['gt_close'].append(agent_info[0]['gt_close'])
+                        info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
 
                 if logging > 1:
                     info_rollout['step_info'].append((node_id, edges_char))
@@ -168,23 +171,28 @@ class ArenaMP(object):
                 c_r_all[agent_index] += reward
                 # action_dict[agent_index] = agent_info[agent_index]['action']
 
-            entropy_action.append(-((agent_info[0]['probs'][0]+1e-9).log()*agent_info[0]['probs'][0]).sum().item())
-            entropy_object.append(-((agent_info[0]['probs'][1]+1e-9).log()*agent_info[0]['probs'][1]).sum().item())
-            observation_space.append(agent_info[0]['num_objects'])
-            action_space.append(agent_info[0]['num_objects_action'])
+
+
             if record:
                 actions.append(agent_actions)
 
             # append to memory
             for agent_id in range(self.num_agents):
-                if self.agents[agent_id].agent_type == 'RL':
+                if 'RL' in self.agents[agent_id].agent_type and 'mcts_action' not in agent_info[agent_id]:
                     state = agent_info[agent_id]['state_inputs']
                     policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
                     action = agent_info[agent_id]['actions']
                     rewards = reward
 
-                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, rewards, 1))
+                    entropy_action.append(
+                        -((agent_info[0]['probs'][0] + 1e-9).log() * agent_info[0]['probs'][0]).sum().item())
+                    entropy_object.append(
+                        -((agent_info[0]['probs'][1] + 1e-9).log() * agent_info[0]['probs'][1]).sum().item())
+                    observation_space.append(agent_info[0]['num_objects'])
+                    action_space.append(agent_info[0]['num_objects_action'])
 
+
+                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, rewards, 1))
 
         t_steps = time.time() - t2
         for agent_index in agent_info.keys():
@@ -210,7 +218,7 @@ class ArenaMP(object):
         while nb_steps < self.max_episode_length:
             nb_steps += 1
             for agent_id in range(self.num_agents):
-                if self.agents[agent_id].agent_type == 'RL':
+                if 'RL' in self.agents[agent_id].agent_type:
                     state = agent_info[agent_id]['state_inputs']
                     if 'edges' in obs.keys():
                         pdb.set_trace()

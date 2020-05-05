@@ -100,7 +100,10 @@ class GraphHelper():
         
         self.obj1_affordance = None
         self.get_action_affordance_map(current_task=current_task)
-
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        with open(f'{dir_path}/../dataset/object_info_small.json', 'r') as f:
+            content = json.load(f)
+        self.object_dict_types = content
 
 
 
@@ -309,7 +312,7 @@ class GraphHelper():
         #print(node_ids[:len(nodes)])
         return output, (graph_viz, labeldict, action_space_ids, visible_nodes)
 
-def can_perform_action(action, o1, o1_id, agent_id, graph, teleport=True):
+def can_perform_action(action, o1, o1_id, agent_id, graph, graph_helper=None, teleport=True):
     if action == 'no_action':
         return None
     # if action in ['open', 'close', 'grab', 'putback']:
@@ -347,11 +350,17 @@ def can_perform_action(action, o1, o1_id, agent_id, graph, teleport=True):
 
     if action == 'open':
         # print(o1_id, id2node[o1_id]['states'])
+        if graph_helper is not None:
+            if id2node[o1_id]['class_name'] not in graph_helper.object_dict_types['objects_inside']:
+                return None
         if 'OPEN' in id2node[o1_id]['states'] or 'CLOSED' not in id2node[o1_id]['states']:
             return None
 
     if action == 'close':
         #print(o1_id, id2node[o1_id]['states'])
+        if graph_helper is not None:
+            if id2node[o1_id]['class_name'] not in graph_helper.object_dict_types['objects_inside']:
+                return None
         if 'CLOSED' in id2node[o1_id]['states'] or 'OPEN' not in id2node[o1_id]['states']:
             return None
 
@@ -372,16 +381,21 @@ def can_perform_action(action, o1, o1_id, agent_id, graph, teleport=True):
             return None
 
     if action.startswith('put'):
-
-        if 'CONTAINERS' in id2node[o1_id]['properties']:
-            action = 'putin'
-        elif 'SURFACES' in id2node[o1_id]['properties']:
-            action = 'putback'
+        if graph_helper is not None:
+            if id2node[o1_id]['class_name'] in graph_helper.object_dict_types['objects_inside']:
+                action = 'putin'
+            if id2node[o1_id]['class_name'] in graph_helper.object_dict_types['objects_surface']:
+                action = 'putback'
+        else:
+            if 'CONTAINERS' in id2node[o1_id]['properties']:
+                action = 'putin'
+            elif 'SURFACES' in id2node[o1_id]['properties']:
+                action = 'putback'
 
     if action.startswith('walk') and teleport:
         action = 'walkto'
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
-
+    # print(action_str)
     return action_str
 
 def args_per_action(action):

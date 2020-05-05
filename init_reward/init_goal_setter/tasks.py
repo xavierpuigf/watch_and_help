@@ -365,6 +365,7 @@ class Task:
         except_position_ids = [node['id'] for node in graph['nodes'] if ('floor' in node['class_name'])]
         except_position_ids.append(table_id)
 
+
         for k, v in init_goal_manager.goal.items():
             obj_ids = [node['id'] for node in graph['nodes'] if k == node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)

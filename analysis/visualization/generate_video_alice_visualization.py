@@ -12,7 +12,7 @@ from unity_simulator import comm_unity
 
 
 def write_video(log_file, out_file, comm, file_folder, file_folder_log):
-    if 'json' in out_file:
+    if 'json' in log_file:
         with open(log_file, 'r') as f:
             content = json.load(f)
     else:
@@ -20,6 +20,7 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
             content = pkl.load(f)
     env_id = content['env_id']
     actions = content['action']
+    #pdb.set_trace()
     first_obs = content['obs'][0]
 
 
@@ -41,11 +42,13 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
                           livingroom_center)]
     # pdb.set_trace()
     character_pos2 = None
+    pdb.set_trace()
+    pdb.set_trace()
     if len(action_2) > 0:
         # pdb.set_trace()
-        character_pos2 = character_pos1
-        character_pos2 = [x + y for x, y in
-                          zip([node['bounding_box']['center'] for node in graph['nodes'] if node['id'] == 2][0],
+        #character_pos2 = character_pos1
+        character_pos2 = [x for x, y in
+                          zip([node['bounding_box']['center'] for node in content['obs'][1] if node['id'] == 2][0],
                               livingroom_center)]
         character_pos2[1] = 0.
 
@@ -83,17 +86,23 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
     graphs = [g]
     for it, action in enumerate(tqdm(action_1)):
         # positions.append((action, character_pos1))
-        action_str = '<char0> {}'.format(action).replace('walk', 'walktowards')
-        if len(action_2) > 0:
-            action_str += '| <char1> {}'.format(action_2[it]).replace('walk', 'walktowards')
+        if action is None:
+            action_str = ''
+        else:
+            action_str = '<char0> {}'.format(action).replace('walk', 'walktowards')
+        if len(action_2) > 0 and action_2[it] is not None:
+            if len(action_str) > 0:
+                action_str += ' | '
+            action_str += '<char1> {}'.format(action_2[it]).replace('walk', 'walktowards')
         # print('Rendeer...')
         # print(action_str)
-        cam1 = "PERSON_FROM_BACK"
-        cam2 = "PERSON_FROM_LEFT"
+        cam1 = "81" # "83"
         smooth_walk = False
+
         s, m = comm.render_script([action_str],
-                           recording=True, gen_vid=False, camera_mode=[cam1, cam2],
-                           image_synthesis=['normal', 'seg_class', 'seg_inst'], frame_rate=5, output_folder=file_folder,
+                           recording=True, gen_vid=False, camera_mode=[cam1],
+                           image_synthesis=['normal'], frame_rate=5, output_folder=file_folder,
+                           image_width=1280, image_height=960,
                            smooth_walk=smooth_walk, file_name_prefix=out_file, processing_time_limit=250, time_scale=1.)
 
         # s, m = comm.render_script([action_str],
@@ -149,7 +158,8 @@ if __name__ == '__main__':
     if args.use_editor:
         out_folder = '/Users/xavierpuig/Desktop/test_videos/'
         file_names = [
-            '../../record_scratch/rec_good/Alice_env_task_set_300_check_neurips/logs_agent_3351_setup_table.pik'
+            # '../../record_scratch/rec_good_test/Alice_env_task_set_20_check_neurips_test/logs_agent_82_setup_table.pik',
+            '../../record_scratch/rec_good_test/Bob_env_task_set_20_check_neurips_test/logs_agent_82_setup_table.pik'
         ]
         log_folder = None
     else:
@@ -164,8 +174,8 @@ if __name__ == '__main__':
             file_names = ['../' + x.strip() for x in f.readlines()]
 
 
-    random.shuffle(file_names)
-    for file_name in tqdm(file_names):
+        random.shuffle(file_names)
+    for itf, file_name in enumerate(tqdm(file_names)):
 
         splitf = file_name.split('/')[-1].split('.')[0]
         file_video_gen = '{}/vids_gen/{}.json'.format(home_path, splitf)
@@ -177,7 +187,7 @@ if __name__ == '__main__':
                 with open(file_video_gen, 'w+') as f:
                     f.write(json.dumps({splitf: 0}))
             else:
-                splitf = 'test_fr1'
+                splitf = ['bob_test2'][itf]
 
         correct = False
         if args.use_editor:
@@ -208,6 +218,6 @@ if __name__ == '__main__':
                 os.remove(file_video_gen)
                 continue
 
-        if correct:
+        if correct and not args.use_editor:
             with open(file_video_gen, 'w+') as f:
                 f.write(json.dumps({splitf: 1}))

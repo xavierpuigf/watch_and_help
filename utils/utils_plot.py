@@ -345,8 +345,8 @@ class Episode:
         return result_str, html_3d_plot
 
 class Plotter:
-    def __init__(self):
-        self.experiment_name = 'test'
+    def __init__(self, experiment_name='test'):
+        self.experiment_name = experiment_name
         self.root_path = '/data/vision/torralba/frames/data_acquisition/' \
                          'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch'
         self.dir_name = '{}/plots/{}'.format(self.root_path, self.experiment_name)
@@ -359,6 +359,7 @@ class Plotter:
     def render(self):
         print("Rendering...")
         if not os.path.isdir(self.dir_name):
+            pdb.set_trace()
             os.makedirs(self.dir_name)
 
         if not os.path.isdir(self.dir_name+'/plots'):

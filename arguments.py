@@ -139,6 +139,13 @@ def get_args():
     )
 
     parser.add_argument(
+        '--agent_type',
+        type=str,
+        default='hrl_mcts',
+        choices=['rl', 'hrl_mcts'],
+    )
+
+    parser.add_argument(
         '--use-linear-lr-decay',
         action='store_true',
         default=False,
@@ -253,7 +260,7 @@ def get_args():
     # Exec args
     parser.add_argument(
         '--executable_file', type=str,
-        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.11.x86_64')
+        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64')
 
     # parser.add_argument(
     #     '--executable_file', type=str,
@@ -297,6 +304,8 @@ def get_args():
     parser.add_argument('--use-gt-actions', action='store_true', default=False,
                         help='debugging mode')
 
+    parser.add_argument('--num_steps_mcts', type=int, default=15,
+                        help='how many steps to take of the given plan')
 
     parser.add_argument('--c_loss_close', type=float, default=0., help='coefficient auxiliary loss goal close')
     parser.add_argument('--c_loss_goal', type=float, default=0., help='coefficient auxiliary loss goal obj')

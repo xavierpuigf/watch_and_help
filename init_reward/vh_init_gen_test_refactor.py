@@ -19,16 +19,17 @@ from simulation.unity_simulator import comm_unity as comm_unity
 from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
+from init_goal_setter.tasks import Task
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-task', type=int, default=30, help='Maximum #episodes/task')
+parser.add_argument('--num-per-task', type=int, default=20, help='Maximum #episodes/task')
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
-parser.add_argument('--port-number', type=int, default=8090, help='port')
+parser.add_argument('--port-number', type=int, default=8290, help='port')
 parser.add_argument('--display', type=str, default='2', help='display')
-parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.18.x86_64', help='Use unity editor')
+parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.26.x86_64', help='Use unity editor')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -40,10 +41,32 @@ if __name__ == "__main__":
     with open('data/init_pool.json') as file:
         init_pool = json.load(file)
 
-    args.dataset_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/analysis/info_demo_scenes_posteccv.json'
+    file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_split.json'
+    with open(file_split, 'r') as f:
+        content_split = json.load(f)
+
+    # Predicates train and test
+    cache_files = []
+    predicates = {'train': [], 'test': []}
+    for elem in content_split['train']:
+        if elem['pred_str'] not in cache_files:
+            cache_files.append(elem['pred_str'])
+        else:
+            continue
+        predicates['train'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
+
+    for elem in content_split['test']:
+        if elem['pred_str'] not in cache_files:
+            cache_files.append(elem['pred_str'])
+        else:
+            continue
+        predicates['test'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
+
+
+    # args.dataset_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/analysis/info_demo_scenes_posteccv.json'
     args.record_dir = '../initial_environments/data/init_envs'
-    data = json.load(open(args.dataset_path, 'r'))
-    json_file_list = data['split']['test_prog']
+    # data = json.load(open(args.dataset_path, 'r'))
+    # json_file_list = data['split']['test_prog']
 
     simulator_args={
                    'file_name': args.exec_file,
@@ -88,18 +111,21 @@ if __name__ == "__main__":
 
     task_id = 0
 
-    for json_file in json_file_list:
-        json_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models' + \
-                    json_file[2:]
-        if json_path.endswith('json'):
-            content = json.load(open(json_path, 'r'))
-        else:
-            with open(json_path, 'rb') as f:
-                content = pkl.load(f)
-        env_id = content['env_id']
-        task_name = content['task_name']
-        demo_goals = {predicate: count for predicate, count in content['goals'].items() if predicate.startswith('on') or predicate.startswith('inside')}
-        print('env_id:', env_id)
+
+
+    for predicates_dict, task_name, pred_str in predicates['test']:
+        # json_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models' + \
+        #             json_file[2:]
+        # if json_path.endswith('json'):
+        #     content = json.load(open(json_path, 'r'))
+        # else:
+        #     with open(json_path, 'rb') as f:
+        #         content = pkl.load(f)
+        #env_id = content['env_id']
+        #task_name = content['task_name']
+        demo_goals = predicates_dict
+        # {predicate: count for predicate, count in predicates_dict.items() if predicate.startswith('on') or predicate.startswith('inside')}
+        #print('env_id:', env_id)
         print('task_name:', task_name)
         print('goals:', demo_goals)
         task_goal = {}
@@ -107,10 +133,11 @@ if __name__ == "__main__":
             task_goal[i] = demo_goals
 
         goal_class = {}
-        id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
+        # id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
         for predicate, count in task_goal[0].items():
             elements = predicate.split('_')
             if elements[2].isdigit():
+                pdb.set_trace()
                 new_predicate = '{}_{}_{}'.format(elements[0], elements[1], id2node[int(elements[2])]['class_name'])
                 location_name = id2node[int(elements[2])]['class_name']
             else:
@@ -118,6 +145,7 @@ if __name__ == "__main__":
             print(new_predicate)
             goal_class[new_predicate] = count
 
+        # pdb.set_trace()
         if task_counts[task_name] >= args.num_per_task: continue
 
         num_test = 10
@@ -161,7 +189,8 @@ if __name__ == "__main__":
             ## setup goal based on currect environment
             ## -------------------------------------------------------------
             set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_goals)
-            init_graph, env_goal, success_expand = getattr(set_init_goal, task_name)(graph)
+            # pdb.set_trace()
+            init_graph, env_goal, success_expand = getattr(Task, task_name)(set_init_goal, graph)
 
             
             if success_expand:
@@ -171,7 +200,6 @@ if __name__ == "__main__":
                 print(task_name, success, message, set_init_goal.num_other_obj)
                 # print(env_goal)
 
-                
                 if not success:
                     goal_objs = []
                     goal_names = []
@@ -203,10 +231,10 @@ if __name__ == "__main__":
                     
 
                 if success2 and success:
-                    if apartment == 4:
-                        init_graph = set_init_goal.remove_obj(init_graph, [348])
-                    elif apartment == 6:
-                        init_graph = set_init_goal.remove_obj(init_graph, [173])
+                    # if apartment == 4:
+                    #     init_graph = set_init_goal.remove_obj(init_graph, [348])
+                    # elif apartment == 6:
+                    #     init_graph = set_init_goal.remove_obj(init_graph, [173])
 
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal, apartment)
 
@@ -245,13 +273,23 @@ if __name__ == "__main__":
 
                             for predicate, count in task_goal[0].items():
                                 elements = predicate.split('_')
+                                # pdb.set_trace()
+                                # Add ids
                                 if elements[2].isdigit():
                                     location_id = list([node['id'] for node in init_graph['nodes'] if node['class_name'] == location_name])[0]
                                     new_predicate = '{}_{}_{}'.format(elements[0], elements[1], location_id)
                                     cur_goal_spec[new_predicate] = count
                                 else:
-                                    cur_goal_spec[predicate] = count
+                                    if elements[2] == 'character':
+                                        location_id = 1
+                                    else:
+                                        location_name = elements[2]
+                                        location_id = list([node['id'] for node in init_graph['nodes'] if
+                                                            node['class_name'] == location_name])[0]
+                                    new_predicate = '{}_{}_{}'.format(elements[0], elements[1], location_id)
+                                    cur_goal_spec[new_predicate] = count
 
+                            # pdb.set_trace()
                             test_set.append({'task_id': task_id, 
                                       'task_name': task_name, 
                                       'env_id': apartment, 
@@ -260,7 +298,7 @@ if __name__ == "__main__":
                                       'goal_class': goal_class,
                                       'level': 1, 
                                       'init_rooms': random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2),
-                                      'json_file': json_file})
+                                      'pred_str': pred_str})
                             print('task_name:', test_set[-1]['task_name'])
                             print('task_goal:', test_set[-1]['task_goal'])
                             task_id += 1
@@ -276,7 +314,7 @@ if __name__ == "__main__":
     # pdb.set_trace()
     print(len(test_set))
     print(task_counts)
-    pickle.dump(test_set, open(args.record_dir + '/test_env_set_{}_posteccv.pik'.format(args.num_per_task), 'wb'))
+    pickle.dump(test_set, open(args.record_dir + '/test_env_set_help_{}_neurips.pik'.format(args.num_per_task), 'wb'))
 
 
 

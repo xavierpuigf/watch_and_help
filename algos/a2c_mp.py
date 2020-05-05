@@ -159,11 +159,14 @@ class A2C:
 
 
                 # Auxiliary task
-                pred_close = torch.cat(info_rollout[0]['pred_close'], 0)
-                gt_close = torch.cat(info_rollout[0]['gt_close'], 0)
-                pred_goal = torch.cat(info_rollout[0]['pred_goal'], 0)
-                gt_goal = torch.cat(info_rollout[0]['gt_goal'], 0)
-                mask_nodes = torch.cat(info_rollout[0]['mask_nodes'], 0)
+                if 'pred_close' in info_rollout[0].keys() and \
+                        len(info_rollout[0]['pred_close']) > 0:
+
+                    pred_close = torch.cat(info_rollout[0]['pred_close'], 0)
+                    gt_close = torch.cat(info_rollout[0]['gt_close'], 0)
+                    pred_goal = torch.cat(info_rollout[0]['pred_goal'], 0)
+                    gt_goal = torch.cat(info_rollout[0]['gt_goal'], 0)
+                    mask_nodes = torch.cat(info_rollout[0]['mask_nodes'], 0)
 
                 if episode_id % self.args.long_log == 0:
                     print("Target:")
@@ -200,11 +203,12 @@ class A2C:
                             'script_done': info_rollout[0]['script'],
                             'target': info_rollout[0]['target'],
                             'info_step': info_rollout[0]['step_info'],
-                            'pred_close': info_rollout[0]['pred_close'],
                             'graph': info_rollout[0]['graph'],
                             'visible_ids': info_rollout[0]['visible_ids'],
                             'action_ids': info_rollout[0]['action_space_ids'],
                         }
+                        if 'pred_close' in info_rollout[0].keys():
+                            info_episode['pred_close'] = info_rollout[0]['pred_close']
                         self.logger.log_info(info_episode)
 
 
@@ -216,17 +220,21 @@ class A2C:
                                     np.mean([np.mean(info_rollout[it]['entropy'][1]) for it in range(len(info_rollout))]))
                     # pdb.set_trace()
                     info_aux = {}
-                    pred_closem = (pred_close.squeeze(-1) > 0.5).float().cpu()
-                    tp = (mask_nodes.float() * gt_close.float() * pred_closem.float()).sum()
-                    p = (mask_nodes.float() * gt_close.float()).sum()
-                    fp = (mask_nodes.float() * (1. - gt_close.float()) * pred_closem.float()).sum()
-                    info_aux['accuracy_goal'] = (gt_goal.cpu() == pred_goal.argmax(1).cpu()).float().mean().numpy()
-                    info_aux['precision_close'] = (tp/(1e-9 + tp + fp)).numpy()
-                    info_aux['recall_close'] = (tp/(1e-9 + p)).numpy()
-                    info_aux['loss_close'] = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1).cpu(),
-                                                                                            gt_close,
-                                                                                            mask_nodes).detach().numpy()
-                    info_aux['loss_goal'] = nn.functional.cross_entropy(pred_goal.cpu(), gt_goal).detach().numpy()
+
+                    if 'pred_close' in info_rollout[0].keys() and \
+                            len(info_rollout[0]['pred_close']) > 0:
+                        pred_closem = (pred_close.squeeze(-1) > 0.5).float().cpu()
+                        tp = (mask_nodes.float() * gt_close.float() * pred_closem.float()).sum()
+                        p = (mask_nodes.float() * gt_close.float()).sum()
+                        fp = (mask_nodes.float() * (1. - gt_close.float()) * pred_closem.float()).sum()
+
+                        info_aux['accuracy_goal'] = (gt_goal.cpu() == pred_goal.argmax(1).cpu()).float().mean().numpy()
+                        info_aux['precision_close'] = (tp/(1e-9 + tp + fp)).numpy()
+                        info_aux['recall_close'] = (tp/(1e-9 + p)).numpy()
+                        info_aux['loss_close'] = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1).cpu(),
+                                                                                                gt_close,
+                                                                                                mask_nodes).detach().numpy()
+                        info_aux['loss_goal'] = nn.functional.cross_entropy(pred_goal.cpu(), gt_goal).detach().numpy()
                     self.logger.log_data(episode_id, episode_id, fps, episode_rewards,
                                          dist_entropy, epsilon, successes, info_aux)
 
@@ -254,7 +262,7 @@ class A2C:
                     cx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
 
                     state_keys = trajs[0][0].state.keys()
-
+                    pdb.set_trace()
                     for t in range(len(trajs) - 1):
 
                         # TODO: decompose here
@@ -275,14 +283,21 @@ class A2C:
 
                         # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
                         v, _, policy, (hx, cx), out_dict = self.actor_critic.act(inputs, (hx, cx), mask, action_indices=action)
-                        auxiliary_out = self.actor_critic.auxiliary_pred((out_dict))
-                        pred_goal, pred_close = auxiliary_out['pred_goal'], auxiliary_out['pred_close']
 
-                        gt_close = inputs['gt_close']
-                        gt_goal = inputs['gt_goal']
-                        mask_nodes = inputs['mask_object']
-                        loss_close = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1), gt_close, mask_nodes)
-                        loss_goal = nn.functional.cross_entropy(pred_goal, gt_goal)
+                        if hasattr(self.actor_critic, 'auxiliary_pred'):
+                            auxiliary_out = self.actor_critic.auxiliary_pred((out_dict))
+                        else:
+                            auxiliary_out = {}
+                        if 'pred_goal' in auxiliary_out:
+                            pred_goal, pred_close = auxiliary_out['pred_goal'], auxiliary_out['pred_close']
+                            gt_close = inputs['gt_close']
+                            gt_goal = inputs['gt_goal']
+                            mask_nodes = inputs['mask_object']
+                            loss_close = nn.functional.binary_cross_entropy_with_logits(pred_close.squeeze(-1), gt_close, mask_nodes)
+                            loss_goal = nn.functional.cross_entropy(pred_goal, gt_goal)
+                        else:
+                            loss_close = None
+                            loss_goal = None
 
                         [array.append(element) for array, element in
                          zip((policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals),
@@ -351,9 +366,9 @@ class A2C:
             log_prob_object = policies[i][1].gather(1, actions[i][1]).log()
             log_prob = log_prob_action + log_prob_object
 
-
-            loss_close += loss_closes[i]
-            loss_goal += loss_goals[i]
+            if loss_closes[i] is not None:
+                loss_close += loss_closes[i]
+                loss_goal += loss_goals[i]
 
             #print(log_prob_action, log_prob_object)
             if off_policy:
@@ -406,8 +421,10 @@ class A2C:
             print("policy_loss:", policy_loss.data.cpu().numpy()[0])
             print("value_loss:", value_loss.data.cpu().numpy()[0])
             print("entropy_loss:", entropy_loss.data.cpu().numpy())
-            print("loss_goal:", loss_goal.data.cpu().numpy())
-            print("loss_close:", loss_close.data.cpu().numpy())
+
+            if loss_goal != 0.:
+                print("loss_goal:", loss_goal.data.cpu().numpy())
+                print("loss_close:", loss_close.data.cpu().numpy())
 
         # updating net
         optimizer.zero_grad()

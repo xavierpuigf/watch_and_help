@@ -141,7 +141,7 @@ class Logger():
         self.stats = AggregatedStats()
 
         save_path = os.path.join(self.save_dir, self.experiment_name)
-        self.plot = Plotter()
+        self.plot = Plotter(self.experiment_name)
         self.info_episodes = []
         try:
             os.makedirs(save_path)
@@ -161,7 +161,7 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/'\
+        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/agent.{}/'\
                           'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}'.format(
             args.env_name,
             args.task_type,
@@ -169,6 +169,7 @@ class Logger():
             args.obs_type,
             args.simulator_type,
             args.task_set,
+            args.agent_type,
             args.train_mode,
             args.algo,
             args.base_net,
@@ -188,12 +189,13 @@ class Logger():
                 self.set_tensorboard()
 
         if self.tensorboard_writer is not None:
-            self.tensorboard_writer.add_scalar("aux_info/accuracy_goal", np.max(info_aux['accuracy_goal']), total_num_steps)
-            self.tensorboard_writer.add_scalar("aux_info/precision_close", np.mean(info_aux['precision_close']), total_num_steps)
-            self.tensorboard_writer.add_scalar("aux_info/recall_close", np.mean(info_aux['recall_close']), total_num_steps)
+            if 'accuracy_goal' in info_aux.keys():
+                self.tensorboard_writer.add_scalar("aux_info/accuracy_goal", np.max(info_aux['accuracy_goal']), total_num_steps)
+                self.tensorboard_writer.add_scalar("aux_info/precision_close", np.mean(info_aux['precision_close']), total_num_steps)
+                self.tensorboard_writer.add_scalar("aux_info/recall_close", np.mean(info_aux['recall_close']), total_num_steps)
 
-            self.tensorboard_writer.add_scalar("losses/loss_close", np.mean(info_aux['loss_close']), total_num_steps)
-            self.tensorboard_writer.add_scalar("losses/loss_goal", np.mean(info_aux['loss_goal']), total_num_steps)
+                self.tensorboard_writer.add_scalar("losses/loss_close", np.mean(info_aux['loss_close']), total_num_steps)
+                self.tensorboard_writer.add_scalar("losses/loss_goal", np.mean(info_aux['loss_goal']), total_num_steps)
             #
             # self.tensorboard_writer.add_scalar("losses/loss_close", np.mean(info_aux['loss_close']), total_num_steps)
             # self.tensorboard_writer.add_scalar("losses/loss_goal", np.mean(info_aux['loss_goal']), total_num_steps)
