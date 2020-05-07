@@ -72,6 +72,7 @@ class RL_agent:
             rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
             masks = masks.cuda()
         inputs, info = self.graph_helper.build_graph(observation,
+                                                     include_edges=self.args.base_net=='GNN',
                                                      action_space_ids=action_space_ids,
                                                      character_id=self.agent_id)
         visible_objects = info[-1]

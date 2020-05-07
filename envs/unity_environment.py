@@ -39,6 +39,7 @@ class UnityEnvironment(BaseEnvironment):
                  seed=123):
 
         self.seed = seed
+        self.prev_reward = 0.
         random.seed(seed)
         np.random.seed(seed)
 
@@ -123,6 +124,9 @@ class UnityEnvironment(BaseEnvironment):
                 done = False
 
         # print(satisfied)
+        self.prev_reward = reward
+        # if self.agent_goals[0] == 'full':
+        #     reward = reward - self.prev_reward
         return reward, done, {}
 
     def step(self, action_dict):
@@ -196,10 +200,10 @@ class UnityEnvironment(BaseEnvironment):
     def get_goal(self, task_spec, agent_goal):
         if agent_goal == 'full':
             pred = [x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
-            object_grab = [pr.split('_')[1] for pr in pred]
-            predicates_grab = {'holds_{}_1'.format(obj_gr): [1, False, 2] for obj_gr in object_grab}
-            res_dict = {goal_k: [goal_c, True, 20] for goal_k, goal_c in task_spec.items()}
-            res_dict.update(predicates_grab)
+            # object_grab = [pr.split('_')[1] for pr in pred]
+            # predicates_grab = {'holds_{}_1'.format(obj_gr): [1, False, 2] for obj_gr in object_grab}
+            res_dict = {goal_k: [goal_c, True, 2] for goal_k, goal_c in task_spec.items()}
+            # res_dict.update(predicates_grab)
             return res_dict
         elif agent_goal == 'grab':
             candidates = [x.split('_')[1] for x,y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
@@ -297,6 +301,7 @@ class UnityEnvironment(BaseEnvironment):
 
         obs = self.get_observations()
         self.steps = 0
+        self.prev_reward = 0.
         return obs
 
     def get_graph(self):

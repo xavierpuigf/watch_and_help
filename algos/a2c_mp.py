@@ -30,9 +30,10 @@ class A2C:
                                      spaces.Discrete(args.max_num_objects)))
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
-
+        self.rl_agent_id = [ag_id for ag_id, agent in enumerate(self.arenas[0].agents) if 'RL' in agent.agent_type][0]
         if self.args.num_processes == 1:
-            self.actor_critic = self.arenas[0].agents[0].actor_critic
+
+            self.actor_critic = self.arenas[0].agents[self.rl_agent_id].actor_critic
         else:
             self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
 
@@ -86,7 +87,7 @@ class A2C:
 
 
             # Add into memory
-            for mem in rollout_memory[0]:
+            for mem in rollout_memory[self.rl_agent_id]:
                 self.memory_all.append(*mem)
             self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0)
 
@@ -262,7 +263,7 @@ class A2C:
                     cx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
 
                     state_keys = trajs[0][0].state.keys()
-                    pdb.set_trace()
+                    print("Length trajectory: ", len(trajs))
                     for t in range(len(trajs) - 1):
 
                         # TODO: decompose here

@@ -138,32 +138,34 @@ class ArenaMP(object):
                                 edge['from_id']) for edge in init_graph['edges'] if edge['from_id'] in ids_target])
             info_rollout['target'] = [pred, info_goals]
 
+
+        agent_id = [id for id, enum_agent in enumerate(self.agents) if 'RL' in enum_agent.agent_type][0]
         while not done and nb_steps < self.max_episode_length:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             if logging:
                 curr_graph = env_info['graph']
-                observed_nodes = agent_info[0]['visible_ids']
+                observed_nodes = agent_info[agent_id]['visible_ids']
                 # pdb.set_trace()
-                node_id = [node['bounding_box'] for node in obs[0]['nodes'] if node['id'] == 1][0]
+                node_id = [node['bounding_box'] for node in obs[agent_id]['nodes'] if node['id'] == 1][0]
                 edges_char = [(id2node[edge['to_id']]['class_name'],
                                 edge['to_id'],
                                 edge['relation_type']) for edge in curr_graph['edges'] if edge['from_id'] == 1 and edge['to_id'] in observed_nodes]
 
                 if logging > 0:
-                    if 'pred_goal' in agent_info[0].keys():
-                        info_rollout['pred_goal'].append(agent_info[0]['pred_goal'])
-                        info_rollout['pred_close'].append(agent_info[0]['pred_close'])
-                        info_rollout['gt_goal'].append(agent_info[0]['gt_goal'])
-                        info_rollout['gt_close'].append(agent_info[0]['gt_close'])
-                        info_rollout['mask_nodes'].append(agent_info[0]['mask_nodes'])
+                    if 'pred_goal' in agent_info[agent_id].keys():
+                        info_rollout['pred_goal'].append(agent_info[agent_id]['pred_goal'])
+                        info_rollout['pred_close'].append(agent_info[agent_id]['pred_close'])
+                        info_rollout['gt_goal'].append(agent_info[agent_id]['gt_goal'])
+                        info_rollout['gt_close'].append(agent_info[agent_id]['gt_close'])
+                        info_rollout['mask_nodes'].append(agent_info[agent_id]['mask_nodes'])
 
                 if logging > 1:
                     info_rollout['step_info'].append((node_id, edges_char))
-                    info_rollout['script'].append(agent_actions[0])
-                    info_rollout['action_tried'].append(agent_info[0]['action_tried'])
+                    info_rollout['script'].append(agent_actions[agent_id])
+                    info_rollout['action_tried'].append(agent_info[agent_id]['action_tried'])
                     info_rollout['graph'].append(curr_graph)
-                    info_rollout['action_space_ids'].append(agent_info[0]['action_space_ids'])
-                    info_rollout['visible_ids'].append(agent_info[0]['visible_ids'])
+                    info_rollout['action_space_ids'].append(agent_info[agent_id]['action_space_ids'])
+                    info_rollout['visible_ids'].append(agent_info[agent_id]['visible_ids'])
 
             nb_steps += 1
             for agent_index in agent_info.keys():
@@ -185,12 +187,12 @@ class ArenaMP(object):
                     rewards = reward
 
                     entropy_action.append(
-                        -((agent_info[0]['probs'][0] + 1e-9).log() * agent_info[0]['probs'][0]).sum().item())
+                        -((agent_info[agent_id]['probs'][0] + 1e-9).log() * agent_info[agent_id]['probs'][0]).sum().item())
                     entropy_object.append(
-                        -((agent_info[0]['probs'][1] + 1e-9).log() * agent_info[0]['probs'][1]).sum().item())
-                    observation_space.append(agent_info[0]['num_objects'])
-                    action_space.append(agent_info[0]['num_objects_action'])
-
+                        -((agent_info[agent_id]['probs'][1] + 1e-9).log() * agent_info[agent_id]['probs'][1]).sum().item())
+                    observation_space.append(agent_info[agent_id]['num_objects'])
+                    action_space.append(agent_info[agent_id]['num_objects_action'])
+                    last_agent_info = agent_info
 
                     rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, rewards, 1))
 
@@ -200,7 +202,7 @@ class ArenaMP(object):
 
         info_rollout['success'] = success_r_all[0]
         info_rollout['nsteps'] = nb_steps
-        info_rollout['epsilon'] = self.agents[0].epsilon
+        info_rollout['epsilon'] = self.agents[agent_id].epsilon
         info_rollout['entropy'] = (entropy_action, entropy_object)
         info_rollout['observation_space'] = np.mean(observation_space)
         info_rollout['action_space'] = np.mean(action_space)
@@ -219,11 +221,11 @@ class ArenaMP(object):
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if 'RL' in self.agents[agent_id].agent_type:
-                    state = agent_info[agent_id]['state_inputs']
+                    state = last_agent_info[agent_id]['state_inputs']
                     if 'edges' in obs.keys():
                         pdb.set_trace()
-                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
-                    action = agent_info[agent_id]['actions']
+                    policy = [log_prob.data for log_prob in last_agent_info[agent_id]['probs']]
+                    action = last_agent_info[agent_id]['actions']
                     rewards = reward
                     rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, 0, 0))
 

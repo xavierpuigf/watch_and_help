@@ -380,8 +380,9 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
                                heuristic_dict,
                                last_subgoal,
                                opponent_subgoal)
-    print('plan', plan)
-    print('subgoal', subgoals)
+    if verbose:
+        print('plan', plan)
+        print('subgoal', subgoals)
     if sample_id is not None:
         res[sample_id] = plan
     else:
@@ -418,6 +419,7 @@ class MCTS_agent:
         self.num_processes = num_processes
         
         self.previous_belief_graph = None
+        self.verbose = False
 
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
@@ -495,10 +497,10 @@ class MCTS_agent:
         nb_steps = 0
         root_action = None
         root_node = None
+        verbose = self.verbose
 
 
-
-        plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_spec, None, last_subgoal, last_action, opponent_subgoal)
+        plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_spec, None, last_subgoal, last_action, opponent_subgoal, verbose=verbose)
 
         if len(plan) > 0:
             action = plan[0]

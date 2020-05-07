@@ -161,7 +161,7 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
-        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/agent.{}/'\
+        experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/agent.{}_alice.{}/'\
                           'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}'.format(
             args.env_name,
             args.task_type,
@@ -170,6 +170,7 @@ class Logger():
             args.simulator_type,
             args.task_set,
             args.agent_type,
+            args.use_alice,
             args.train_mode,
             args.algo,
             args.base_net,

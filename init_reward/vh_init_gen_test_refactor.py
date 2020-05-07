@@ -21,9 +21,8 @@ from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
-
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-task', type=int, default=20, help='Maximum #episodes/task')
+parser.add_argument('--num-per-task', type=int, default=250, help='Maximum #episodes/task')
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
@@ -99,7 +98,7 @@ if __name__ == "__main__":
 
     success_init_graph = []
 
-    apartment_list = [3, 6]
+    apartment_list = [0, 1, 2, 4, 5] # [3, 6]
 
     task_counts = {"setup_table": 0, 
                    "put_dishwasher": 0, 
@@ -113,7 +112,7 @@ if __name__ == "__main__":
 
 
 
-    for predicates_dict, task_name, pred_str in predicates['test']:
+    for predicates_dict, task_name, pred_str in predicates['train']: # test
         # json_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models' + \
         #             json_file[2:]
         # if json_path.endswith('json'):
@@ -152,7 +151,10 @@ if __name__ == "__main__":
         count_success = 0
 
         for i in range(num_test):
-            apartment = random.choice(apartment_list)
+            # Select apartments that allow the task
+            apt_list = [capt for capt in apartment_list if task_name in task_names[capt+1]]
+            assert(len(apt_list) > 0)
+            apartment = random.choice(apt_list)
             comm.reset(apartment)
             s, original_graph = comm.environment_graph()
             graph = copy.deepcopy(original_graph)
@@ -314,7 +316,7 @@ if __name__ == "__main__":
     # pdb.set_trace()
     print(len(test_set))
     print(task_counts)
-    pickle.dump(test_set, open(args.record_dir + '/test_env_set_help_{}_neurips.pik'.format(args.num_per_task), 'wb'))
+    pickle.dump(test_set, open(args.record_dir + '/train_env_set_help_{}_neurips.pik'.format(args.num_per_task), 'wb'))
 
 
 

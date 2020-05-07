@@ -48,8 +48,6 @@ def find_heuristic(agent_id, char_index, env_graph, simulator, object_target):
 
     action_list = []
     cost_list = []
-    # if target == 478:
-    #     ipdb.set_trace()
     while target not in observation_ids:
         try:
             container = containerdict[target]
@@ -337,6 +335,10 @@ class HRL_agent:
         self.objects1 = list(set(self.objects1))
         self.objects2 = list(set(self.objects2))
 
+        # Goal locations
+        #self.objects1 = ["cupcake", "apple"]
+        self.objects2 = ["coffeetable", "kitchentable", "dishwasher", "fridge"]
+
         self.obj2_dict = {}
         self.obj2_dict = {}
 
@@ -443,6 +445,7 @@ class HRL_agent:
             rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
             masks = masks.cuda()
         inputs, info = self.graph_helper.build_graph(observation,
+                                                     include_edges=self.args.base_net == 'GNN',
                                                      action_space_ids=action_space_ids,
                                                      character_id=self.agent_id)
         visible_objects = info[-1]
@@ -485,7 +488,6 @@ class HRL_agent:
                 inp_tensor = inp_tensor.float()
             inputs_tensor[input_name] = inp_tensor
 
-
         if self.action_count == 0:
             value, action, action_probs, rnn_state, out_dict = self.actor_critic.act(
                 inputs_tensor,
@@ -517,11 +519,18 @@ class HRL_agent:
             info_model['actions'] = next_action
 
 
-        action_str, action_tried = self.get_action_instr(next_action, visible_objects, observation_belief)
+        action_str, action_tried, plan = self.get_action_instr(next_action, visible_objects, observation_belief)
         if action_str is not None:
+            print('{} --> {}'.format(action_tried, action_str))
+
             self.action_count += 1
-        if self.action_count >= self.args.num_steps_mcts:
+            if len(plan) == 1 or self.action_count >= self.args.num_steps_mcts:
+                self.action_count = 0
+
+        else:
+            print("Plan: ", plan, action_tried)
             self.action_count = 0
+
 
 
         info_model['action_tried'] = action_tried
@@ -537,14 +546,13 @@ class HRL_agent:
         if self.objects1[action[0].item()] == "None":
             # Open action, open a new object that was not open before
             if self.objects2[action[1].item()] not in self.graph_helper.object_dict_types["objects_inside"]:
-                return None, "open_{}".format(self.objects2[action[1].item()])
+                return None, "open_{}".format(self.objects2[action[1].item()]), []
 
             target_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects2[action[1].item()] and node['states'] == 'CLOSED']
             if len(target_id) == 0:
-                return None,  "open_{}".format(self.objects2[action[1].item()])
+                return None,  "open_{}".format(self.objects2[action[1].item()]), []
             target_goal = 'open_{}'.format(target_id[0])
 
-            print("Heurisitc: ", target_goal)
             actions, _ = open_heuristic(self.agent_id, 0, current_graph, self.sim_env, target_goal)
         else:
             # Pick ans place
@@ -552,24 +560,26 @@ class HRL_agent:
             container_name = self.objects2[action[1].item()]
             container_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects2[action[1].item()]]
             if len(container_id) == 0:
-                return None, 'put_{}_{}'.format(obj_name, container_name)
+                return None, 'put_{}_{}'.format(obj_name, container_name), []
             obj_rel_container = [edge['from_id'] for edge in current_graph['edges'] if edge['to_id'] == container_id[0]
                                  and edge['relation_type'] in ['ON', 'INSIDE']]
             object_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects1[action[0].item()] and
                          node['id'] not in obj_rel_container]
             if len(object_id) == 0:
 
-                return None, 'put_{}_{}'.format(obj_name, container_name)
+                return None, 'put_{}_{}'.format(obj_name, container_name), []
             target_goal = "put_{}_{}".format(object_id[0], container_id[0])
 
 
             # print("Heurisitc: ", target_goal)
-            actions, _ = put_heuristic(self.agent_id, 0, current_graph, self.sim_env, target_goal)
+            if container_name in self.graph_helper.object_dict_types['objects_surface']:
+                actions, _ = put_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
+            else:
+                actions, _ = putIn_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
 
-        try:
-            action_name = actions[0][0]
-        except:
-            pdb.set_trace()
+        if actions is None:
+            return None, '', actions
+        action_name = actions[0][0]
         if 'put' in action_name:
             obj_id_action = 2
         else:
@@ -577,8 +587,10 @@ class HRL_agent:
         o1, o1_id = actions[0][obj_id_action]
         action_name = action_name.replace("walk", "walktowards")
 
-        action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph, graph_helper=None, teleport=False)
+        action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, current_graph,
+                                                   graph_helper=self.graph_helper,
+                                                   teleport=False)
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
         #print('{: <40} --> {}'.format(action_try, action))
         # print(action_try, action)
-        return action, action_try
+        return action, action_try, actions

@@ -11,8 +11,6 @@ import timeit
 import os
 import argparse
 import glob
-
-
 # home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
 home_path = os.getcwd()
 home_path = '/'.join(home_path.split('/')[:-2])
@@ -26,8 +24,6 @@ from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 import pickle
 
-from agents import MCTS_agent, PG_agent
-from envs.envs import UnityEnv
 
 
 # Options, should go as argparse arguments
@@ -65,6 +61,9 @@ def get_metrics(alice_results, test_results, episode_ids):
         Ls.append(L_B)
         Ss.append(S_B)
         SWSs.append(0 if S_B < 1 else max(L_A / L_B - 1.0, 0))
+        if S_A > 0 and SWSs[-1] > 1.:
+            pdb.set_trace()
+            print(episode_id)
     # print('Alice:', np.mean(alice_S), np.mean(alice_L))
     # print('Alice:', np.mean(alice_S), '({})'.format(np.std(alice_S)), np.mean(alice_L), '({})'.format(np.std(alice_L)))
     # print('Bob:', np.mean(Ss), '({})'.format(np.std(Ss)), np.mean(Ls), '({})'.format(np.std(Ls)), np.mean(SWSs), '({})'.format(np.std(SWSs)))
@@ -94,28 +93,45 @@ if __name__ == '__main__':
     print (' ' * 26 + 'Options')
     for k, v in vars(args).items():
             print(' ' * 26 + k + ': ' + str(v))
-    env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/test_env_set_{}.pik'.format(args.num_per_task), 'rb'))
+    env_task_set = pickle.load(open(home_path+'/challenge/data_challenge//test_env_set_help_20_neurips.pik', 'rb'))
     # env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
     
-    args.record_dir_alice = '../record/init7_Alice_test_set_{}'.format(args.num_per_task)
+    args.record_dir_alice = './record_scratch/rec_good_test/Alice_env_task_set_20_check_neurips_test'
     print(args.record_dir_alice + '/results_{}.pik'.format(1))
-    alice_results = pickle.load(open(args.record_dir_alice + '/results_{}.pik'.format(1), 'rb'))
+    alice_results = pickle.load(open(args.record_dir_alice + '/results_{}.pik'.format(0), 'rb'))
 
     # args.record_dir = '../record/init7_Bob_test_set_{}'.format(args.num_per_task)
-    args.record_dir = '../record/init7_BobNoRec_test_set_{}'.format(args.num_per_task)
-    test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(9), 'rb'))
+    args.record_dir = './record_scratch/rec_good_test/Bob_env_task_set_20_check_neurips_test_random_goal'
+    # args.record_dir = './record_scratch/rec_good_test/Alice_env_task_set_20_check_neurips_test'
+    # args.record_dir = './record_scratch/rec_good_test/Bob_env_task_set_20_check_neurips_test_recursive'
+    test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
 
-    num_agents = 2
+    num_agents = 1
 
 
     episode_ids = list(range(len(env_task_set)))
     S = [0] * len(episode_ids)
     L = [200] * len(episode_ids)
     
-    SR, AL, SWS = get_metrics(alice_results, test_results, episode_ids)
-    print('overall:', SR, AL, SWS)
+    SRO, ALO, SWSO = get_metrics(alice_results, test_results, episode_ids)
+    print('overall:', SRO, ALO, SWSO)
 
+    sr_list, al_list, sws_list = [], [], []
     for task_name in ['setup_table', 'put_fridge', 'prepare_food', 'put_dishwasher', 'read_book']:
         episode_ids_task = [episode_id for episode_id in episode_ids if env_task_set[episode_id]['task_name'] == task_name]
         SR, AL, SWS = get_metrics(alice_results, test_results, episode_ids_task)
+        sr_list.append(str(SR))
+        al_list.append(str(AL))
+        sws_list.append(str(SWS))
         print('{}:'.format(task_name), SR, AL, SWS)
+
+    sr_list.append(str(SRO))
+    al_list.append(str(ALO))
+    sws_list.append(str(SWSO))
+
+    print("SR")
+    print(','.join(sr_list))
+    print("AL")
+    print(','.join(al_list))
+    print("SWS")
+    print(','.join(sws_list))

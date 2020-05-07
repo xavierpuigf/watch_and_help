@@ -21,6 +21,7 @@ class MCTS:
         self.heuristic_dict = None
         self.opponent_subgoal = None
         self.last_opened = None
+        self.verbose = False
         np.random.seed(self.seed)
         random.seed(self.seed)
 
@@ -57,15 +58,18 @@ class MCTS:
         
     def run(self, curr_root, t, heuristic_dict, last_subgoal, opponent_subgoal):
         self.opponent_subgoal = opponent_subgoal
-        print('check subgoal')
+        if self.verbose:
+            print('check subgoal')
         curr_vh_state_tmp, curr_state_tmp, _, satisfied, unsatisfied, _, actions_parent = curr_root.id[1]
         subgoals = self.get_subgoal_space(curr_state_tmp, satisfied, unsatisfied, opponent_subgoal, verbose=1)
         # subgoals = [sg for sg in subgoals if sg[0] != opponent_subgoal] # avoid repreating
         #print(curr_state_tmp['edges'])
-        print('satisfied:', satisfied)
-        print('unsatisfied:', unsatisfied)
-        print('subgoals:', subgoals)
-        print('last_subgoal:', last_subgoal)
+
+        if self.verbose:
+            print('satisfied:', satisfied)
+            print('unsatisfied:', unsatisfied)
+            print('subgoals:', subgoals)
+            print('last_subgoal:', last_subgoal)
 
         """TODO: check predicates other than ON"""
         id2node = {node['id']: node for node in curr_state_tmp['nodes']}
@@ -126,7 +130,8 @@ class MCTS:
                     else:
                         self.last_opened = None
                     break
-        print('last_opened:', self.last_opened, need_to_close)
+        if self.verbose:
+            print('last_opened:', self.last_opened, need_to_close)
         for subgoal in subgoals:
             if subgoal[0] == last_subgoal:
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]
@@ -145,7 +150,8 @@ class MCTS:
                                     '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
                                     plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
                                     break
-                print('repeat subgoal plan:', plan)
+                if self.verbose:
+                    print('repeat subgoal plan:', plan)
                 if len(plan) > 0 and plan[0].startswith('[open]'):
                     elements = plan[0].split(' ')
                     self.last_opened = [elements[1], elements[2]]
@@ -167,7 +173,8 @@ class MCTS:
                                     '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
                                     plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
                                     break
-                    print(plan[0])
+                    if self.verbose:
+                        print(plan[0])
                 if len(plan) > 0 and plan[0].startswith('[open]'):
                     elements = plan[0].split(' ')
                     self.last_opened = [elements[1], elements[2]]           
@@ -217,7 +224,8 @@ class MCTS:
                             '({})'.format(edge['to_id']) == self.last_opened[1] and edge['from_id'] == self.agent_id):
                             plan = ['[close] {} {}'.format(self.last_opened[0], self.last_opened[1])] + plan
                             break
-            print(plan[0])
+            if self.verbose:
+                print(plan[0])
         if len(plan) > 0 and plan[0].startswith('[open]'):
             elements = plan[0].split(' ')
             self.last_opened = [elements[1], elements[2]]
@@ -345,9 +353,11 @@ class MCTS:
         children_ids = [child.id[0] for child in curr_root.children]
         children_visit = [child.num_visited for child in curr_root.children]
         children_value = [child.sum_value for child in curr_root.children]
-        print('children_ids:', children_ids)
-        print('children_visit:', children_visit)
-        print('children_value:', children_value)
+
+        if self.verbose:
+            print('children_ids:', children_ids)
+            print('children_visit:', children_visit)
+            print('children_value:', children_value)
         # print(list([c.id.keys() for c in curr_root.children]))
         maxIndex = np.argwhere(
             children_visit == np.max(children_visit)).flatten()

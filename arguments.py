@@ -304,6 +304,9 @@ def get_args():
     parser.add_argument('--use-gt-actions', action='store_true', default=False,
                         help='debugging mode')
 
+    parser.add_argument('--use-alice', action='store_true', default=False,
+                        help='debugging mode')
+
     parser.add_argument('--num_steps_mcts', type=int, default=15,
                         help='how many steps to take of the given plan')
 

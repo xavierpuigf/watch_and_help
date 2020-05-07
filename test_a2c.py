@@ -65,8 +65,9 @@ if __name__ == '__main__':
             env_task_set.append(env_task_new)
 
         print('# env_task for debug:', len(env_task_set))
+
         for env_task in env_task_set:
-            print(env_task['task_goal'][0])
+            print(env_task['task_name'], env_task['task_goal'][0])
 
         # # debug 3: 1 predicate, multiple rooms
         # env_task_set0 = copy.deepcopy(env_task_set)
@@ -88,30 +89,58 @@ if __name__ == '__main__':
     print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'full'
+    args.task_type = 'full'
     # if args.task_type == 'put':
     #     agent_goal = 'put'
+
+    agent_goals = [agent_goal]
+    if args.use_alice:
+        num_agents += 1
+        observation_types = ['mcts', args.obs_type]
+        agent_goals.append(agent_goal)
+        rl_agent_id = 2
+    else:
+        rl_agent_id = 1
+        observation_types = [args.obs_type]
 
     def env_fn(env_id):
         if args.simulator_type == 'unity':
             return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                                     port_id=env_id,
                                     env_task_set=env_task_set,
-                                    agent_goals=[agent_goal],
-                                    observation_types=[args.obs_type],
+                                    agent_goals=agent_goals,
+                                    observation_types=observation_types,
                                     use_editor=args.use_editor,
                                     executable_args=executable_args,
                                     base_port=args.base_port)
         else:
             return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                                     env_task_set=env_task_set,
-                                    agent_goals=[agent_goal],
-                                    observation_types=[args.obs_type],
+                                    agent_goals=agent_goals,
+                                    observation_types=observation_types,
                                     seed=env_id)
 
 
     graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
                                               max_num_edges=args.max_num_edges, current_task=None,
                                               simulator_type=args.simulator_type)
+
+
+    def MCTS_agent_fn(arena_id, env):
+        args_mcts = dict(recursive=False,
+                           max_episode_length=5,
+                           num_simulation=100,
+                           max_rollout_steps=5,
+                           c_init=0.1,
+                           c_base=1000000,
+                           num_samples=1,
+                           num_processes=1,
+                           logging=False,
+                           logging_graphs=False)
+
+        args_mcts['agent_id'] = 1
+        args_mcts['char_index'] = 0
+        return MCTS_agent(**args_mcts)
 
     def RL_agent_fn(arena_id, env):
         args_agent2 = {'agent_id': 1, 'char_index': 0,
@@ -121,14 +150,19 @@ if __name__ == '__main__':
 
 
     def HRL_agent_fn(arena_id, env):
-        args_agent2 = {'agent_id': 1, 'char_index': 0,
+        args_agent2 = {'agent_id': rl_agent_id, 'char_index': rl_agent_id - 1,
                        'args': args, 'graph_helper': graph_helper}
         args_agent2['seed'] = arena_id
         return HRL_agent(**args_agent2)
 
 
+
+
     # agents = [RL_agent_fn]
     agents = [HRL_agent_fn]
+
+    if args.use_alice:
+        agents = [MCTS_agent_fn] + agents
     if args.num_processes > 1:
         ArenaMP = ray.remote(ArenaMP) #, max_reconstructions=ray.ray_constants.INFINITE_RECONSTRUCTION)
         arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
