@@ -359,7 +359,6 @@ class Plotter:
     def render(self):
         print("Rendering...")
         if not os.path.isdir(self.dir_name):
-            pdb.set_trace()
             os.makedirs(self.dir_name)
 
         if not os.path.isdir(self.dir_name+'/plots'):

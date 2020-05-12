@@ -242,7 +242,7 @@ def get_args():
         '--max_gradient_norm', type=int, default=10)
 
     parser.add_argument(
-        '--memory-capacity-episodes', type=int, default=10000)
+        '--memory-capacity-episodes', type=int, default=2000)
 
     parser.add_argument('--no-time-normalization', action='store_true', default=False,
                         help='whether to normalize loss on time')
@@ -253,8 +253,13 @@ def get_args():
     parser.add_argument('--add-timestep', action='store_true', default=False,
                         help='add timestep to observations')
 
+    parser.add_argument('--teleport', action='store_true', default=False,
+                        help='teleport')
+
     parser.add_argument('--tensorboard-logdir', default='log_tb',
                         help='logs to tensorboard in the specified directory')
+
+
 
 
     # Exec args

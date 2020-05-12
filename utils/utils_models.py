@@ -161,8 +161,9 @@ class Logger():
 
     def get_experiment_name(self):
         args = self.args
+        info_mcts = 'stepmcts.{}-lep.{}-teleport.{}'.format(args.num_steps_mcts, args.max_episode_length, args.teleport)
         experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/agent.{}_alice.{}/'\
-                          'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}'.format(
+                          'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}-bs.{}/{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,
@@ -177,7 +178,9 @@ class Logger():
             args.gamma,
             args.c_loss_close,
             args.c_loss_goal,
-            args.lr)
+            args.lr,
+            args.batch_size,
+            info_mcts)
 
         if args.debug:
             experiment_name += 'debug'
