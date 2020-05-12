@@ -10,6 +10,7 @@ import json
 from utils.utils_models import Logger
 from utils import utils_models
 import models.actor_critic as actor_critic
+from models import actor_critic, actor_critic_hl_mcts
 from gym import spaces
 import atexit
 
@@ -19,23 +20,61 @@ class A2C:
         base_kwargs = {
             'hidden_size': args.hidden_size,
             'max_nodes': args.max_num_objects,
-            'num_classes': graph_helper.num_objects,
+            'num_classes': graph_helper.num_classes,
             'num_states': graph_helper.num_states
 
         }
 
         self.args = args
         num_actions = graph_helper.num_actions
-        action_space = spaces.Tuple((spaces.Discrete(num_actions),
-                                     spaces.Discrete(args.max_num_objects)))
+        if args.agent_type == 'hrl_mcts':
+            self.objects1, self.objects2 = [], []
+            # all objects that can be grabbed
+            grabbed_obj = graph_helper.object_dict_types["objects_grab"]
+            # all objects that can be opene
+            container_obj = graph_helper.object_dict_types["objects_inside"]
+            surface_obj = graph_helper.object_dict_types["objects_surface"]
+            for act in ['open', 'pickplace']:
+                if act == 'open':
+                    #self.actions.append('open')
+                    self.objects1.append("None")
+                    self.objects2 += container_obj
+                if act == 'pickplace':
+                    #self.actions.append('pickplace')
+                    self.objects2 += container_obj + surface_obj
+                    self.objects1 += grabbed_obj
+
+            self.objects1 = list(set(self.objects1))
+            self.objects2 = list(set(self.objects2))
+
+            # Goal locations
+            # self.objects1 = ["cupcake", "apple"]
+            self.objects2 = ["coffeetable", "kitchentable", "dishwasher", "fridge"]
+            action_space = spaces.Tuple((
+                spaces.Discrete(len(self.objects1)),
+                spaces.Discrete(len(self.objects2))
+            ))
+
+        else:
+            action_space = spaces.Tuple((spaces.Discrete(num_actions),
+                                         spaces.Discrete(args.max_num_objects)))
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
-        self.rl_agent_id = [ag_id for ag_id, agent in enumerate(self.arenas[0].agents) if 'RL' in agent.agent_type][0]
         if self.args.num_processes == 1:
 
+            self.rl_agent_id = [ag_id for ag_id, agent in enumerate(self.arenas[0].agents) if 'RL' in agent.agent_type][
+                0]
             self.actor_critic = self.arenas[0].agents[self.rl_agent_id].actor_critic
         else:
-            self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
+            if args.use_alice:
+                self.rl_agent_id = 1
+            else:
+                self.rl_agent_id = 0
+            if args.agent_type == 'hrl_mcts':
+                self.actor_critic = actor_critic_hl_mcts.ActorCritic(action_space, base_name=args.base_net,
+                                                                     base_kwargs=base_kwargs)
+            else:
+                self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
 
         self.actor_critic.to(self.device)
 

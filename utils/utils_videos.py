@@ -40,10 +40,13 @@ def merge_frames(in_formats, nframes, out_format):
         cv2.imwrite(out_format.replace('*', '{:04}'.format(i)), img_join)
 
 if __name__ == '__main__':
-    merge_frames(['/Users/xavierpuig/Desktop/test_videos/bob_with_info/action_*.png',
-                  '/Users/xavierpuig/Desktop/test_videos/alice_with_info/action_*.png'], 570,
-                 '/Users/xavierpuig/Desktop/test_videos/merged2_info/Action_*_normal.png')
-    create_video('/Users/xavierpuig/Desktop/test_videos/merged2_info/',
-                 'Action_*_normal.png',
-                 '/Users/xavierpuig/Desktop/test_videos/alice_and_bob_info.mp4')
+    # merge_frames(['/Users/xavierpuig/Desktop/test_videos/bob_with_info/action_*.png',
+    #               '/Users/xavierpuig/Desktop/test_videos/alice_with_info/action_*.png'], 570,
+    #              '/Users/xavierpuig/Desktop/test_videos/merged2_info/Action_*_normal.png')
+    # create_video('/Users/xavierpuig/Desktop/test_videos/merged2_info/',
+    #              'Action_*_normal.png',
+    #              '/Users/xavierpuig/Desktop/test_videos/alice_and_bob_info.mp4')
+    create_video('/Users/xavierpuig/Desktop/test_videos/alice_with_info_belief/',
+                 'action_*.png',
+                 '/Users/xavierpuig/Desktop/test_videos/alice_info_goals.mp4')
     #create_video(sys.argv[1], sys.argv[2], sys.argv[3])

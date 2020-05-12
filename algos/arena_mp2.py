@@ -37,11 +37,12 @@ class ArenaMP(object):
         ob = None
         while ob is None:
             ob = self.env.reset(task_id=task_id)
+
         for it, agent in enumerate(self.agents):
             if agent.agent_type == 'MCTS':
-                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=it)
+                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
             elif agent.agent_type == 'RL_MCTS':
-                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=it)
+                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
             else:
                 agent.reset(self.env.python_graph)
 
@@ -59,11 +60,15 @@ class ArenaMP(object):
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
-
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], opponent_subgoal)
+                # pdb.set_trace()
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.get_goal(self.task_goal[it], self.env.agent_goals[it]), opponent_subgoal)
             elif 'RL' in agent.agent_type:
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], action_space_ids=action_space[it])
         return dict_actions, dict_info
+
+    def reset_env(self):
+        self.env.close()
+        self.env = self.env_fn(self.arena_id)
 
     def rollout_reset(self, logging=False, record=False):
         try:
@@ -262,25 +267,31 @@ class ArenaMP(object):
                       'env_id': self.env.env_id,
                       'task_name': self.env.task_name,
                       'gt_goals': self.env.task_goal[0],
-                      'goals': self.task_goal[0],
+                      'goals': self.task_goal,
                       'action': {0: [], 1: []},
                       'plan': {0: [], 1: []},
-                      'subgoal': {0: [], 1: []},
+                      'subgoals': {0: [], 1: []},
                       # 'init_pos': {0: None, 1: None},
                       'finished': None,
                       'init_unity_graph': self.env.init_graph,
+                      'goals_finished': [],
+                      'belief': {0: [], 1: []},
                       'obs': []}
         success = False
         while True:
             (obs, reward, done, infos), actions, agent_info = self.step()
             success = infos['finished']
+            if 'satisfied_goals' in infos:
+                saved_info['goals_finished'].append(infos['satisfied_goals'])
             for agent_id, action in actions.items():
                 saved_info['action'][agent_id].append(action)
             for agent_id, info in agent_info.items():
+                if 'belief_graph' in info:
+                    saved_info['belief'][agent_id].append(info['belief_graph'])
                 if 'plan' in info:
                     saved_info['plan'][agent_id].append(info['plan'][:3])
-                if 'subgoal' in info:
-                    saved_info['subgoal'][agent_id].append(info['subgoal'][:3])
+                if 'subgoals' in info:
+                    saved_info['subgoals'][agent_id].append(info['subgoals'][:3])
                 if 'obs' in info:
                     saved_info['obs'].append(info['obs'])
             if done:

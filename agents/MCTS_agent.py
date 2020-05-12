@@ -395,13 +395,15 @@ class MCTS_agent:
     """
     def __init__(self, agent_id, char_index,
                  max_episode_length, num_simulation, max_rollout_steps, c_init, c_base, recursive=False,
-                 num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False):
+                 num_samples=1, num_processes=1, comm=None, logging=False, logging_graphs=False, seed=None):
         self.agent_type = 'MCTS'
         self.verbose = False
         self.recursive = recursive
 
         #self.env = unity_env.env
-
+        if seed is None:
+            seed = random.randint(0,100)
+        self.seed = seed
         self.logging = logging
         self.logging_graphs = logging_graphs
 
@@ -511,7 +513,7 @@ class MCTS_agent:
                 'plan': plan,
                 'subgoals': subgoals
                 # 'belief': copy.deepcopy(self.belief.edge_belief),
-                # 'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
+                #'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
             }
             if self.logging_graphs:
                 info.update(
@@ -531,11 +533,12 @@ class MCTS_agent:
 
         self.previous_belief_graph = None
         self.belief = Belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
+        # print("set")
         self.belief.sample_from_belief()
         graph_belief = self.sample_belief(observed_graph) #self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(graph_belief, task_goal)
         self.sim_env.to_pomdp()
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,
-                         self.c_init, self.c_base)
+                         self.c_init, self.c_base, seed=seed)
 

@@ -57,7 +57,7 @@ class UnityEnvironment(BaseEnvironment):
         self.base_port = base_port
         self.port_id = port_id
         self.output_folder = output_folder
-        self.file_nem_prefix = file_name_prefix
+        self.file_name_prefix = file_name_prefix
 
         self.default_width = 128
         self.default_height = 128
@@ -127,7 +127,7 @@ class UnityEnvironment(BaseEnvironment):
         self.prev_reward = reward
         # if self.agent_goals[0] == 'full':
         #     reward = reward - self.prev_reward
-        return reward, done, {}
+        return reward, done, {'satisfied_goals': satisfied}
 
     def step(self, action_dict):
         script_list = utils.convert_action(action_dict)
@@ -137,10 +137,11 @@ class UnityEnvironment(BaseEnvironment):
                 success, message = self.comm.render_script(script_list,
                                                            recording=True,
                                                            gen_vid=False,
-                                                           camera_mode='PERSON_TOP',
-                                                           output_folder=self.output_folder,
-                                                           file_name_prefix=self.file_name_prefix,
-                                                           image_synthesis=['normal', 'seg_inst', 'seg_class'])
+                                                           smooth_walk=True,
+                                                           camera_mode=['PERSON_TOP', '81'],
+                                                           # output_folder=self.output_folder,
+                                                           file_name_prefix='task_{}'.format(self.task_id),
+                                                           image_synthesis=['normal'])
             else:
                 # try:
                 success, message = self.comm.render_script(script_list,

@@ -316,6 +316,7 @@ class HRL_agent:
         self.agent_type = 'RL_MCTS'
         self.max_num_objects = args.max_num_objects
         self.actions = []
+        self.seed = seed
         self.objects1, self.objects2 = [], []
         # all objects that can be grabbed
         grabbed_obj = graph_helper.object_dict_types["objects_grab"]
@@ -521,14 +522,14 @@ class HRL_agent:
 
         action_str, action_tried, plan = self.get_action_instr(next_action, visible_objects, observation_belief)
         if action_str is not None:
-            print('{} --> {}'.format(action_tried, action_str))
+            # print('{} --> {}'.format(action_tried, action_str))
 
             self.action_count += 1
             if len(plan) == 1 or self.action_count >= self.args.num_steps_mcts:
                 self.action_count = 0
 
         else:
-            print("Plan: ", plan, action_tried)
+            # print("Plan: ", plan, action_tried)
             self.action_count = 0
 
 
