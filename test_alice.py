@@ -57,7 +57,8 @@ if __name__ == '__main__':
     env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
 
     if args.use_editor:
-        env_task_set = [env_task_set[q] for q in [90, 93, 32, 64]]
+        env_task_set = [env_task_set[q] for q in [82]]
+        # args.recording = True
 
     # Filter out the rug and door
     for env in env_task_set:
@@ -68,7 +69,7 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -78,12 +79,16 @@ if __name__ == '__main__':
     id_run = 0
     random.seed(id_run)
     episode_ids = list(range(len(env_task_set)))
-    random.shuffle(episode_ids)
-
-
-    S = [0] * len(episode_ids)
-    L = [200] * len(episode_ids)
+    #random.shuffle(episode_ids)
+    episode_ids = sorted(episode_ids)
+    num_tries = 5
+    S = [[] for _ in range(len(episode_ids))]
+    L = [[] for _ in range(len(episode_ids))]
+    #seeds =
     test_results = {}
+
+    if args.use_editor:
+        num_tries = 1
 
     def env_fn(env_id):
         return UnityEnvironment(num_agents=1,
@@ -132,19 +137,29 @@ if __name__ == '__main__':
     # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
     # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
     # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
-    for iter_id in range(1):
+    for iter_id in range(num_tries):
         #if iter_id > 0:
 
         cnt = 0
         steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
 
-            if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
+            if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
                 test_results = {}
             else:
-                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
-            if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
+                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
+
+            if episode_id in test_results:
+                if len(test_results[episode_id]['S']) > num_tries:
+                    continue
+                else:
+                    current_tried = len(test_results[episode_id]['S'])
+            else:
+                current_tried = 0
             print('episode:', episode_id)
+
+            for it_agent, agent in enumerate(arena.agents):
+                agent.seed = it_agent + current_tried * 2
             # continue
             # try:
             if True:
@@ -161,26 +176,28 @@ if __name__ == '__main__':
                 is_finished = 1 if success else 0
 
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
+                log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name'], current_tried)
                 if len(saved_info['obs']) > 0:
-                    pickle.dump(saved_info, open(args.record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
+                    pickle.dump(saved_info, open(log_file_name, 'wb'))
                 else:
-                    with open(args.record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
+                    with open(log_file_name, 'w+') as f:
                         f.write(json.dumps(saved_info, indent=4))
             else:
-                pass
+                arena.reset_env()
 
-            S[episode_id] = is_finished
-            L[episode_id] = steps
 
-            if os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
-                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
-            test_results[episode_id] = {'S': is_finished,
-                                        'L': steps}
-            pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
+            S[episode_id].append(is_finished)
+            L[episode_id].append(steps)
+
+            if os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
+                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
+            test_results[episode_id] = {'S': S[episode_id],
+                                        'L': L[episode_id]}
+            pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
 
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
-        print('AL:', np.array(L).mean())
-        print('SR:', np.array(S).mean())
-        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
+        # print('AL:', np.array(L).mean())
+        # print('SR:', np.array(S).mean())
+        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
 

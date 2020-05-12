@@ -9,6 +9,7 @@ import json
 import random
 import numpy as np
 from pathlib import Path
+import pickle as pkl
 
 from envs.unity_environment import UnityEnvironment
 from agents import MCTS_agent
@@ -63,6 +64,8 @@ def random_goal(graph):
         dict_preds[target_name] = random.choice([0,1,2])
     return dict_preds
 
+
+
 if __name__ == '__main__':
     args = get_args()
     # args.task = 'setup_table'
@@ -72,14 +75,10 @@ if __name__ == '__main__':
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
-
-
-
-
-
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.mode = 'check_neurips_test_random_goal'
+    args.base_port = 8084
+    args.mode = 'check_neurips_test_recursive'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
@@ -93,7 +92,7 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_randomgoal'.format(args.num_per_apartment)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -121,12 +120,15 @@ if __name__ == '__main__':
     #                          'task_goal': task_goal,
     #                          'level': 0, 'init_rooms': [0, 0]})
 
-    id_run = 12
+    id_run = 0
     random.seed(id_run)
     episode_ids = list(range(len(env_task_set)))
-    random.shuffle(episode_ids)
-    S = [0] * len(episode_ids)
-    L = [200] * len(episode_ids)
+    #random.shuffle(episode_ids)
+    episode_ids = sorted(episode_ids)
+    num_tries = 5
+    S = [[0]*5 for _ in range(len(episode_ids))]
+    L = [[200]*5 for _ in range(len(episode_ids))]
+    #seeds =
     test_results = {}
 
     def env_fn(env_id):
@@ -142,7 +144,7 @@ if __name__ == '__main__':
     args_common = dict(recursive=False,
                          max_episode_length=5,
                          num_simulation=100,
-                         max_rollout_steps  =5,
+                         max_rollout_steps=5,
                          c_init=0.1,
                          c_base=1000000,
                          num_samples=1,
@@ -154,27 +156,53 @@ if __name__ == '__main__':
     args_agent2 = {'agent_id': 2, 'char_index': 1}
     args_agent1.update(args_common)
     args_agent2.update(args_common)
-    args_agent2.update({'recursive': True})
+    args_agent2.update({'recursive': False})
     agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
     arena = ArenaMP(id_run, env_fn, agents)
 
-    for iter_id in range(1):
-        if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
+    for iter_id in range(num_tries):
+        # if iter_id > 0:
+        #     test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
+        cnt = 0
+        steps_list, failed_tasks = [], []
+        if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
             test_results = {}
         else:
-            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
+            test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
 
-        steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
-            if episode_id == 51:
+            curr_log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(
+                env_task_set[episode_id]['task_id'],
+                env_task_set[episode_id]['task_name'],
+                iter_id)
+
+            current_tried = iter_id
+
+            if os.path.isfile(curr_log_file_name):
+                with open(curr_log_file_name, 'rb') as fd:
+                    file_data = pkl.load(fd)
+                S[episode_id][current_tried] = file_data['finished']
+                L[episode_id][current_tried] = max(len(file_data['action'][0]), len(file_data['action'][1]))
+                test_results[episode_id] = {'S': S[episode_id],
+                                            'L': L[episode_id]}
                 continue
 
-            if episode_id in test_results and test_results[episode_id]['S'] > 0: continue
+
+
+            if not current_tried == iter_id:
+                pdb.set_trace()
             print('episode:', episode_id)
+
+            for it_agent, agent in enumerate(arena.agents):
+                agent.seed = it_agent + current_tried * 2
+
+            is_finished = 0
+            steps = 250
             try:
+
                 arena.reset(episode_id)
                 rand_goal = random_goal(arena.env.graph)
-                original_goal = arena.env.task_goal
+                original_goal = arena.env.task_goal[0]
                 success, steps, saved_info = arena.run(pred_goal={0: original_goal, 1: rand_goal})
                 print('-------------------------------------')
                 print('success' if success else 'failure')
@@ -185,27 +213,28 @@ if __name__ == '__main__':
                 else:
                     steps_list.append(steps)
                 is_finished = 1 if success else 0
-                S[episode_id] = is_finished
-                L[episode_id] = steps
-                test_results[episode_id] = {'S': is_finished, 
-                                            'L': steps}
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
+                log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(saved_info['task_id'],
+                                                                                    saved_info['task_name'],
+                                                                                    current_tried)
+
                 if len(saved_info['obs']) > 0:
-                    pickle.dump(saved_info, open(args.record_dir + '/logs_agent_{}_{}.pik'.format(saved_info['task_id'], saved_info['task_name']), 'wb'))
+                    pickle.dump(saved_info, open(log_file_name, 'wb'))
                 else:
-                    with open(args.record_dir + '/logs_agent_{}_{}.json'.format(saved_info['task_id'], saved_info['task_name']), 'w+') as f:
+                    with open(log_file_name, 'w+') as f:
                         f.write(json.dumps(saved_info, indent=4))
             except:
-                pass
+                arena.reset_env()
 
-            if os.path.isfile(args.record_dir + '/results_{}.pik'.format(iter_id)):
-                test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id), 'rb'))
-            test_results[episode_id] = {'S': is_finished,
-                                        'L': steps}
-            pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
+            S[episode_id][current_tried] = is_finished
+            L[episode_id][current_tried] = steps
+            # if os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
+            #     test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
+            test_results[episode_id] = {'S': S[episode_id],
+                                        'L': L[episode_id]}
+        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
-        print('AL:', np.array(L).mean())
-        print('SR:', np.array(S).mean())
-        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(iter_id), 'wb'))
-
+        # print('AL:', np.array(L).mean())
+        # print('SR:', np.array(S).mean())
+        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
