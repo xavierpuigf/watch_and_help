@@ -1,4 +1,5 @@
 .DS_Store
+port_*.txt
 rl/*
 logs_exec/*
 trained_models/*

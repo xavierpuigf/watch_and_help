@@ -27,7 +27,7 @@ if __name__ == '__main__':
     args.mode = 'full'
     num_agents = 1
     #args.dataset_path = 'initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode)
-    args.dataset_path = 'initial_environments/data/init_envs/test_env_set_help_20_neurips.pik'
+    args.dataset_path = '../data_challenge/train_env_set_help_50_neurips.pik'
 
     print(args.dataset_path)
     data = pickle.load(open(args.dataset_path, 'rb'))
@@ -40,6 +40,13 @@ if __name__ == '__main__':
     with open(args.dataset_path, 'rb') as f:
         env_task_set = pickle.load(f)
 
+    for env in env_task_set:
+        g = env['init_graph']
+        id2node = {node['id']: node['class_name'] for node in g['nodes']}
+        cloth_ids = [node['id'] for node in g['nodes'] if node['class_name'] in ["clothespile"]]
+        g['nodes'] = [node for node in g['nodes'] if node['id'] not in cloth_ids]
+        g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in cloth_ids and edge['to_id'] not in cloth_ids]
+
     if args.debug:
         # # debug 1: 1 predicate, 1 room
         # env_task_set = env_task_set[0]
@@ -51,23 +58,27 @@ if __name__ == '__main__':
         # env_task_set = [env_task_set]
 
         # debug 2: multiple predicates, 1 room
-        env_task_set0 = copy.deepcopy(env_task_set)
-        env_task_set = []
-        env_task = env_task_set0[0]
-        single_goals = [x for x,y in env_task_set0[0]['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
-        # pdb.set_trace()
-        if args.obs_type == 'mcts':
-            env_task['init_rooms'] = ['kitchen']
+        # env_task_set0 = copy.deepcopy(env_task_set)
+        # env_task_set = []
+        # env_task = env_task_set0[0]
+        # single_goals = [x for x,y in env_task_set0[0]['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
+        # # pdb.set_trace()
+        # if args.obs_type == 'mcts':
+        #     env_task['init_rooms'] = ['kitchen']
+        #
+        # for single_goal in single_goals:
+        #     env_task_new = copy.deepcopy(env_task)
+        #     env_task_new['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
+        #     env_task_set.append(env_task_new)
+        #
+        # print('# env_task for debug:', len(env_task_set))
+        #
+        # for env_task in env_task_set:
+        #     print(env_task['task_name'], env_task['task_goal'][0])
 
-        for single_goal in single_goals:
-            env_task_new = copy.deepcopy(env_task)
-            env_task_new['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
-            env_task_set.append(env_task_new)
 
-        print('# env_task for debug:', len(env_task_set))
-
-        for env_task in env_task_set:
-            print(env_task['task_name'], env_task['task_goal'][0])
+        # One room, multi preds in same task
+        env_task_set = [env_task_set[0]]
 
         # # debug 3: 1 predicate, multiple rooms
         # env_task_set0 = copy.deepcopy(env_task_set)

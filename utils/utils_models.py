@@ -141,7 +141,10 @@ class Logger():
         self.stats = AggregatedStats()
 
         save_path = os.path.join(self.save_dir, self.experiment_name)
-        self.plot = Plotter(self.experiment_name)
+        root_dir = None
+        if args.use_editor:
+            root_dir = '/Users/xavierpuig/Desktop/experiment_viz/'
+        self.plot = Plotter(self.experiment_name, root_dir=root_dir)
         self.info_episodes = []
         try:
             os.makedirs(save_path)
@@ -188,7 +191,7 @@ class Logger():
             experiment_name += 'debug'
         return experiment_name
 
-    def log_data(self, j, total_num_steps, fps, episode_rewards, dist_entropy, epsilon, successes, info_aux):
+    def log_data(self, j, total_num_steps, fps, episode_rewards, dist_entropy, epsilon, successes, num_steps, info_aux):
         if self.first_log:
             self.first_log = False
             if self.args.tensorboard_logdir is not None:
@@ -221,6 +224,7 @@ class Logger():
             self.tensorboard_writer.add_scalar("info/epsilon", epsilon, total_num_steps)
             self.tensorboard_writer.add_scalar("info/episode", j, total_num_steps)
             self.tensorboard_writer.add_scalar("info/success", np.mean(successes), total_num_steps)
+            self.tensorboard_writer.add_scalar("info/numsteps", np.mean(num_steps), total_num_steps)
             self.tensorboard_writer.add_scalar("info/fps", fps, total_num_steps)
 
     def log_info(self, info_ep):

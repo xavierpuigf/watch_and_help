@@ -225,12 +225,12 @@ def plot_graph_2d(graph, char_id, visible_ids, action_ids, goal_ids):
 def save_graph_2d(img_name, graph, visible_ids, action_ids, goal_ids, char_id=1):
     fig = plot_graph_2d(graph, char_id, visible_ids, action_ids, goal_ids)
     # plt.axis('scaled')
+    # print([node['bounding_box']['size'] for node in graph['nodes'] if node['id'] == 1][0])
     fig.tight_layout()
 
 
     fig.savefig(img_name)
     plt.close(fig)
-
 
 
 ####################
@@ -345,10 +345,13 @@ class Episode:
         return result_str, html_3d_plot
 
 class Plotter:
-    def __init__(self, experiment_name='test'):
+    def __init__(self, experiment_name='test', root_dir=None):
         self.experiment_name = experiment_name
-        self.root_path = '/data/vision/torralba/frames/data_acquisition/' \
-                         'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch'
+        if root_dir is None:
+            self.root_path = '/data/vision/torralba/frames/data_acquisition/' \
+                             'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch'
+        else:
+            self.root_path = root_dir
         self.dir_name = '{}/plots/{}'.format(self.root_path, self.experiment_name)
         self.episodes = []
         self.index_annot = 0

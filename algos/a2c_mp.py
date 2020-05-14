@@ -277,7 +277,7 @@ class A2C:
                                                                                                 mask_nodes).detach().numpy()
                         info_aux['loss_goal'] = nn.functional.cross_entropy(pred_goal.cpu(), gt_goal).detach().numpy()
                     self.logger.log_data(episode_id, episode_id, fps, episode_rewards,
-                                         dist_entropy, epsilon, successes, info_aux)
+                                         dist_entropy, epsilon, successes, num_steps, info_aux)
 
 
 

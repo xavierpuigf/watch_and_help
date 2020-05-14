@@ -146,10 +146,13 @@ class ArenaMP(object):
 
         agent_id = [id for id, enum_agent in enumerate(self.agents) if 'RL' in enum_agent.agent_type][0]
         reward_step = 0
+        prev_reward_step = 0
         curr_num_steps = 0
+        prev_reward = 0
         init_step_agent_info = {}
         while not done and nb_steps < self.max_episode_length and agent_steps < self.max_number_steps:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
+
             if logging:
                 curr_graph = env_info['graph']
                 observed_nodes = agent_info[agent_id]['visible_ids']
@@ -177,10 +180,12 @@ class ArenaMP(object):
 
             nb_steps += 1
             curr_num_steps += 1
-            reward_step += reward
+            diff_reward = reward - prev_reward
+            prev_reward = reward
+            reward_step += diff_reward
             for agent_index in agent_info.keys():
                 # currently single reward for both agents
-                c_r_all[agent_index] += reward
+                c_r_all[agent_index] += diff_reward
                 # action_dict[agent_index] = agent_info[agent_index]['action']
 
 
@@ -213,6 +218,7 @@ class ArenaMP(object):
 
                     rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action,
                                                     rewards, curr_num_steps, 1))
+                    prev_reward_step = 0
                     reward_step = 0
                     curr_num_steps = 0
 

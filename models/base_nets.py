@@ -164,7 +164,8 @@ class GoalEncoder(nn.Module):
         object_location = self.combine_obj_loc(obj_loc)
 
         num_preds = mask_goal_pred.sum(-1)
-        norm_mask = (mask_goal_pred/num_preds.unsqueeze(-1)).unsqueeze(-1)
+        #norm_mask = (mask_goal_pred/num_preds.unsqueeze(-1)).unsqueeze(-1)
+        norm_mask = mask_goal_pred.unsqueeze(-1)
 
         average_pred = (object_location * norm_mask).sum(1)
 
