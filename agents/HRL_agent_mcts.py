@@ -564,19 +564,31 @@ class HRL_agent:
                 return None, 'put_{}_{}'.format(obj_name, container_name), []
             obj_rel_container = [edge['from_id'] for edge in current_graph['edges'] if edge['to_id'] == container_id[0]
                                  and edge['relation_type'] in ['ON', 'INSIDE']]
+
+            # Objects that are not there
             object_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects1[action[0].item()] and
                          node['id'] not in obj_rel_container]
             if len(object_id) == 0:
 
                 return None, 'put_{}_{}'.format(obj_name, container_name), []
-            target_goal = "put_{}_{}".format(object_id[0], container_id[0])
 
 
-            # print("Heurisitc: ", target_goal)
-            if container_name in self.graph_helper.object_dict_types['objects_surface']:
-                actions, _ = put_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
-            else:
-                actions, _ = putIn_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
+            # Select the shortest task
+            min_cost = 0
+            actions = None
+            for obj_id in range(len(object_id)):
+                target_goal = "put_{}_{}".format(object_id[obj_id], container_id[0])
+                # print("Heurisitc: ", target_goal)
+                if container_name in self.graph_helper.object_dict_types['objects_surface']:
+                    actions_curr, cost = put_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
+                else:
+                    actions_curr, cost = putIn_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
+                curr_cost_plan = sum(cost)
+                if obj_id == 0 or curr_cost_plan < min_cost:
+                    min_cost = curr_cost_plan
+                    actions = actions_curr
+
+
 
         if actions is None:
             return None, '', actions

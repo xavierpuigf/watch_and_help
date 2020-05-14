@@ -127,8 +127,9 @@ class A2C:
 
             # Add into memory
             for mem in rollout_memory[self.rl_agent_id]:
+
                 self.memory_all.append(*mem)
-            self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0)
+            self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0, 0)
 
         return rewards, info_rollout
 
@@ -288,15 +289,15 @@ class A2C:
                         trajs = self.memory_all.sample_batch_balanced_multitask(
                             self.args.batch_size,
                             self.args.neg_ratio,
-                            maxlen=self.args.max_episode_length,
+                            maxlen=self.args.max_number_steps,
                             cutoff_positive=5.0)
                     else:
                         trajs = self.memory_all.sample_batch(
                             self.args.batch_size,
-                            maxlen=self.args.max_episode_length)
+                            maxlen=self.args.max_number_steps)
                     N = len(trajs[0])
-                    policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals = \
-                        [], [], [], [], [], [], [], [], []
+                    policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals, nsteps_s = \
+                        [], [], [], [], [], [], [], [], [], []
 
                     hx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
                     cx = torch.zeros(N, self.actor_critic.hidden_size).to(self.device)
@@ -320,7 +321,7 @@ class A2C:
                         mask = torch.cat([torch.Tensor([trajs[t][i].mask]).unsqueeze(1).to(self.device)
                                           for i in range(N)])
                         reward = np.array([trajs[t][i].reward for i in range(N)]).reshape((N, 1))
-
+                        nsteps = np.array([trajs[t][i].nsteps for i in range(N)]).reshape((N, 1))
                         # policy, v, (hx, cx) = self.agents[agent_id].act(inputs, hx, mask)
                         v, _, policy, (hx, cx), out_dict = self.actor_critic.act(inputs, (hx, cx), mask, action_indices=action)
 
@@ -340,8 +341,8 @@ class A2C:
                             loss_goal = None
 
                         [array.append(element) for array, element in
-                         zip((policies, actions, rewards, Vs, old_policies, dones, masks, loss_closes, loss_goals),
-                             (policy, action, reward, v, old_policy, done, mask, loss_close, loss_goal))]
+                         zip((policies, actions, rewards, Vs, old_policies, dones, masks, nsteps_s, loss_closes, loss_goals),
+                             (policy, action, reward, v, old_policy, done, mask, nsteps, loss_close, loss_goal))]
 
 
                         dones.append(done)
@@ -349,7 +350,6 @@ class A2C:
                         if (t + 1) % self.args.t_max == 0:  # maximum bptt length
                             hx = hx.detach()
                             cx = cx.detach()
-
 
                     self._train(self.actor_critic,
                                 self.optimizer,
@@ -362,6 +362,7 @@ class A2C:
                                 loss_closes,
                                 loss_goals,
                                 old_policies,
+                                nsteps_s,
                                 verbose=1)
 
             if not self.args.debug and episode_id % self.args.save_interval == 0:
@@ -380,6 +381,7 @@ class A2C:
                loss_closes,
                loss_goals,
                old_policies,
+               nsteps_s,
                verbose=0):
         """training"""
 
@@ -399,7 +401,8 @@ class A2C:
             #     Vret = rewards[i] + args.discount * v_next * (1 - dones[i].data[0][0])
             # else:
             #     Vret = rewards[i] + args.discount * v_next
-            Vret = torch.from_numpy(rewards[i]).float() + args.gamma * Vret
+            # pdb.set_trace()
+            Vret = torch.from_numpy(rewards[i]).float() + torch.tensor(np.power(args.gamma, nsteps_s[i])) * Vret
             A = Vret.to(self.device) - Vs[i]
 
             log_prob_action = policies[i][0].gather(1, actions[i][0]).log()

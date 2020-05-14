@@ -165,10 +165,10 @@ if __name__ == '__main__':
         agents = [MCTS_agent_fn] + agents
     if args.num_processes > 1:
         ArenaMP = ray.remote(ArenaMP) #, max_reconstructions=ray.ray_constants.INFINITE_RECONSTRUCTION)
-        arenas = [ArenaMP.remote(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+        arenas = [ArenaMP.remote(args.max_number_steps, arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
         a2c = A2C_MP(arenas, graph_helper, args)
     else:
-        arenas = [ArenaMP(arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
+        arenas = [ArenaMP(args.max_number_steps, arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
         a2c = A2C_MP(arenas, graph_helper, args)
     a2c.train()
     pdb.set_trace()

@@ -208,6 +208,12 @@ def get_args():
         help='number of episodes')
 
     parser.add_argument(
+        '--max-number-steps',
+        type=int,
+        default=20,
+        help='number of episodes')
+
+    parser.add_argument(
         '--balanced_sample',
         action='store_true',
         default=False,
@@ -312,7 +318,7 @@ def get_args():
     parser.add_argument('--use-alice', action='store_true', default=False,
                         help='debugging mode')
 
-    parser.add_argument('--num_steps_mcts', type=int, default=15,
+    parser.add_argument('--num_steps_mcts', type=int, default=25,
                         help='how many steps to take of the given plan')
 
     parser.add_argument('--c_loss_close', type=float, default=0., help='coefficient auxiliary loss goal close')

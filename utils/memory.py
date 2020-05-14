@@ -7,7 +7,7 @@ from collections import deque, namedtuple
 import pdb
 
 Transition = namedtuple('Transition',
-            ('state', 'policy', 'action', 'reward', 'mask'))
+            ('state', 'policy', 'action', 'reward', 'nsteps', 'mask'))
 
 
 class MemoryMask():
@@ -51,7 +51,7 @@ class MemoryMask():
                 self.append(*tran)
 
 
-    def append(self, goal_spec, state, policy, action, reward, mask):
+    def append(self, goal_spec, state, policy, action, reward, nsteps, mask):
         """add new transition"""
         if isinstance(goal_spec, dict): 
           goal = list(goal_spec.keys())[0].split('_')[1]
@@ -60,7 +60,7 @@ class MemoryMask():
         self.goal[self.position] = goal
         if goal not in self.goal_types:
           self.goal_types.append(goal)
-        self.memory[self.position].append(Transition(state, policy, action, reward, mask))
+        self.memory[self.position].append(Transition(state, policy, action, reward, nsteps, mask))
         if reward > self.max_reward[self.position]:
           self.max_reward[self.position] = reward
         if reward is not None:

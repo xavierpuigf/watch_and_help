@@ -158,6 +158,8 @@ class Logger():
         now = datetime.datetime.now()
         self.tensorboard_writer = SummaryWriter(log_dir=os.path.join(self.args.tensorboard_logdir,
                                                                      self.experiment_name, self.tstmp))
+        dict_args = vars(self.args)
+        self.tensorboard_writer.add_text("experiment_name", json.dumps(dict_args, indent=4))
 
     def get_experiment_name(self):
         args = self.args

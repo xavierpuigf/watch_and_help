@@ -9,12 +9,11 @@ import atexit
 
 # @ray.remote
 class ArenaMP(object):
-    def __init__(self, arena_id, environment_fn, agent_fn):
+    def __init__(self, max_number_steps, arena_id, environment_fn, agent_fn):
         self.agents = []
         self.env_fn = environment_fn
         self.agent_fn = agent_fn
         self.arena_id = arena_id
-
         self.num_agents = len(agent_fn)
 
         print("Init Env")
@@ -23,7 +22,7 @@ class ArenaMP(object):
             self.agents.append(agent_type_fn(arena_id, self.env))
 
         self.max_episode_length = self.env.max_episode_length
-
+        self.max_number_steps = max_number_steps
         atexit.register(self.close)
 
     def close(self):
@@ -102,6 +101,7 @@ class ArenaMP(object):
         done = False
         actions = []
         nb_steps = 0
+        agent_steps = 0
         info_rollout = {}
         entropy_action, entropy_object = [], []
         observation_space, action_space = [], []
@@ -145,7 +145,10 @@ class ArenaMP(object):
 
 
         agent_id = [id for id, enum_agent in enumerate(self.agents) if 'RL' in enum_agent.agent_type][0]
-        while not done and nb_steps < self.max_episode_length:
+        reward_step = 0
+        curr_num_steps = 0
+        init_step_agent_info = {}
+        while not done and nb_steps < self.max_episode_length and agent_steps < self.max_number_steps:
             (obs, reward, done, env_info), agent_actions, agent_info = self.step()
             if logging:
                 curr_graph = env_info['graph']
@@ -173,6 +176,8 @@ class ArenaMP(object):
                     info_rollout['visible_ids'].append(agent_info[agent_id]['visible_ids'])
 
             nb_steps += 1
+            curr_num_steps += 1
+            reward_step += reward
             for agent_index in agent_info.keys():
                 # currently single reward for both agents
                 c_r_all[agent_index] += reward
@@ -185,21 +190,31 @@ class ArenaMP(object):
 
             # append to memory
             for agent_id in range(self.num_agents):
-                if 'RL' in self.agents[agent_id].agent_type and 'mcts_action' not in agent_info[agent_id]:
-                    state = agent_info[agent_id]['state_inputs']
-                    policy = [log_prob.data for log_prob in agent_info[agent_id]['probs']]
+                if 'RL' == self.agents[agent_id].agent_type or \
+                        self.agents[agent_id].agent_type == 'RL_MCTS' and 'mcts_action' not in agent_info[agent_id]:
+                    init_step_agent_info[agent_id] = agent_info[agent_id]
+
+
+                # If this is the end of the action
+                if 'RL' == self.agents[agent_id].agent_type or \
+                    self.agents[agent_id].agent_type == 'RL_MCTS' and self.agents[agent_id].action_count == 0:
+                    agent_steps += 1
+                    state = init_step_agent_info[agent_id]['state_inputs']
+                    policy = [log_prob.data for log_prob in init_step_agent_info[agent_id]['probs']]
                     action = agent_info[agent_id]['actions']
-                    rewards = reward
-
+                    rewards = reward_step
                     entropy_action.append(
-                        -((agent_info[agent_id]['probs'][0] + 1e-9).log() * agent_info[agent_id]['probs'][0]).sum().item())
+                        -((init_step_agent_info[agent_id]['probs'][0] + 1e-9).log() * init_step_agent_info[agent_id]['probs'][0]).sum().item())
                     entropy_object.append(
-                        -((agent_info[agent_id]['probs'][1] + 1e-9).log() * agent_info[agent_id]['probs'][1]).sum().item())
-                    observation_space.append(agent_info[agent_id]['num_objects'])
-                    action_space.append(agent_info[agent_id]['num_objects_action'])
-                    last_agent_info = agent_info
+                        -((init_step_agent_info[agent_id]['probs'][1] + 1e-9).log() * init_step_agent_info[agent_id]['probs'][1]).sum().item())
+                    observation_space.append(init_step_agent_info[agent_id]['num_objects'])
+                    action_space.append(init_step_agent_info[agent_id]['num_objects_action'])
+                    last_agent_info = init_step_agent_info
 
-                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, rewards, 1))
+                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action,
+                                                    rewards, curr_num_steps, 1))
+                    reward_step = 0
+                    curr_num_steps = 0
 
         t_steps = time.time() - t2
         for agent_index in agent_info.keys():
@@ -222,7 +237,10 @@ class ArenaMP(object):
         info_rollout['goals'] = list(self.env.task_goal[0].keys())
         # padding
         # TODO: is this correct? Padding that is valid?
-        while nb_steps < self.max_episode_length:
+
+        # Rollout max
+        # max_length_batchmem = self.max_episode_length
+        while nb_steps < self.max_number_steps:
             nb_steps += 1
             for agent_id in range(self.num_agents):
                 if 'RL' in self.agents[agent_id].agent_type:
@@ -231,8 +249,8 @@ class ArenaMP(object):
                         pdb.set_trace()
                     policy = [log_prob.data for log_prob in last_agent_info[agent_id]['probs']]
                     action = last_agent_info[agent_id]['actions']
-                    rewards = reward
-                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, 0, 0))
+                    # rewards = reward
+                    rollout_agent[agent_id].append((self.env.task_goal[agent_id], state, policy, action, 0, 0, 0))
 
         return c_r_all, info_rollout, rollout_agent
 
