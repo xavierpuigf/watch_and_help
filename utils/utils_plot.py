@@ -291,6 +291,8 @@ class Episode:
         self.maxlen = max_len
 
     def render(self, exp_name=None):
+        import pdb
+        pdb.set_trace()
         goal_name = self.info['target'][1][0][0]['class_name']
         episode_info = 'Episode {}.'.format(self.info['episode'])
         episode_info2 = 'Reward {}. Success {}, Target {}'.format(self.info['reward'], self.info['success'], goal_name)
