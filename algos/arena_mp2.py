@@ -132,11 +132,11 @@ class ArenaMP(object):
         if logging:
             init_graph = self.env.get_graph()
             pred = self.env.goal_spec[0]
-            goal_class = list(pred.keys())[0].split('_')[1]
+            goal_class = [elem_name.split('_')[1] for elem_name in list(pred.keys())]
             id2node = {node['id']: node for node in init_graph['nodes']}
             info_goals = []
-            info_goals.append([node for node in init_graph['nodes'] if node['class_name'] == goal_class])
-            ids_target = [node['id'] for node in init_graph['nodes'] if node['class_name'] == goal_class]
+            info_goals.append([node for node in init_graph['nodes'] if node['class_name'] in goal_class])
+            ids_target = [node['id'] for node in init_graph['nodes'] if node['class_name'] in goal_class]
             info_goals.append([(id2node[edge['to_id']]['class_name'],
                                 edge['to_id'],
                                 edge['relation_type'],

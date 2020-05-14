@@ -291,11 +291,10 @@ class Episode:
         self.maxlen = max_len
 
     def render(self, exp_name=None):
-        import pdb
-        pdb.set_trace()
-        goal_name = self.info['target'][1][0][0]['class_name']
+        goal_names = [obj['class_name'] for obj in self.info['target'][1][0]]
+        # pdb.set_trace()
         episode_info = 'Episode {}.'.format(self.info['episode'])
-        episode_info2 = 'Reward {}. Success {}, Target {}'.format(self.info['reward'], self.info['success'], goal_name)
+        episode_info2 = 'Reward {}. Success {}, Target {}'.format(self.info['reward'], self.info['success'], '_'.join(goal_names))
 
         result_str = '<h3> {} </h3><br>'.format(episode_info)
         result_str += '<h7> {} </h7><br>'.format(episode_info2)
@@ -311,7 +310,7 @@ class Episode:
             id2node = {node['id']: node for node in curr_graph['nodes']}
             visible_ids = self.info['visible_ids'][step]
             action_ids = [t for t in self.info['action_ids'][step] if t in visible_ids]
-            goal_ids = [node['id'] for node in curr_graph['nodes'] if node['class_name'] in goal_name]
+            goal_ids = [node['id'] for node in curr_graph['nodes'] if node['class_name'] in goal_names]
 
             nodes_close = [id2node[edge['to_id']] for edge in curr_graph['edges'] if edge['from_id'] == 1 and edge['relation_type'] == 'CLOSE' and edge['to_id'] in visible_ids]
             nodes_grabbed = [id2node[edge['to_id']] for edge in curr_graph['edges'] if edge['from_id'] == 1 and 'HOLDS' in edge['relation_type'] and edge['to_id'] in visible_ids]

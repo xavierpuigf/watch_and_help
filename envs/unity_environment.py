@@ -308,7 +308,7 @@ class UnityEnvironment(BaseEnvironment):
     def get_graph(self):
         if self.changed_graph:
             s, graph = self.comm.environment_graph()
-            print("CHAR", [node['bounding_box']['size'] for node in graph['nodes'] if node['id'] == 1][0])
+            # print("CHAR", [node['bounding_box']['size'] for node in graph['nodes'] if node['id'] == 1][0])
             if not s:
                 pdb.set_trace()
             self.graph = graph
