@@ -523,44 +523,68 @@ class Task:
 
     @staticmethod
     def setup_table_prepare_food(init_goal_manager, graph):
-        graph, env_goal1, success = setup_table(init_goal_manager, graph)
+        graph, env_goal1, success = Task.setup_table(init_goal_manager, graph)
         if not success:
             return None, None, False
-        graph, env_goal2, success = prepare_food(init_goal_manager, graph, start=False)
+        graph, env_goal2, success = Task.prepare_food(init_goal_manager, graph, start=False)
         return graph, env_goal1.update(env_goal2), success
 
 
     @staticmethod
     def setup_table_read_book(init_goal_manager, graph):
-        graph, env_goal1, success = setup_table(init_goal_manager, graph)
+        graph, env_goal1, success = Task.setup_table(init_goal_manager, graph)
         if not success:
             return None, None, False
-        graph, env_goal2, success = read_book(init_goal_manager, graph, start=False)
+        graph, env_goal2, success = Task.read_book(init_goal_manager, graph, start=False)
         return graph, env_goal1.update(env_goal2), success
 
 
     @staticmethod
     def setup_table_watch_tv(init_goal_manager, graph):
-        graph, env_goal1, success = setup_table(init_goal_manager, graph)
+        graph, env_goal1, success = Task.setup_table(init_goal_manager, graph)
         if not success:
             return None, None, False
-        graph, env_goal2, success = watch_tv(init_goal_manager, graph, start=False)
+        graph, env_goal2, success = Task.watch_tv(init_goal_manager, graph, start=False)
         return graph, env_goal1.update(init_goal_manager, env_goal2), success
 
 
     @staticmethod
     def setup_table_put_fridge(init_goal_manager, graph):
-        graph, env_goal1, success = setup_table(graph)
+        graph, env_goal1, success = Task.setup_table(graph)
         if not success:
             return None, None, False
-        graph, env_goal2, success = put_fridge(init_goal_manager, graph, start=False)
+        graph, env_goal2, success = Task.put_fridge(init_goal_manager, graph, start=False)
         return graph, env_goal1.update(env_goal2), success
 
 
     @staticmethod
     def setup_table_put_dishwasher(init_goal_manager, graph):
-        graph, env_goal1, success = setup_table(init_goal_manager, graph)
+        graph, env_goal1, success = Task.setup_table(init_goal_manager, graph)
         if not success:
             return None, None, False
-        graph, env_goal2, success = put_dishwasher(init_goal_manager, graph, start=False)
+        graph, env_goal2, success = Task.put_dishwasher(init_goal_manager, graph, start=False)
+        return graph, env_goal1.update(env_goal2), success
+
+    @staticmethod
+    def prepare_food_put_dishwasher(init_goal_manager, graph):
+        graph, env_goal1, success = Task.prepare_food(init_goal_manager, graph)
+        if not success:
+            return None, None, False
+        graph, env_goal2, success = Task.put_dishwasher(init_goal_manager, graph, start=False)
+        return graph, env_goal1.update(env_goal2), success
+
+    @staticmethod
+    def put_fridge_put_dishwasher(init_goal_manager, graph):
+        graph, env_goal1, success = Task.put_fridge(init_goal_manager, graph)
+        if not success:
+            return None, None, False
+        graph, env_goal2, success = Task.put_dishwasher(init_goal_manager, graph, start=False)
+        return graph, env_goal1.update(env_goal2), success
+
+    @staticmethod
+    def put_dishwasher_read_book(init_goal_manager, graph):
+        graph, env_goal1, success = Task.put_dishwasher(init_goal_manager, graph)
+        if not success:
+            return None, None, False
+        graph, env_goal2, success = Task.read_book(init_goal_manager, graph, start=False)
         return graph, env_goal1.update(env_goal2), success

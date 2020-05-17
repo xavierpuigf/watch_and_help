@@ -65,6 +65,18 @@ class SetInitialGoal:
             self.init_pool = self.init_pool_tasks["setup_table"]
             self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
 
+        elif self.task_name == 'prepare_food_put_dishwasher':
+            self.init_pool = self.init_pool_tasks["prepare_food"]
+            self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
+
+        elif self.task_name == 'put_fridge_put_dishwasher':
+            self.init_pool = self.init_pool_tasks["put_fridge"]
+            self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
+
+        elif self.task_name == 'put_dishwasher_read_book':
+            self.init_pool = self.init_pool_tasks["put_dishwasher"]
+            self.init_pool.update(self.init_pool_tasks["read_book"])
+
         ## make sure the goal is not empty
         deb = '''
         while 1:

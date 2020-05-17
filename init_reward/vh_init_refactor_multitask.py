@@ -21,7 +21,7 @@ from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-apartment', type=int, default=40, help='Maximum #episodes/apartment')
+parser.add_argument('--num-per-apartment', type=int, default=1, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='Task name')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
@@ -119,16 +119,28 @@ if __name__ == "__main__":
         tasks = ['setup_table', 'put_fridge', 'prepare_food', 'put_dishwasher', 'read_book']
     else:
         tasks = [args.task]
+
+    args.task = 'multiple'
+    tasks = [['setup_table', 'prepare_food'],
+             ['setup_table', 'put_fridge'],
+             ['setup_table', 'read_book'],
+             ['prepare_food', 'put_dishwasher'],
+             ['put_fridge', 'put_dishwasher'],
+             ['put_dishwasher', 'read_book']]
     num_per_apartment = args.num_per_apartment
 
-    for task in tasks:
+    for task_combo in tasks:
         # for apartment in range(6,7):
         for apartment in apartment_ids:
             print('apartment', apartment)
-
-            if task not in task_names[apartment + 1]: continue
+            bad_apt = False
+            for task in task_combo:
+                if task not in task_names[apartment + 1]:
+                    bad_apt = True
             # if apartment != 4: continue
             # apartment = 3
+            if bad_apt:
+                continue
 
             with open('data/object_info%s.json' % (apartment + 1), 'r') as file:
                 obj_position = json.load(file)
@@ -177,7 +189,7 @@ if __name__ == "__main__":
                 #         continue
                 #     else:
                 #         break
-                task_name = task
+                task_name = task_combo[0] + '_' + task_combo[1]
 
                 print('------------------------------------------------------------------------------')
                 print('testing %d/%d: %s. apartment %d' % (i, num_test, task_name, apartment))
@@ -255,21 +267,21 @@ if __name__ == "__main__":
                             s, init_graph = comm.environment_graph()
                             print('final s:', s)
                             if s:
-                                for subgoal in env_goal[task_name]:
-                                    for k, v in subgoal.items():
-                                        elements = k.split('_')
-                                        # print(elements)
-                                        # pdb.set_trace()
-                                        if len(elements) == 4:
-                                            obj_class_name = elements[1]
-                                            ids = [node['id'] for node in init_graph['nodes'] if
-                                                   node['class_name'] == obj_class_name]
-                                            print(obj_class_name, v, ids)
-                                            # if len(ids) < v:
-                                            #     print(obj_class_name, v, ids)
-                                            #     pdb.set_trace()
-
-                                count_success += s
+                                # for subgoal in env_goal[task_name]:
+                                #     for k, v in subgoal.items():
+                                #         elements = k.split('_')
+                                #         # print(elements)
+                                #         # pdb.set_trace()
+                                #         if len(elements) == 4:
+                                #             obj_class_name = elements[1]
+                                #             ids = [node['id'] for node in init_graph['nodes'] if
+                                #                    node['class_name'] == obj_class_name]
+                                #             print(obj_class_name, v, ids)
+                                #             # if len(ids) < v:
+                                #             #     print(obj_class_name, v, ids)
+                                #             #     pdb.set_trace()
+                                #
+                                # count_success += s
                                 # if s:
                                 # print('-------------------------------------------------------------------------------')
                                 # print('-------------------------------------------------------------------------------')
@@ -326,7 +338,6 @@ if __name__ == "__main__":
                 open(home_path+"data_challenge/init_envs/5apartment_{}_task_{}_apartment_{}.p".format(
                     args.num_per_apartment, args.task, args.apt_str), "wb"))
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
-
 
 
 
