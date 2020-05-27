@@ -8,6 +8,7 @@ import numpy as np
 import cProfile
 import pdb
 import timeit
+import json
 import os
 import argparse
 import glob
@@ -43,28 +44,36 @@ def get_metrics(alice_results, test_results, episode_ids):
     SWSs = []
     alice_S = []
     alice_L = []
+
     for episode_id in episode_ids:
         if episode_id not in alice_results:
             S_A, L_A = 0, 250
             pdb.set_trace()
             # continue
         else:
-            S_A = np.mean(alice_results[episode_id]['S'])
-            L_A = np.mean(alice_results[episode_id]['L'])
+            SA = [x for x in alice_results[episode_id]['S'] if x is not '']
+            LA = [x for x in alice_results[episode_id]['L'] if x is not '']
+            S_A = np.mean(SA)
+            L_A = np.mean(LA)
         if episode_id not in test_results:
             S_B, L_B = 0, 250
             # pdb.set_trace()
             # continue
         else:
-            S_B = np.mean(test_results[episode_id]['S'])
-            L_B = np.mean(test_results[episode_id]['L'])
+            try:
+                SB = [x for x in test_results[episode_id]['S'] if x is not '']
+                LB = [x for x in test_results[episode_id]['L'] if x is not '']
+                S_B = np.mean(SB)
+                L_B = np.mean(LB)
+            except:
+                pdb.set_trace()
             # if S_B < 0.6:
             #     pdb.set_trace()
         alice_S.append(S_A)
         alice_L.append(L_A)
-        Ls.append(L_B)
-        Ss.append(S_B)
-        SWSs.append(0 if S_B < 1 else max(L_A / L_B - 1.0, 0))
+        Ls += LB
+        Ss += SB
+        SWSs += [0 if sb < 1 else max(L_A / lb - 1.0, 0) for sb, lb in zip(SB, LB)]
         if S_A > 0 and SWSs[-1] > 1.:
             pass
             # pdb.set_trace()
@@ -72,8 +81,10 @@ def get_metrics(alice_results, test_results, episode_ids):
     # print('Alice:', np.mean(alice_S), np.mean(alice_L))
     # print('Alice:', np.mean(alice_S), '({})'.format(np.std(alice_S)), np.mean(alice_L), '({})'.format(np.std(alice_L)))
     # print('Bob:', np.mean(Ss), '({})'.format(np.std(Ss)), np.mean(Ls), '({})'.format(np.std(Ls)), np.mean(SWSs), '({})'.format(np.std(SWSs)))
-
-    return np.mean(Ss), np.mean(Ls), np.mean(SWSs)
+    mS, sS = np.mean(Ss), np.std(Ss)
+    mL, sL = np.mean(Ls), np.std(Ls)
+    mSwS, sSwS = np.mean(SWSs), np.std(SWSs)
+    return mS, mL, mSwS, sS, sL, sSwS
 
 
 parser = argparse.ArgumentParser()
@@ -106,37 +117,68 @@ if __name__ == '__main__':
     alice_results = pickle.load(open(args.record_dir_alice + '/results_{}.pik'.format(0), 'rb'))
 
     # args.record_dir = '../record/init7_Bob_test_set_{}'.format(args.num_per_task)
-    args.record_dir = '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal'
+    record_dirs = [
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive',
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS',
+     '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test'
+    ]
+
     # args.record_dir = './record_scratch/rec_good_test/Alice_env_task_set_20_check_neurips_test'
     # args.record_dir = './record_scratch/rec_good_test/Bob_env_task_set_20_check_neurips_test_recursive'
-    test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
+    task_names = ['setup_table', 'put_fridge', 'prepare_food', 'put_dishwasher', 'read_book']
+    final_results = {'S': {}, 'SWS': {}, 'L': {}, 'classes': task_names}
+    for record_dir in record_dirs:
+        test_results = pickle.load(open(record_dir + '/results_{}.pkl'.format('redo'), 'rb'))
+        method_name = record_dir.split('_')[-1]
+        final_results['S'][method_name] = [], []
+        final_results['SWS'][method_name] = [], []
+        final_results['L'][method_name] = [], []
+        num_agents = 1
 
-    num_agents = 1
+        episode_ids = list(range(len(env_task_set)))
+        S = [0] * len(episode_ids)
+        L = [200] * len(episode_ids)
+        SRO, ALO, SWSO, stdRO, stdLO, stdSO = get_metrics(alice_results, test_results, episode_ids)
+        print('overall:', SRO, ALO, SWSO)
 
 
-    episode_ids = list(range(len(env_task_set)))
-    S = [0] * len(episode_ids)
-    L = [200] * len(episode_ids)
-    
-    SRO, ALO, SWSO = get_metrics(alice_results, test_results, episode_ids)
-    print('overall:', SRO, ALO, SWSO)
 
-    sr_list, al_list, sws_list = [], [], []
-    for task_name in ['setup_table', 'put_fridge', 'prepare_food', 'put_dishwasher', 'read_book']:
-        episode_ids_task = [episode_id for episode_id in episode_ids if env_task_set[episode_id]['task_name'] == task_name]
-        SR, AL, SWS = get_metrics(alice_results, test_results, episode_ids_task)
-        sr_list.append(str(SR))
-        al_list.append(str(AL))
-        sws_list.append(str(SWS))
-        print('{}:'.format(task_name), SR, AL, SWS)
+        sr_list, al_list, sws_list = [], [], []
+        for task_name in task_names:
+            episode_ids_task = [episode_id for episode_id in episode_ids if env_task_set[episode_id]['task_name'] == task_name]
+            SR, AL, SWS, stdR, stdL, stdS = get_metrics(alice_results, test_results, episode_ids_task)
+            sr_list.append(str(SR))
+            al_list.append(str(AL))
+            sws_list.append(str(SWS))
 
-    sr_list.append(str(SRO))
-    al_list.append(str(ALO))
-    sws_list.append(str(SWSO))
+            final_results['S'][method_name][0].append(SR)
+            final_results['SWS'][method_name][0].append(SWS)
+            final_results['L'][method_name][0].append(AL)
+            final_results['S'][method_name][1].append(stdR)
+            final_results['SWS'][method_name][1].append(stdS)
+            final_results['L'][method_name][1].append(stdL)
 
-    print("SR")
-    print(','.join(sr_list))
-    print("AL")
-    print(','.join(al_list))
-    print("SWS")
-    print(','.join(sws_list))
+
+
+            print('{}:'.format(task_name), SR, AL, SWS)
+        final_results['S'][method_name][0].append(SRO)
+        final_results['SWS'][method_name][0].append(SWSO)
+        final_results['L'][method_name][0].append(ALO)
+        final_results['S'][method_name][1].append(stdRO)
+        final_results['SWS'][method_name][1].append(stdSO)
+        final_results['L'][method_name][1].append(stdLO)
+
+        sr_list.append(str(SRO))
+        al_list.append(str(ALO))
+        sws_list.append(str(SWSO))
+
+        print("SR")
+        print(','.join(sr_list))
+        print("AL")
+        print(','.join(al_list))
+        print("SWS")
+        print(','.join(sws_list))
+    with open('results_mcts_across_seeds.json', 'w+') as f:
+        f.write(json.dumps(final_results))

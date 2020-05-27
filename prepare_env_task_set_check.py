@@ -58,9 +58,9 @@ if __name__ == '__main__':
     #args.dataset_path = home_dir + '/initial_environments/data/init_envs/7apartmet_50_check.pik'
     #args.dataset_path = home_dir + '/initial_environments/data/init_envs/test_env_set_30_posteccv.pik'
 
-    args.dataset_path = '../data_challenge/init_envs/'+'5_envs_300_total.p'
+    args.dataset_path = '../data_challenge/init_envs/5apartment_10_task_multiple2_apartment_0,1,2,4,5.p'
+    #args.dataset_path = '../data_challenge/init_envs/'+'5_envs_300_total.p'
     # args.dataset_path = '../data_challenge/init_envs/'+'5apartment_10_task_put_fridge_apartment_5.p'
-
 
     with open(args.dataset_path, 'rb') as f:
         data = pickle.load(f)
@@ -79,10 +79,12 @@ if __name__ == '__main__':
         if not check_graph(init_graph):
             failed_ids.append(task_id)
             print(env_id, task_name)
-        goal = problem_setup['goal'][task_name]
-
-        goals = utils_goals.convert_goal_spec(task_name, goal, init_graph,
-                                              exclude=['cutleryknife'])
+        goal_group = problem_setup['goal']
+        goals = {}
+        for task_name, goal in goal_group.items():
+            goals_task = utils_goals.convert_goal_spec(task_name, goal, init_graph,
+                                                  exclude=['cutleryknife'])
+            goals.update(goals_task)
         # print('env_id:', env_id)
         # print('task_name:', task_name)
         # print('goals:', goals)
@@ -96,5 +98,7 @@ if __name__ == '__main__':
                              'level': 0,
                              'init_rooms': random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)})
 
-    pickle.dump(env_task_set, open('initial_environments/data/init_envs/env_task_set_300_check_neurips.pik', 'wb'))
+    # pickle.dump(env_task_set, open('initial_environments/data/init_envs/env_task_set_300_check_neurips.pik', 'wb'))
+    pickle.dump(env_task_set, open('initial_environments/data/init_envs/env_task_set_10_check_neurips_multiple2.pik', 'wb'))
+
     print('failed_ids:', failed_ids)

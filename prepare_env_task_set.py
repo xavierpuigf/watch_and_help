@@ -22,7 +22,8 @@ if __name__ == '__main__':
     home_dir = '.'#'/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models'
 
     random.seed(1)
-
+    args.num_per_apartment = 40
+    args.mode =
     env_task_set = []
     for task in ['setup_table', 'put_fridge', 'put_dishwasher', 'prepare_food', 'read_book']:
         args.dataset_path = home_dir + '/initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(task,

@@ -313,6 +313,7 @@ class HRL_agent:
     """
     def __init__(self, args, agent_id, char_index, graph_helper, deterministic=False, action_space=['open', 'pickplace'], seed=123):
         self.args = args
+        self.mode = 'train' if not args.evaluation else 'test'
         self.agent_type = 'RL_MCTS'
         self.max_num_objects = args.max_num_objects
         self.actions = []
@@ -433,15 +434,19 @@ class HRL_agent:
     def evaluate(self, rollout):
         pass
 
-    def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None):
-        observation_belief = self.sample_belief(observation)
+    def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None, full_graph=None):
+        full_graph = None
+        if full_graph is not None:
+            observation_belief = self.sample_belief(full_graph)
+        else:
+            observation_belief = self.sample_belief(observation)
         self.sim_env.reset(self.previous_belief_graph, {0: goal_spec, 1: goal_spec})
-
 
 
         rnn_hxs = self.hidden_state
 
         masks = torch.ones(rnn_hxs[0].shape).type(rnn_hxs[0].type())
+
         if torch.cuda.is_available():
             rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
             masks = masks.cuda()
@@ -457,9 +462,10 @@ class HRL_agent:
         mask_goal_pred = [0.0] * 6
 
         pre_id = 0
+        obj_pred_names, loc_pred_names = [], []
         for predicate, info in goal_spec.items():
             count, required, reward = info
-            if count == 0 or not required:
+            if count == 0 or not required or 'sit' in predicate:
                 continue
 
             # if not (predicate.startswith('on') or predicate.startswith('inside')):
@@ -468,12 +474,17 @@ class HRL_agent:
             elements = predicate.split('_')
             obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
             loc_class_id = int(self.graph_helper.object_dict.get_id(self.id2node[int(elements[2])]['class_name']))
-            for _ in range(count):
-                target_obj_class[pre_id] = obj_class_id
-                target_loc_class[pre_id] = loc_class_id
-                mask_goal_pred[pre_id] = 1.0
-                pre_id += 1
 
+            obj_pred_names.append(elements[1])
+            loc_pred_names.append(self.id2node[int(elements[2])]['class_name'])
+            for _ in range(count):
+                try:
+                    target_obj_class[pre_id] = obj_class_id
+                    target_loc_class[pre_id] = loc_class_id
+                    mask_goal_pred[pre_id] = 1.0
+                    pre_id += 1
+                except:
+                    pdb.set_trace()
         inputs.update({
             'affordance_matrix': self.graph_helper.obj1_affordance,
             'target_obj_class': target_obj_class,
@@ -506,7 +517,6 @@ class HRL_agent:
             info_model['state_inputs'] = copy.deepcopy(inputs_tensor)
             info_model['num_objects'] = inputs['mask_object'].sum(-1)
             info_model['num_objects_action'] = inputs['mask_action_node'].sum(-1)
-
             info_model['visible_ids'] = [node[1] for node in visible_objects]
             info_model['action_space_ids'] = action_space_ids
             next_action = info_model['actions']
@@ -519,8 +529,20 @@ class HRL_agent:
             info_model['mcts_action'] = True
             info_model['actions'] = next_action
 
+        info_model['obs'] = observation['nodes']
 
-        action_str, action_tried, plan = self.get_action_instr(next_action, visible_objects, observation_belief)
+        action_str, action_tried, plan, predicate = self.get_action_instr(next_action, visible_objects, observation_belief)
+        if "put" in predicate:
+            p_spl = predicate.split('_')
+            obj_pred = p_spl[1]
+            container_pred = p_spl[2]
+            # Check if the predicate corresponds to the goal
+
+            # if obj_pred not in obj_pred_names or container_pred not in loc_pred_names and self.mode == 'train':
+            #     info_model['bad_predicate'] = True
+            #     action_str = None
+                # print(predicate, loc_pred_names, obj_pred_names)
+
         if action_str is not None:
             # print('{} --> {}'.format(action_tried, action_str))
 
@@ -535,6 +557,7 @@ class HRL_agent:
 
 
         info_model['action_tried'] = action_tried
+        info_model['predicate'] = predicate
         # print('ACTIONS', info_model['actions'], action_str, action_probs[0],
         #       'IDS', inputs_tensor['node_ids'][0, :4])
 
@@ -547,11 +570,11 @@ class HRL_agent:
         if self.objects1[action[0].item()] == "None":
             # Open action, open a new object that was not open before
             if self.objects2[action[1].item()] not in self.graph_helper.object_dict_types["objects_inside"]:
-                return None, "open_{}".format(self.objects2[action[1].item()]), []
+                return None, "open_{}".format(self.objects2[action[1].item()]), [], "open_{}".format(self.objects2[action[1].item()])
 
             target_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects2[action[1].item()] and node['states'] == 'CLOSED']
             if len(target_id) == 0:
-                return None,  "open_{}".format(self.objects2[action[1].item()]), []
+                return None,  "open_{}".format(self.objects2[action[1].item()]), [], "open_{}".format(self.objects2[action[1].item()])
             target_goal = 'open_{}'.format(target_id[0])
 
             actions, _ = open_heuristic(self.agent_id, 0, current_graph, self.sim_env, target_goal)
@@ -561,7 +584,7 @@ class HRL_agent:
             container_name = self.objects2[action[1].item()]
             container_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects2[action[1].item()]]
             if len(container_id) == 0:
-                return None, 'put_{}_{}'.format(obj_name, container_name), []
+                return None, 'put_{}_{}'.format(obj_name, container_name), [], 'put_{}_{}'.format(obj_name, container_name)
             obj_rel_container = [edge['from_id'] for edge in current_graph['edges'] if edge['to_id'] == container_id[0]
                                  and edge['relation_type'] in ['ON', 'INSIDE']]
 
@@ -570,7 +593,7 @@ class HRL_agent:
                          node['id'] not in obj_rel_container]
             if len(object_id) == 0:
 
-                return None, 'put_{}_{}'.format(obj_name, container_name), []
+                return None, 'put_{}_{}'.format(obj_name, container_name), [], 'put_{}_{}'.format(obj_name, container_name)
 
 
             # Select the shortest task
@@ -583,6 +606,9 @@ class HRL_agent:
                     actions_curr, cost = put_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
                 else:
                     actions_curr, cost = putIn_heuristic(self.agent_id, self.char_index, current_graph, self.sim_env, target_goal)
+
+                if cost is None or len(cost) == 0:
+                    continue
                 curr_cost_plan = sum(cost)
                 if obj_id == 0 or curr_cost_plan < min_cost:
                     min_cost = curr_cost_plan
@@ -590,8 +616,9 @@ class HRL_agent:
 
 
 
+
         if actions is None:
-            return None, '', actions
+            return None, 'put_{}_{}'.format(obj_name, container_name), actions, 'put_{}_{}'.format(obj_name, container_name)
         action_name = actions[0][0]
         if 'put' in action_name:
             obj_id_action = 2
@@ -606,4 +633,4 @@ class HRL_agent:
         action_try = '{} [{}] ({})'.format(action_name, o1, o1_id)
         #print('{: <40} --> {}'.format(action_try, action))
         # print(action_try, action)
-        return action, action_try, actions
+        return action, action_try, actions, 'put_{}_{}'.format(obj_name, container_name)

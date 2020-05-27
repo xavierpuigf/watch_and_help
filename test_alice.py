@@ -44,8 +44,8 @@ if __name__ == '__main__':
     # MCTSArena = ray.remote(MCTSArena)
     # args.task = 'setup_table'
     args.max_episode_length = 250
-    args.num_per_apartment = '20'
-    args.mode = 'check_neurips_test'
+    args.num_per_apartment = 10
+    args.mode = 'check_neurips_multiple2'
     # args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
@@ -53,8 +53,8 @@ if __name__ == '__main__':
     # args.record_dir = 'record/Alice_test_set_30'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
-    #env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
 
     if args.use_editor:
         env_task_set = [env_task_set[q] for q in [82]]
@@ -69,7 +69,9 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    #args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -130,20 +132,22 @@ if __name__ == '__main__':
     # ray.shutdown()
 
 
-    arena = ArenaMP(id_run, env_fn, agents)
+    arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
     # episode_ids = [656]
     # g = env_task_set[3351]['init_graph']
     # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
     # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
     # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
-    for iter_id in range(num_tries):
+    for iter_id in range(1):
         #if iter_id > 0:
 
         cnt = 0
         steps_list, failed_tasks = [], []
-        for episode_id in episode_ids:
 
+        for episode_id in episode_ids:
+            if episode_id < 41:
+                continue
             if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
                 test_results = {}
             else:
@@ -162,6 +166,7 @@ if __name__ == '__main__':
                 agent.seed = it_agent + current_tried * 2
             # continue
             # try:
+            print(env_task_set[episode_id]['task_name'])
             if True:
                 arena.reset(episode_id)
                 success, steps, saved_info = arena.run()

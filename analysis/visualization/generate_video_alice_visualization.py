@@ -9,7 +9,8 @@ import os
 from tqdm import tqdm
 sys.path.append('../../../virtualhome/simulation')
 from unity_simulator import comm_unity
-
+import cv2
+import numpy as np
 
 def write_video(log_file, out_file, comm, file_folder, file_folder_log):
     if 'json' in log_file:
@@ -64,11 +65,31 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
     #         edge['from_id'] = edge['from_id'] - max_id + 1000
     #     if edge['to_id'] > max_id:
     #         edge['to_id'] = edge['to_id'] - max_id + 1000
-
+    print([node['class_name'] for node in graph['nodes'] if 'ceilingfan' in node['class_name']])
     # pdb.set_trace()
+    # fan_ids = [node['id'] for node in graph['nodes'] if 'ceilingfan' in node['class_name']]
+    # graph['nodes'] = [node for node in graph['nodes'] if node['id'] not in fan_ids]
+    # graph['edges'] = [edge for edge in graph['edges'] if edge['from_id'] not in fan_ids and edge['to_id'] not in fan_ids]
     comm.expand_scene(graph)
+    # pdb.set_trace()
 
+    cam_id = 81
+
+    cam1 = str(cam_id) # "81"  # "83"
     character_pos1[1] = 0.
+
+    s, im = comm.camera_image([cam1], image_height=960, image_width=1280)
+    s, im2 = comm.camera_image([cam1], mode='seg_class', image_height=960, image_width=1280)
+    s, im3 = comm.camera_image([cam1], mode='depth', image_height=960, image_width=1280)
+    s, im4 = comm.camera_image([cam1], mode='illumination', image_height=960, image_width=1280)
+    s, info_cam = comm.camera_data([cam_id])
+    cv2.imwrite('{}/{}/top_view.png'.format(file_folder, out_file), im[0])
+    cv2.imwrite('{}/{}/top_view_seg.png'.format(file_folder, out_file), im2[0])
+    cv2.imwrite('{}/{}/top_view_illum.png'.format(file_folder, out_file), im4[0])
+    np.save('{}/{}/top_view_depth.npy'.format(file_folder, out_file), im3[0])
+
+    pdb.set_trace()
+    # pdb.set_trace()
     sc = comm.add_character('Chars/Female1', position=character_pos1)
     print("Adding char in pos", character_pos1, env_id)
     if not sc:
@@ -80,6 +101,7 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
         comm.add_character(position=character_pos2)
 
     s, g = comm.environment_graph()
+    # pdb.set_trace()
     s, color_map = comm.instance_colors()
     # pdb.set_trace()
     actions = []
@@ -96,13 +118,15 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
             action_str += '<char1> {}'.format(action_2[it]).replace('walk', 'walktowards')
         # print('Rendeer...')
         # print(action_str)
-        cam1 = "81" # "83"
-        smooth_walk = False
+
+        smooth_walk = True
+
+        # continue
 
         s, m = comm.render_script([action_str],
-                           recording=True, gen_vid=False, camera_mode=[cam1, "PERSON_TOP", "PERSON_FROM_BACK"],
-                           image_synthesis=['normal'], frame_rate=10, output_folder=file_folder,
-                           image_width=1280, image_height=960,
+                           recording=True, gen_vid=False, camera_mode=["PERSON_FROM_BACK"],
+                           image_synthesis=['normal'], frame_rate=5, output_folder=file_folder,
+                           image_width=512, image_height=384, save_pose_data=True,
                            smooth_walk=smooth_walk, file_name_prefix=out_file, processing_time_limit=250, time_scale=1.)
 
         # s, m = comm.render_script([action_str],
@@ -125,6 +149,7 @@ def write_video(log_file, out_file, comm, file_folder, file_folder_log):
         'task_name': content['task_name'],
         'color_map': color_map,
         'smooth_walk': smooth_walk,
+        'camera_data': info_cam,
 
     }
     if not os.path.isdir('{}/{}'.format(file_folder_log, out_file)):
@@ -146,7 +171,7 @@ if __name__ == '__main__':
 
 
     if args.use_editor:
-        comm = comm_unity.UnityCommunication()
+        comm = comm_unity.UnityCommunication(timeout_wait=250)
     else:
         if args.use_docker:
             comm = comm_unity.UnityCommunication(port=args.port,
@@ -159,7 +184,10 @@ if __name__ == '__main__':
         out_folder = '/Users/xavierpuig/Desktop/test_videos/'
         file_names = [
             # '../../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test/logs_agent_82_setup_table_0.pik',
-            '../../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive/logs_agent_82_setup_table_0.pik'
+            # '../../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive/logs_agent_49_prepare_food_0.pik'
+            '../../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive/logs_agent_1_read_book_0.pik'
+            # '../../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal/logs_agent_1_read_book_0.pik',
+            # '../../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal/logs_agent_35_put_dishwasher_0.pik'
         ]
         log_folder = None
     else:
@@ -186,7 +214,8 @@ if __name__ == '__main__':
                 with open(file_video_gen, 'w+') as f:
                     f.write(json.dumps({splitf: 0}))
             else:
-                splitf = ['bob_test4'][itf]
+                pass
+                #splitf = ['bob_test_5'][itf]
 
         correct = False
         if args.use_editor:

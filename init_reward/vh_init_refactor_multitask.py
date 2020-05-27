@@ -7,7 +7,7 @@ import json
 import numpy as np
 import copy
 import argparse
-
+import ipdb
 random.seed(10)
 
 home_path = '../../'
@@ -21,7 +21,7 @@ from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-apartment', type=int, default=1, help='Maximum #episodes/apartment')
+parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='Task name')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
@@ -120,13 +120,14 @@ if __name__ == "__main__":
     else:
         tasks = [args.task]
 
-    args.task = 'multiple'
+    args.task = 'multiple2'
     tasks = [['setup_table', 'prepare_food'],
              ['setup_table', 'put_fridge'],
              ['setup_table', 'read_book'],
              ['prepare_food', 'put_dishwasher'],
              ['put_fridge', 'put_dishwasher'],
              ['put_dishwasher', 'read_book']]
+    tasks = tasks[1:]
     num_per_apartment = args.num_per_apartment
 
     for task_combo in tasks:
@@ -141,7 +142,6 @@ if __name__ == "__main__":
             # apartment = 3
             if bad_apt:
                 continue
-
             with open('data/object_info%s.json' % (apartment + 1), 'r') as file:
                 obj_position = json.load(file)
 
@@ -200,11 +200,14 @@ if __name__ == "__main__":
                 ## -------------------------------------------------------------
                 set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False)
                 init_graph, env_goal, success_setup = getattr(Task, task_name)(set_init_goal, graph)
-
+                # if task_name == 'setup_table_put_fridge':
+                #     pdb.set_trace()
+                # # ipdb.set_trace()
+                if env_goal is None:
+                    pdb.set_trace()
                 if success_setup:
                     # If all objects were well added
                     success, message = comm.expand_scene(init_graph)
-                    # pdb.set_trace()
                     print('----------------------------------------------------------------------')
                     print(task_name, success, message, set_init_goal.num_other_obj)
                     # print(env_goal)
@@ -249,9 +252,8 @@ if __name__ == "__main__":
 
                         # elif apartment == 6:
                         #     init_graph = set_init_goal.remove_obj(init_graph, [173])
-
                         success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal, apartment)
-
+                        # pdb.set_trace()
                         if success:
                             #comm.reset(apartment)
                             # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
@@ -281,7 +283,7 @@ if __name__ == "__main__":
                                 #             #     print(obj_class_name, v, ids)
                                 #             #     pdb.set_trace()
                                 #
-                                # count_success += s
+                                count_success += s
                                 # if s:
                                 # print('-------------------------------------------------------------------------------')
                                 # print('-------------------------------------------------------------------------------')
@@ -320,6 +322,20 @@ if __name__ == "__main__":
                                 check_result = set_init_goal.check_graph(init_graph, apartment + 1, original_graph)
                                 assert check_result == True
 
+                                first_goal = list(env_goal.values())[0]
+                                obj_names = [node['class_name'] for node in init_graph['nodes']]
+                                for gl in first_goal:
+                                    if list(gl.values())[0] > 0:
+                                        pred = list(gl.keys())[0]
+                                        if 'put' in pred:
+                                            class_name = pred.split('_')[1]
+                                        elif 'holds' in pred:
+                                            class_name = 'book'
+                                        else:
+                                            continue
+                                        if class_name not in obj_names:
+                                            ipdb.set_trace()
+
                                 success_init_graph.append({'id': count_success,
                                                            'apartment': (apartment + 1),
                                                            'task_name': task_name,
@@ -327,7 +343,8 @@ if __name__ == "__main__":
                                                            'original_graph': original_graph,
                                                            'goal': env_goal})
                 else:
-                    pdb.set_trace()
+                    pass
+                    # pdb.set_trace()
                 print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i + 1, num_test))
                 if count_success >= num_per_apartment:
                     break

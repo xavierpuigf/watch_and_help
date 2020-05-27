@@ -108,8 +108,11 @@ class SetInitialGoal:
 
     def check_goal_achievable(self, graph, comm, env_goal, apartment):
         graph_copy = copy.deepcopy(graph)
-        if (self.task_name == 'setup_table') or (self.task_name == 'put_dishwasher') or (self.task_name == 'put_fridge') or (self.task_name == 'prepare_food'):
-            for goal in env_goal[self.task_name]:
+        curr_task_name = list(env_goal.keys())[0]
+        pdb.set_trace()
+        if ('setup_table' in self.task_name) or ('put_dishwasher' in self.task_name) or ('put_fridge' in self.task_name) or ('prepare_food' in self.task_name):
+            pdb.set_trace()
+            for goal in env_goal[curr_task_name]:
                 # print(self.object_id_count)
                 subgoal_name = list(goal.keys())[0]
                 num_obj = list(goal.values())[0]

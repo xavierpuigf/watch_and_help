@@ -453,6 +453,9 @@ class MCTS_agent:
 
     def sample_belief(self, obs_graph):
         new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
+        # for edge in new_graph['edges']:
+        #     if edge['from_id'] == 272 and edge['to_id'] == 271:
+        #         ipdb.set_trace()
         self.previous_belief_graph = self.filtering_graph(new_graph)
         return new_graph
 
@@ -503,7 +506,7 @@ class MCTS_agent:
 
 
         plan, root_node, subgoals = get_plan(None, root_action, root_node, self.sim_env, self.mcts, nb_steps, goal_spec, None, last_subgoal, last_action, opponent_subgoal, verbose=verbose)
-
+        # ipdb.set_trace()
         if len(plan) > 0:
             action = plan[0]
         else:
@@ -511,9 +514,9 @@ class MCTS_agent:
         if self.logging:
             info = {
                 'plan': plan,
-                'subgoals': subgoals
-                # 'belief': copy.deepcopy(self.belief.edge_belief),
-                #'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
+                'subgoals': subgoals,
+                'belief': copy.deepcopy(self.belief.edge_belief),
+                'belief_graph': copy.deepcopy(self.sim_env.vh_state.to_dict())
             }
             if self.logging_graphs:
                 info.update(

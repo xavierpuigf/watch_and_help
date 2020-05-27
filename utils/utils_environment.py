@@ -1,5 +1,6 @@
 import pdb
 import copy
+import random
 
 def inside_not_trans(graph):
     id2node = {node['id']: node for node in graph['nodes']}
@@ -93,11 +94,11 @@ def convert_action(action_dict):
     agent_do = [item for item, action in action_dict.items() if action is not None]
     # Make sure only one agent interact with the same object
     if len(action_dict.keys()) > 1:
-        if None not in list(action_dict.values()) and sum(['walk' in x for x in action_dict.values()]) == 0:
+        if None not in list(action_dict.values()) and sum(['walk' in x for x in action_dict.values()]) < 2:
             # continue
             objects_interaction = [x.split('(')[1].split(')')[0] for x in action_dict.values()]
             if len(set(objects_interaction)) == 1:
-                agent_do = [1]  # [random.choice([0,1])]
+                agent_do = [random.choice([0,1])]
 
     script_list = ['']
 

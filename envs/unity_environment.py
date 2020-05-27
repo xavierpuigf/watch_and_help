@@ -40,8 +40,10 @@ class UnityEnvironment(BaseEnvironment):
 
         self.seed = seed
         self.prev_reward = 0.
-        random.seed(seed)
+        self.rnd = random.Random(seed)
+        self.port_id = 0.
         np.random.seed(seed)
+
 
         self.steps = 0
         self.env_id = None
@@ -208,11 +210,11 @@ class UnityEnvironment(BaseEnvironment):
             return res_dict
         elif agent_goal == 'grab':
             candidates = [x.split('_')[1] for x,y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
-            object_grab = random.choice(candidates)
+            object_grab = self.rnd.choice(candidates)
             # print('GOAL', candidates, object_grab)
             return {'holds_'+object_grab+'_'+'1': [1, True, 10], 'close_'+object_grab+'_'+'1': [1, False, 0.1]}
         elif agent_goal == 'put':
-            pred = random.choice([x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']])
+            pred = self.rand.choice([x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']])
             object_grab = pred.split('_')[1]
             return {
                 pred: [1, True, 60],
@@ -227,9 +229,9 @@ class UnityEnvironment(BaseEnvironment):
 
         # Make sure that characters are out of graph, and ids are ok
         if task_id is None:
-            env_task = random.choice(self.env_task_set)
-        else:
-            env_task = self.env_task_set[task_id]
+            task_id = self.rnd.choice(list(range(len(self.env_task_set))))
+
+        env_task = self.env_task_set[task_id]
 
         self.task_id = env_task['task_id']
         self.init_graph = env_task['init_graph']
@@ -240,6 +242,7 @@ class UnityEnvironment(BaseEnvironment):
 
         old_env_id = self.env_id
         self.env_id = env_task['env_id']
+        print("Resetting", self.env_id, self.task_id)
 
         # seed = (self.seed + self.task_id * 101) % 10007
         # random.seed(seed)
@@ -281,7 +284,7 @@ class UnityEnvironment(BaseEnvironment):
         self.offset_cameras = self.comm.camera_count()[1]
 
         if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
-            rooms = random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
+            rooms = self.rnd.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         else:
             rooms = list(self.init_rooms)
 

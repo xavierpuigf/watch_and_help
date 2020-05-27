@@ -7,6 +7,10 @@ import pdb
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
     parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full', 'check', 'check_neurips'], help='Environment type')
+
+    parser.add_argument('--load-model', type=str, default='',
+                        help='whether the model is loaded')
+
     parser.add_argument('--num-per-apartment', type=int, default=3, help='Maximum #episodes/apartment')
     parser.add_argument(
         '--algo', default='a2c', help='algorithm to use: a2c | ppo | acktr')
@@ -49,7 +53,7 @@ def get_args():
     parser.add_argument(
         '--max-exp-episodes',
         type=int,
-        default=1000,
+        default=10000,
         help='Maximum exploration episodes (default: 10000)')
     parser.add_argument(
         '--value-loss-coef',
@@ -68,6 +72,13 @@ def get_args():
         action='store_true',
         default=False,
         help="sets flags for determinism when using CUDA (potentially slow!)")
+
+    parser.add_argument(
+        '--evaluation',
+        action='store_true',
+        default=False,
+        help="wheter to evaluate")
+
 
     parser.add_argument(
         '--t-max',
@@ -186,7 +197,7 @@ def get_args():
     parser.add_argument(
         '--replay_start',
         type=int,
-        default=2,
+        default=20,
         help='when to start using the replay buffer')
 
     parser.add_argument(
@@ -210,7 +221,7 @@ def get_args():
     parser.add_argument(
         '--max-number-steps',
         type=int,
-        default=20,
+        default=25,
         help='number of episodes')
 
     parser.add_argument(
@@ -241,7 +252,7 @@ def get_args():
     parser.add_argument(
         '--task-set',
         type=str,
-        default='all',
+        default='full',
     )
 
     parser.add_argument(

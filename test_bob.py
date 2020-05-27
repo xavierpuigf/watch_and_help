@@ -31,12 +31,15 @@ if __name__ == '__main__':
     args.max_episode_length = 250
     args.num_per_apartment = '20'
     args.base_port = 8082
-    args.mode = 'check_neurips_test_recursive'
+
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
+    args.mode = 'check_neurips'
+    args.num_per_apartment = '300'
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    args.mode = 'check_neurips_test_recursive'
 
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-
+    args.num_per_apartment = '20'
     for env in env_task_set:
         if env['env_id'] == 6:
             g = env['init_graph']
@@ -53,7 +56,12 @@ if __name__ == '__main__':
     }
 
     if args.use_editor:
-        env_task_set = [env_task_set[q] for q in [82]]
+        env_task_set = [[env for env in env_task_set if env['env_id'] == 5][1]]
+        # pdb.set_trace()
+        # env_task_set = [env_task_set[43]]
+        # pdb.set_trace()
+        #env_task_set = [env_task_set[q] for q in range(len(env_task_set)) if env_task_set[q]['task_name'] == 'read_book' and env_task_set[q]['env_id'] < 6][:10]
+        # pdb.set_trace()
     # env_task_set = []
     # for task_id, problem_setup in enumerate(data):
     #     env_id = problem_setup['apartment'] - 1
@@ -114,7 +122,7 @@ if __name__ == '__main__':
     args_agent2.update(args_common)
     args_agent2.update({'recursive': True})
     agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
-    arena = ArenaMP(id_run, env_fn, agents)
+    arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
     for iter_id in range(num_tries):
         # if iter_id > 0:
@@ -122,6 +130,7 @@ if __name__ == '__main__':
         cnt = 0
         steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
+            pdb.set_trace()
             curr_log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(
                 env_task_set[episode_id]['task_id'],
                 env_task_set[episode_id]['task_name'],
@@ -134,7 +143,7 @@ if __name__ == '__main__':
 
             current_tried = iter_id
 
-            if os.path.isfile(curr_log_file_name):
+            if not args.use_editor and os.path.isfile(curr_log_file_name):
                 with open(curr_log_file_name, 'rb') as fd:
                     file_data = pkl.load(fd)
                 S[episode_id][current_tried] = file_data['finished']

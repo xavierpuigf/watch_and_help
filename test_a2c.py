@@ -1,3 +1,27 @@
+"""
+CUDA_VISIBLE_DEVICES=5 python test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
+--max-episode-length 250 --batch_size 32 --obs_type mcts --gamma 0.95 --lr 1e-4 \
+--task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
+--base_net TF --log-interval 1 --long-log 50 --logging --base-port 8681 --num-processes 5 \
+--agent_type hrl_mcts --num_steps_mcts 50 \
+--load-model trained_models/env.virtualhome/\
+task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
+mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32/\
+stepmcts.24-lep.250-teleport.True-gtgraph/4200.pt
+
+
+# WITH ALICE
+CUDA_VISIBLE_DEVICES=6 python test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
+--max-episode-length 250 --batch_size 32 --obs_type mcts --gamma 0.95 --lr 1e-4 \
+--task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
+--base_net TF --log-interval 1 --long-log 50 --logging --base-port 8781 --num-processes 5 \
+--agent_type hrl_mcts --num_steps_mcts 20 --use-alice --max-number-steps 50 \
+--load-model trained_models/env.virtualhome/\
+task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
+mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32_finetuned/\
+stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
+
+"""
 import sys
 sys.path.append('../virtualhome/')
 sys.path.append('../vh_mdp/')
@@ -40,12 +64,14 @@ if __name__ == '__main__':
     with open(args.dataset_path, 'rb') as f:
         env_task_set = pickle.load(f)
 
+
     for env in env_task_set:
         g = env['init_graph']
         id2node = {node['id']: node['class_name'] for node in g['nodes']}
         cloth_ids = [node['id'] for node in g['nodes'] if node['class_name'] in ["clothespile"]]
         g['nodes'] = [node for node in g['nodes'] if node['id'] not in cloth_ids]
         g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in cloth_ids and edge['to_id'] not in cloth_ids]
+
 
     if args.debug:
         # # debug 1: 1 predicate, 1 room
@@ -96,7 +122,7 @@ if __name__ == '__main__':
             env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
-
+    # env_task_set = [[env for env in env_task_set if env['env_id'] == 2][0]]
     print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'full'
@@ -123,7 +149,8 @@ if __name__ == '__main__':
                                     observation_types=observation_types,
                                     use_editor=args.use_editor,
                                     executable_args=executable_args,
-                                    base_port=args.base_port)
+                                    base_port=args.base_port,
+                                    seed=None)
         else:
             return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                                     env_task_set=env_task_set,

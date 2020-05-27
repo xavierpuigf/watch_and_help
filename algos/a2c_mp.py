@@ -92,19 +92,19 @@ class A2C:
         print('closing')
         del(self.arenas[0])
 
-    def rollout(self, logging_value=0, record=False):
+    def rollout(self, logging_value=0, record=False, episode_id=None, train=True):
         """ Reward for an episode, get the cum reward """
 
         # Reset hidden state of agents
         # TODO: uncomment
 
         if self.args.num_processes == 1:
-            info_envs = [self.arenas[0].rollout(logging_value, record)]
+            info_envs = [self.arenas[0].rollout(logging_value, record, episode_id=episode_id, is_train=train)]
         else:
             async_routs = []
             for arena_id, arena in enumerate(self.arenas):
                 curr_log = 0 if arena_id > 0 else logging_value
-                async_routs.append(arena.rollout_reset.remote(curr_log, record))
+                async_routs.append(arena.rollout_reset.remote(curr_log, record, episode_id=episode_id, is_train=train))
 
             info_envs = []
             for async_rout in async_routs:
@@ -126,16 +126,29 @@ class A2C:
 
 
             # Add into memory
-            for mem in rollout_memory[self.rl_agent_id]:
+            if train:
+                for mem in rollout_memory[self.rl_agent_id]:
 
-                self.memory_all.append(*mem)
-            self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0, 0)
+                    self.memory_all.append(*mem)
+                self.memory_all.append(self.memory_all.goal[self.memory_all.position], None, None, None, 0, 0, 0)
 
         return rewards, info_rollout
 
+    def load_model(self, model_path):
+        model = torch.load(model_path)[0]
+        self.actor_critic.load_state_dict(model.state_dict())
+
+    def eval(self, episode_id):
+        self.actor_critic.eval()
+        with torch.no_grad():
+            c_r_all, info_rollout = self.rollout(episode_id=episode_id, logging_value=2, train=False)
+        return c_r_all, info_rollout
+
 
     def train(self, trainable_agents=None):
-
+        # pdb.set_trace()
+        if len(self.args.load_model):
+            self.load_model(self.args.load_model)
         self.memory_all = MemoryMask(self.memory_capacity_episodes)
         self.memory_all.reset()
 
@@ -147,7 +160,7 @@ class A2C:
             eps = utils_models.get_epsilon(self.args.init_epsilon, self.args.final_epsilon, self.args.max_exp_episodes,
                                            episode_id)
 
-
+            # eps = 0.
             time_prerout = time.time()
 
             # TODO: Uncomment
@@ -160,7 +173,7 @@ class A2C:
                 ray.get([arena.set_weigths.remote(eps, m_id) for arena in self.arenas])
             else:
                 for agent in self.arenas[0].agents:
-                    if agent.agent_type == 'RL':
+                    if 'RL' in agent.agent_type:
                         agent.epsilon = eps
 
             logging_value = 0
@@ -169,7 +182,7 @@ class A2C:
                 if episode_id % self.args.long_log == 0:
                     logging_value = 2
             c_r_all, info_rollout = self.rollout(logging_value=logging_value)
-
+            # pdb.set_trace()
 
 
 
@@ -227,12 +240,12 @@ class A2C:
                         if script_d is None:
                             script_d = ''
 
-                        if info_rollout[0]['step_info'][iti][0] is not None:
+                        if False: #info_rollout[0]['step_info'][iti][0] is not None:
                             char_info = '{:07.3f} {:07.3f}'.format(info_rollout[0]['step_info'][iti][0]['center'][0],
                                                                    info_rollout[0]['step_info'][iti][0]['center'][2])
                             print('{: <36} --> {: <36} | char: {}  {}'.format(script_t, script_d, char_info, info_step))
                         else:
-                            print('{: <36} --> {: <36} |  {}'.format(script_t, script_d, info_step))
+                            print('{: <36} --> {: <36}'.format(script_t, script_d))
 
                     if self.logger:
 

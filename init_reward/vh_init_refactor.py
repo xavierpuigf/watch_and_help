@@ -188,7 +188,8 @@ if __name__ == "__main__":
                 ## -------------------------------------------------------------
                 set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False)
                 init_graph, env_goal, success_setup = getattr(Task, task_name)(set_init_goal, graph)
-
+                if env_goal is None:
+                    pdb.set_trace()
                 if success_setup:
                     # If all objects were well added
                     success, message = comm.expand_scene(init_graph)

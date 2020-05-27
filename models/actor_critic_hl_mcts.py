@@ -23,7 +23,7 @@ class Flatten(nn.Module):
 
 class ActorCritic(nn.Module):
     def __init__(self, action_space, base_name, base_kwargs=None, seed=0):
-        np.random.seed(seed)
+        self.rndnp = np.random.RandomState(seed)
         torch.manual_seed(seed)
 
 
@@ -118,7 +118,7 @@ class ActorCritic(nn.Module):
             #     print(new_log_probs)
             # Correct probabilities according to previously selected acitons
             if action_indices is None:
-                u = np.random.random()
+                u = self.rndnp.random()
                 if u < epsilon:
                     uniform_logits = torch.ones(dist.original_logits.shape).to(log_probs.device)
 

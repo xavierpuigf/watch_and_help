@@ -46,35 +46,35 @@ class SetInitialGoal:
             self.init_pool = self.init_pool_tasks[self.task_name]
 
         elif self.task_name == 'setup_table_prepare_food':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool = copy.deepcopy(self.init_pool_tasks["setup_table"])
             self.init_pool.update(self.init_pool_tasks["prepare_food"])
 
         elif self.task_name == 'setup_table_read_book':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["setup_table"])
             self.init_pool.update(self.init_pool_tasks["read_book"])
 
         elif self.task_name == 'setup_table_watch_tv':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["setup_table"])
             self.init_pool.update(self.init_pool_tasks["watch_tv"])
 
         elif self.task_name == 'setup_table_put_fridge':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["setup_table"])
             self.init_pool.update(self.init_pool_tasks["put_fridge"])
 
         elif self.task_name == 'setup_table_put_dishwasher':
-            self.init_pool = self.init_pool_tasks["setup_table"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["setup_table"])
             self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
 
         elif self.task_name == 'prepare_food_put_dishwasher':
-            self.init_pool = self.init_pool_tasks["prepare_food"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["prepare_food"])
             self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
 
         elif self.task_name == 'put_fridge_put_dishwasher':
-            self.init_pool = self.init_pool_tasks["put_fridge"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["put_fridge"])
             self.init_pool.update(self.init_pool_tasks["put_dishwasher"])
 
         elif self.task_name == 'put_dishwasher_read_book':
-            self.init_pool = self.init_pool_tasks["put_dishwasher"]
+            self.init_pool =  copy.deepcopy(self.init_pool_tasks["put_dishwasher"])
             self.init_pool.update(self.init_pool_tasks["read_book"])
 
         ## make sure the goal is not empty
@@ -195,10 +195,9 @@ class SetInitialGoal:
         # success, message = comm.expand_scene(graph_copy)
         # print(success, message)
         # pdb.set_trace()
-
-        if (self.task_name == 'setup_table') or (self.task_name == 'put_dishwasher') or (
-                self.task_name == 'put_fridge') or (self.task_name == 'prepare_food'):
-            for goal in env_goal[self.task_name]:
+        if ('setup_table' in self.task_name) or ('put_dishwasher' in self.task_name) or ('put_fridge' in self.task_name) or ('prepare_food' in self.task_name):
+            curr_task_name = list(env_goal.keys())[0]
+            for goal in env_goal[curr_task_name]:
                 # print(self.object_id_count)
                 subgoal_name = list(goal.keys())[0]
                 num_obj = list(goal.values())[0]
@@ -213,7 +212,7 @@ class SetInitialGoal:
                 obj_ids = [node['id'] for node in graph_copy['nodes'] if obj == node['class_name']]
                 if len(obj_ids) < num_obj:
                     print(subgoal_name, num_obj, obj_ids)
-                    pdb.set_trace()
+                    # pdb.set_trace()
                     return 0
 
                 graph_copy = self.remove_obj(graph_copy, obj_ids)
