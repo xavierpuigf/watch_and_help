@@ -35,10 +35,16 @@ if __name__ == '__main__':
     #                                                                                     args.mode)
     # data = pickle.load(open(args.dataset_path, 'rb'))
 
-    pred_file = '/data/vision/torralba/ls-objectvideo/2icml2020/1virtualhome/vh_multiagent_models_goal_inference_video_eval/data/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1.p'
+    #pred_file = '/data/vision/torralba/ls-objectvideo/2icml2020/1virtualhome/vh_multiagent_models_goal_inference_video_eval/data/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1.p'
+
+    #pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
+    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_newtest.p'
     with open(pred_file, 'rb') as f:
         predictions = pkl.load(f)
-    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test.json', 'r') as f:
+    # with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test.json', 'r') as f:
+    #     match_demo_test = json.load(f)
+
+    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test_multiple.json', 'r') as f:
         match_demo_test = json.load(f)
 
     env_to_pred = {}
@@ -55,12 +61,13 @@ if __name__ == '__main__':
 
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8088
+    args.base_port = 8090
     args.mode = 'check_neurips_test_recursive'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -70,7 +77,9 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_predgoal'.format(args.num_per_apartment)
+    #args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_predgoal_correct'.format(args.num_per_apartment)
+    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_predgoal_correct_multiple'.format(args.num_per_apartment)
+
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -136,7 +145,7 @@ if __name__ == '__main__':
     args_agent2.update(args_common)
     args_agent2.update({'recursive': False})
     agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
-    arena = ArenaMP(id_run, env_fn, agents)
+    arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
     for iter_id in range(num_tries):
         # if iter_id > 0:

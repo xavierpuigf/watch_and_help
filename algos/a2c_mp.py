@@ -101,19 +101,19 @@ class A2C:
         print('closing')
         del(self.arenas[0])
 
-    def rollout(self, logging_value=0, record=False, episode_id=None, train=True):
+    def rollout(self, logging_value=0, record=False, episode_id=None, train=True, goals=None):
         """ Reward for an episode, get the cum reward """
 
         # Reset hidden state of agents
         # TODO: uncomment
 
         if self.args.num_processes == 1:
-            info_envs = [self.arenas[0].rollout(logging_value, record, episode_id=episode_id, is_train=train)]
+            info_envs = [self.arenas[0].rollout(logging_value, record, episode_id=episode_id, is_train=train, goals=goals)]
         else:
             async_routs = []
             for arena_id, arena in enumerate(self.arenas):
                 curr_log = 0 if arena_id > 0 else logging_value
-                async_routs.append(arena.rollout_reset.remote(curr_log, record, episode_id=episode_id, is_train=train))
+                async_routs.append(arena.rollout_reset.remote(curr_log, record, episode_id=episode_id, is_train=train, goals=goals))
 
             info_envs = []
             for async_rout in async_routs:
@@ -159,13 +159,13 @@ class A2C:
             # ipdb.set_trace()
             self.actor_critic_low_level.load_state_dict(model_low_level.state_dict())
 
-    def eval(self, episode_id):
+    def eval(self, episode_id, goals=None):
         self.actor_critic.eval()
         for agent in self.arenas[0].agents:
             if 'RL' in agent.agent_type:
                 agent.epsilon = 0.
         with torch.no_grad():
-            c_r_all, info_rollout = self.rollout(episode_id=episode_id, logging_value=2, train=False)
+            c_r_all, info_rollout = self.rollout(episode_id=episode_id, logging_value=2, train=False, goals=goals)
         return c_r_all, info_rollout
 
 

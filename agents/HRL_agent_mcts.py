@@ -384,7 +384,7 @@ class HRL_agent:
         #                                   spaces.Discrete(2)))
         self.actor_critic = actor_critic_hl_mcts.ActorCritic(self.action_space, base_name=args.base_net,
                                                              base_kwargs=base_kwargs, seed=seed)
-        self.actor_critic.base.main.main.bad_transformer = False
+        self.actor_critic.base.main.main.bad_transformer = True
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
 

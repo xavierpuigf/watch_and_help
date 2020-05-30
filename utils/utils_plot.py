@@ -319,7 +319,8 @@ class Episode:
             obj_close.append(close_str)
             obj_grabbed.append(grabbed_str)
 
-            save_graph_2d('{}/plots/plot_{}_{}.png'.format(exp_name, episode, step), self.info['graph'][step], visible_ids, action_ids, goal_ids)
+            # TODO: uncomment this for potting better
+            # save_graph_2d('{}/plots/plot_{}_{}.png'.format(exp_name, episode, step), self.info['graph'][step], visible_ids, action_ids, goal_ids)
 
         col_info = [self.info['script_tried'], self.info['script_done'], obj_close, obj_grabbed]
 

@@ -4,8 +4,8 @@ CUDA_VISIBLE_DEVICES=4 python evaluate_a2c.py \
 --num-per-apartment 3 --max-num-edges 10 --max-episode-length 250 --batch_size 32 --obs_type mcts \
 --gamma 0.95 --lr 1e-4 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 1 --long-log 50 --base-port 8589 --num-processes 1 \
---agent_type hrl_mcts --num_steps_mcts 40 --use-alice
---load_model trained_models/env.virtualhome/\
+--agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
+--load-model trained_models/env.virtualhome/\
 task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
 mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32_finetuned/\
 stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
@@ -44,11 +44,13 @@ if __name__ == '__main__':
     args.num_per_apartment = '20'
     args.base_port = 8082
     args.evaluation = True
-    args.mode = 'check_neurips_RL_MCTS'
+    args.mode = 'check_neurips_RL_MCTS_multiple'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -205,7 +207,7 @@ if __name__ == '__main__':
     a2c.load_model(args.load_model)
 
     test_results = []
-    for i in range(5, 100):
+    for i in range(28, 100):
         successes = []
         lengths = []
         for seed in range(5):
@@ -224,7 +226,8 @@ if __name__ == '__main__':
                     'gt_goals': arenas[0].env.task_goal[0],
                     'goals_finished': res[1][0]['goals_finished'],
                     'goals': arenas[0].env.task_goal,
-                    'obs': res[1][0]['obs']
+                    'obs': res[1][0]['obs'],
+                    'action': res[1][0]['action']
                 }
                 successes.append(finished)
                 lengths.append(length)
@@ -238,4 +241,4 @@ if __name__ == '__main__':
                 arenas[0].reset_env()
         test_results.append({'S': successes, 'L': lengths})
     pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
-    pdb.set_trace()
+    # pdb.set_trace()

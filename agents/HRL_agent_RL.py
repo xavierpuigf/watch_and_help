@@ -518,13 +518,12 @@ class HRL_agent_RL:
                 inp_tensor = inp_tensor.float()
             inputs_tensor[input_name] = inp_tensor
 
-        ###############
-        # END HL-Policy
-        ###############
+
         # pdb.set_trace()
 
         if self.action_count == 0:
             self.last_action_low_level = None
+            self.hidden_state_low_level = self.init_hidden_state()
             value, action, action_probs, rnn_state, out_dict = self.actor_critic.act(
                 inputs_tensor,
                 rnn_hxs,
@@ -555,15 +554,17 @@ class HRL_agent_RL:
             info_model['actions'] = next_action
 
         info_model['obs'] = observation['nodes']
-
+        ###############
+        # END HL-Policy
+        ###############
 
         # pdb.set_trace()
         action_str, action_tried, plan, predicate = self.get_action_instr(next_action, visible_objects, observation_belief)
         pred_name = predicate
+        pred_name = 'put_cupcake_coffeetable'
         pred_goal_spec = {pred_name: [1, True, 1]}
 
-
-
+        pdb.set_trace()
         if predicate is not None:
             if not self.last_action_low_level is None:
                 # If action is walking we dont save
@@ -578,11 +579,14 @@ class HRL_agent_RL:
 
             if self.last_action_low_level is None:
 
-
-                #### INPUTS LOW LEVEL ####
+                ##############################
+                #### Inputs low level policy
+                ##############################
                 pre_id = 0
                 target_obj_class_pred = [self.graph_helper.object_dict.get_id('no_obj')] * 6
                 target_loc_class_pred = [self.graph_helper.object_dict.get_id('no_obj')] * 6
+                mask_goal_pred_pred = [0.0] * 6
+
                 for predicate, info in pred_goal_spec.items():
                     count, required, reward = info
                     if count == 0 or not required:
@@ -600,17 +604,18 @@ class HRL_agent_RL:
                     for _ in range(count):
                         target_obj_class_pred[pre_id] = obj_class_id
                         target_loc_class_pred[pre_id] = loc_class_id
-                        mask_goal_pred[pre_id] = 1.0
+                        mask_goal_pred_pred[pre_id] = 1.0
                         pre_id += 1
 
+                ipdb.set_trace()
                 inputs_ll.update({
                     'affordance_matrix': self.graph_helper.obj1_affordance,
                     'target_obj_class': target_obj_class_pred,
                     'target_loc_class': target_loc_class_pred,
-                    'mask_goal_pred': mask_goal_pred,
+                    'mask_goal_pred': mask_goal_pred_pred,
                     'gt_goal': obj_class_id
                 })
-
+                ipdb.set_trace()
                 #### END INPUTS LOW LEVEL ####
                 # ipdb.set_trace()
                 inputs_tensor_ll = {}
@@ -622,6 +627,7 @@ class HRL_agent_RL:
                 value_ll, action_ll, action_probs_ll, rnn_state_ll, out_dict_ll = self.actor_critic_low_level.act(inputs_tensor_ll, rnn_hxs_low_level, masks)
                 self.hidden_state_low_level = rnn_state_ll
                 action_str, action_tried = self.get_action_instr_low_level(action_ll, visible_objects, observation)
+                print("LOW LEVEL ACTION" , action_str)
                 if action_str is not None:
                     self.last_action_low_level = action_str
 

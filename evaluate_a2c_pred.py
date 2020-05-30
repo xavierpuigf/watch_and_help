@@ -1,9 +1,9 @@
 
 """
-CUDA_VISIBLE_DEVICES=1 python evaluate_a2c_RL_RL.py \
+CUDA_VISIBLE_DEVICES=4 python evaluate_a2c_pred.py \
 --num-per-apartment 3 --max-num-edges 10 --max-episode-length 250 --batch_size 32 --obs_type mcts \
 --gamma 0.95 --lr 1e-4 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
---base_net TF --log-interval 1 --long-log 50 --base-port 8389 --num-processes 1 \
+--base_net TF --log-interval 1 --long-log 50 --base-port 8589 --num-processes 1 \
 --agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
 --load-model trained_models/env.virtualhome/\
 task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
@@ -23,16 +23,40 @@ from pathlib import Path
 import pickle
 import random
 import copy
-from agents import MCTS_agent, RL_agent, HRL_agent, HRL_agent_RL
+from agents import MCTS_agent, RL_agent, HRL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c import A2C
 from algos.a2c_mp import A2C as A2C_MP
 from utils import utils_goals, utils_rl_agent
+import pickle as pkl
+import json
 import ray
 
 if __name__ == '__main__':
     args = get_args()
+
+    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
+
+    #pred_file = '/data/vision/torralba/ls-objectvideo/2icml2020/1virtualhome/vh_multiagent_models_goal_inference_video_eval/data/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1.p'
+    with open(pred_file, 'rb') as f:
+        predictions = pkl.load(f)
+    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test.json', 'r') as f:
+        match_demo_test = json.load(f)
+
+    env_to_pred = {}
+    for i in range(100):
+        demo_env = match_demo_test[str(i)][0].replace('.pik', '')
+        curr_pred = predictions[demo_env]['prediction']
+        pred_dict = {}
+        for p in curr_pred:
+            if p != 'None':
+                if p not in pred_dict:
+                    pred_dict[p] = 0
+                pred_dict[p] += 1
+        env_to_pred[str(i)] = pred_dict
+
+
     # args.task = 'setup_table'
     # args.num_per_apartment = '50'
     # args.mode = 'full'
@@ -44,12 +68,14 @@ if __name__ == '__main__':
     args.num_per_apartment = '20'
     args.base_port = 8082
     args.evaluation = True
-    args.init_epsilon = 0.
-    args.mode = 'check_neurips_RL_RL'
+    args.mode = 'check_neurips_RL_MCTS_pred'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -186,7 +212,7 @@ if __name__ == '__main__':
         args_agent2 = {'agent_id': rl_agent_id, 'char_index': rl_agent_id - 1,
                        'args': args, 'graph_helper': graph_helper}
         args_agent2['seed'] = arena_id
-        return HRL_agent_RL(**args_agent2)
+        return HRL_agent(**args_agent2)
 
 
 
@@ -213,7 +239,33 @@ if __name__ == '__main__':
             try:
                 for agent in arenas[0].agents:
                     agent.seed = seed
-                res = a2c.eval(i)
+
+                episode_id = i
+                predicted_goal_class = env_to_pred[str(episode_id)]
+                arenas[0].env.reset(task_id=i)
+                graph = arenas[0].env.graph
+                idnodes = {}
+                for class_name in ['fridge', 'dishwasher', 'kitchentable', 'coffeetable', 'sofa']:
+                    idnodes[class_name] = [node['id'] for node in graph['nodes'] if node['class_name'] == class_name][0]
+
+                predicted_goal = {}
+                for kpred, itv in predicted_goal_class.items():
+                    spl = kpred.split('_')
+                    if not spl[-1] in idnodes:
+                        if spl[0] == 'sit':
+                           target_name = '_'.join([spl[0], '1', spl[1]])
+                        else:
+                            target_name = '_'.join([spl[0], spl[1], '1'])
+                    else:
+                        id_target = idnodes[spl[-1]]
+                        if spl[0] == 'sit':
+                            spl[1] = '1'
+                        target_name = '{}_{}_{}'.format(spl[0], spl[1], id_target)
+                    predicted_goal[target_name] = itv
+
+                original_goal = arenas[0].env.task_goal[0]
+                res = a2c.eval(i, goals={0: original_goal, 1: predicted_goal})
+
                 finished = res[1][0]['finished']
                 length = len(res[1][0]['action'][0])
                 info_results = {
@@ -225,7 +277,8 @@ if __name__ == '__main__':
                     'gt_goals': arenas[0].env.task_goal[0],
                     'goals_finished': res[1][0]['goals_finished'],
                     'goals': arenas[0].env.task_goal,
-                    'obs': res[1][0]['obs']
+                    'obs': res[1][0]['obs'],
+                    'action': res[1][0]['action']
                 }
                 successes.append(finished)
                 lengths.append(length)
@@ -239,4 +292,4 @@ if __name__ == '__main__':
                 arenas[0].reset_env()
         test_results.append({'S': successes, 'L': lengths})
     pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
-    pdb.set_trace()
+    # pdb.set_trace()

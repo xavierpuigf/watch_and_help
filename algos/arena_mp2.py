@@ -5,6 +5,7 @@ import copy
 import numpy as np
 from tqdm import tqdm
 import time
+import ipdb
 import ray
 import atexit
 
@@ -16,6 +17,7 @@ class ArenaMP(object):
         self.agent_fn = agent_fn
         self.arena_id = arena_id
         self.num_agents = len(agent_fn)
+        self.task_goal = None
 
         print("Init Env")
         self.env = environment_fn(arena_id)
@@ -54,21 +56,28 @@ class ArenaMP(object):
         dict_actions, dict_info = {}, {}
         op_subgoal = {0: None, 1: None}
         # pdb.set_trace()
+
         for it, agent in enumerate(self.agents):
+            if self.task_goal is None:
+                goal_spec = self.env.get_goal(self.env.task_goal[it], self.env.agent_goals[it])
+
+            else:
+                goal_spec = self.env.get_goal(self.task_goal[it], self.env.agent_goals[it])
+            # ipdb.set_trace()
             if agent.agent_type == 'MCTS':
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
                 # pdb.set_trace()
-                dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.get_goal(self.env.task_goal[it], self.env.agent_goals[it]), opponent_subgoal)
+                dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec, opponent_subgoal)
                 # pdb.set_trace()
             elif 'RL' in agent.agent_type:
                 if 'MCTS' in agent.agent_type:
-                    dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it],
+                    dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec,
                                                                        action_space_ids=action_space[it], full_graph=self.env.get_graph())
 
                 else:
-                    dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it], action_space_ids=action_space[it])
+                    dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.task_goal, action_space_ids=action_space[it])
 
         return dict_actions, dict_info
 
@@ -98,7 +107,7 @@ class ArenaMP(object):
             self.set_weigths(prev_eps, prev_weights)
             return self.rollout(logging, record, episode_id=episode_id, is_train=is_train)
 
-    def rollout(self, logging=0, record=False, episode_id=None, is_train=True):
+    def rollout(self, logging=0, record=False, episode_id=None, is_train=True, goals=None):
         t1 = time.time()
         # pdb.set_trace()
         if episode_id is not None:
@@ -117,6 +126,11 @@ class ArenaMP(object):
         entropy_action, entropy_object = [], []
         observation_space, action_space = [], []
 
+
+        if goals is not None:
+            self.task_goal = goals
+        else:
+            self.task_goal = None
 
         if logging > 0:
             info_rollout['pred_goal'] = []
