@@ -82,7 +82,8 @@ if __name__ == '__main__':
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -91,8 +92,9 @@ if __name__ == '__main__':
             g['nodes'] = [node for node in g['nodes'] if node['id'] not in door_ids]
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
+    # args.mode = 'check_neurips_test_recursive_multiple2'
 
-    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_randomgoal'.format(args.num_per_apartment)
+    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_randomgoal_multiple2'.format(args.num_per_apartment)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     args_agent2.update(args_common)
     args_agent2.update({'recursive': False})
     agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
-    arena = ArenaMP(id_run, env_fn, agents)
+    arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
     for iter_id in range(num_tries):
         # if iter_id > 0:

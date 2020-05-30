@@ -146,10 +146,12 @@ class UnityEnvironment(BaseEnvironment):
                                                            image_synthesis=['normal'])
             else:
                 # try:
+                # print(script_list)
                 success, message = self.comm.render_script(script_list,
                                                            recording=False,
                                                            gen_vid=False,
                                                            processing_time_limit=20,
+                                                           smooth_walk=False,
                                                            time_scale=20.)
             if not success:
                 if self.num_agents  >  1:

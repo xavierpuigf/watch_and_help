@@ -22,13 +22,13 @@ from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-task', type=int, default=250, help='Maximum #episodes/task')
+parser.add_argument('--num-per-task', type=int, default=10, help='Maximum #episodes/task')
 parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
 parser.add_argument('--port-number', type=int, default=8290, help='port')
 parser.add_argument('--display', type=str, default='2', help='display')
-parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.26.x86_64', help='Use unity editor')
+parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64', help='Use unity editor')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -40,28 +40,37 @@ if __name__ == "__main__":
     with open('data/init_pool.json') as file:
         init_pool = json.load(file)
 
-    file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_split.json'
+    # file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_split.json'
+    file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_mutliple_split.json'
+
     with open(file_split, 'r') as f:
         content_split = json.load(f)
 
     # Predicates train and test
     cache_files = []
     predicates = {'train': [], 'test': []}
-    for elem in content_split['train']:
-        if elem['pred_str'] not in cache_files:
-            cache_files.append(elem['pred_str'])
-        else:
-            continue
-        predicates['train'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
+
+    # for elem in content_split['train']:
+    #     if elem['pred_str'] not in cache_files:
+    #         cache_files.append(elem['pred_str'])
+    #     else:
+    #         continue
+    #     predicates['train'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
 
     for elem in content_split['test']:
-        if elem['pred_str'] not in cache_files:
+        # Create a has pred str
+        pred_dict = elem['pred_dict']
+        pred_str = ','.join(sorted([x+'.'+str(y) for x,y in pred_dict.items()]))
+
+        if pred_str not in cache_files:
             cache_files.append(elem['pred_str'])
         else:
+            pdb.set_trace()
             continue
-        predicates['test'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
+        predicates['test'].append((elem['pred_dict'], elem['task_name'], pred_str))
 
-
+    print("Done")
+    pdb.set_trace()
     # args.dataset_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/analysis/info_demo_scenes_posteccv.json'
     args.record_dir = '../initial_environments/data/init_envs'
     # data = json.load(open(args.dataset_path, 'r'))
@@ -98,7 +107,7 @@ if __name__ == "__main__":
 
     success_init_graph = []
 
-    apartment_list = [0, 1, 2, 4, 5] # [3, 6]
+    apartment_list = [3, 6] # [0, 1, 2, 4, 5] # [3, 6]
 
     task_counts = {"setup_table": 0, 
                    "put_dishwasher": 0, 
@@ -112,7 +121,7 @@ if __name__ == "__main__":
 
 
 
-    for predicates_dict, task_name, pred_str in predicates['train']: # test
+    for predicates_dict, task_name, pred_str in predicates['test']: # test
         # json_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models' + \
         #             json_file[2:]
         # if json_path.endswith('json'):
@@ -132,6 +141,7 @@ if __name__ == "__main__":
             task_goal[i] = demo_goals
 
         goal_class = {}
+        pdb.set_trace()
         # id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
         for predicate, count in task_goal[0].items():
             elements = predicate.split('_')
@@ -145,7 +155,7 @@ if __name__ == "__main__":
             goal_class[new_predicate] = count
 
         # pdb.set_trace()
-        if task_counts[task_name] >= args.num_per_task: continue
+        # if task_counts[task_name] >= args.num_per_task: continue
 
         num_test = 10
         count_success = 0
@@ -190,6 +200,7 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## setup goal based on currect environment
             ## -------------------------------------------------------------
+            pdb.set_trace()
             set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_goals)
             # pdb.set_trace()
             init_graph, env_goal, success_expand = getattr(Task, task_name)(set_init_goal, graph)
@@ -316,7 +327,7 @@ if __name__ == "__main__":
     # pdb.set_trace()
     print(len(test_set))
     print(task_counts)
-    pickle.dump(test_set, open(args.record_dir + '/train_env_set_help_{}_neurips.pik'.format(args.num_per_task), 'wb'))
+    pickle.dump(test_set, open(args.record_dir + '/test_env_set_help_{}_multitask_neurips.pik'.format(args.num_per_task), 'wb'))
 
 
 

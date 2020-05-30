@@ -66,7 +66,7 @@ class RL_agent:
 
     def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None):
         rnn_hxs = self.hidden_state
-
+        # pdb.set_trace()
         masks = torch.ones(rnn_hxs[0].shape).type(rnn_hxs[0].type())
         if torch.cuda.is_available():
             rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
@@ -93,7 +93,10 @@ class RL_agent:
 
             elements = predicate.split('_')
             obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
-            loc_class_id = int(self.graph_helper.object_dict.get_id(self.id2node[int(elements[2])]['class_name']))
+            if elements[2].isdigit():
+                loc_class_id = int(self.graph_helper.object_dict.get_id(self.id2node[int(elements[2])]['class_name']))
+            else:
+                loc_class_id = int(self.graph_helper.object_dict.get_id(elements[2]))
             for _ in range(count):
                 target_obj_class[pre_id] = obj_class_id
                 target_loc_class[pre_id] = loc_class_id

@@ -398,6 +398,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph, graph_helper=None, te
 
     if action.startswith('walk') and teleport:
         action = 'walkto'
+
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
     # print(action_str)
     return action_str
@@ -458,6 +459,7 @@ def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_
 
     elif i == 0:
         # Deciding on the action
+        # pdb.set_trace()
         selected_obj1 = torch.gather(object_classes, 1, actions[1].long())
 
         mask = torch.gather(obj1_affordance, 2, selected_obj1.unsqueeze(-2).repeat(1, obj1_affordance.shape[1], 1).long()).squeeze(-1).float().to(log_probs.device)

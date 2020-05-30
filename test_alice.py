@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # args.task = 'setup_table'
     args.max_episode_length = 250
     args.num_per_apartment = 10
-    args.mode = 'check_neurips_multiple2'
+    args.mode = 'check_neurips_test_multiple2'
     # args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
@@ -53,7 +53,8 @@ if __name__ == '__main__':
     # args.record_dir = 'record/Alice_test_set_30'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
     #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
 
     if args.use_editor:
@@ -69,8 +70,8 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    #args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
-    args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    # args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
 
     executable_args = {
                     'file_name': args.executable_file,
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
     # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
     # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
-    for iter_id in range(1):
+    for iter_id in range(4, 5):
         #if iter_id > 0:
 
         cnt = 0

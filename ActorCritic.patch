@@ -1,0 +1,11 @@
+--- /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/models/actor_critic.py
++++ /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/models/actor_critic.py
+@@ -66,7 +66,7 @@
+         raise NotImplementedError
+ 
+     def act(self, inputs, rnn_hxs, masks=None, deterministic=False, epsilon=0.0, action_indices=None):
+-        # ipdb.set_trace()
++
+         if self.is_cuda():
+             new_inputs = {}
+             for name, inp in inputs.items():

@@ -10,6 +10,7 @@ from tqdm import tqdm
 sys.path.append('../../../virtualhome/simulation')
 from unity_simulator import comm_unity
 import cv2
+import glob
 import numpy as np
 
 def write_video(log_file, out_file, comm, file_folder, file_folder_log):
@@ -168,7 +169,7 @@ if __name__ == '__main__':
     home_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge'
     args = parser.parse_args()
 
-
+    problem_name = 'multiBob_env_task_set_20_check_neurips_test_recursive'
 
     if args.use_editor:
         comm = comm_unity.UnityCommunication(timeout_wait=250)
@@ -195,13 +196,17 @@ if __name__ == '__main__':
             out_folder = './unity_vol/videos/'
             log_folder = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/docker_info_script/'
         else:
-            out_folder = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/videos/'
+            out_folder = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/videos_qualitative/'
             log_folder = out_folder
         file_name_files = home_path + '/split/all_watch.txt'
-        with open(file_name_files, 'r') as f:
-            file_names = ['../' + x.strip() for x in f.readlines()]
 
-        random.shuffle(file_names)
+
+        files_candidates = glob.glob('../../record_scratch/rec_good_test/{}/logs*.pik'.format(problem_name))
+        map_ind_to_file = {(int(file_name.split('_')[2]), int(file_name.split('_')[-1].split('.')[0])): file_name for file_name in files_candidates}
+        with open('../../record_scratch/rec_good_test/{}/results_redo.pkl'.format(problem_name), 'rb') as f:
+            ct = pkl.load(f)
+
+
     for itf, file_name in enumerate(tqdm(file_names)):
 
         splitf = file_name.split('/')[-1].split('.')[0]

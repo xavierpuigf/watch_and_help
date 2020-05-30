@@ -165,6 +165,7 @@ class GoalEncoder(nn.Module):
 
         num_preds = mask_goal_pred.sum(-1)
         #norm_mask = (mask_goal_pred/num_preds.unsqueeze(-1)).unsqueeze(-1)
+        # Difference with low level policy
         norm_mask = mask_goal_pred.unsqueeze(-1)
 
         average_pred = (object_location * norm_mask).sum(1)
@@ -353,6 +354,7 @@ class GraphEncoder(nn.Module):
         # Build the graph
         hidden_feats = self.graph_encoder(inputs)
         return hidden_feats
+
 
 
 class TransformerBase(nn.Module):

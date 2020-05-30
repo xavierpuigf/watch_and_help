@@ -121,7 +121,7 @@ if __name__ == '__main__':
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal',
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal',
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive',
-        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS',
      '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test'
     ]
 

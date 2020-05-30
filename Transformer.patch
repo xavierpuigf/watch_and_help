@@ -1,0 +1,21 @@
+--- /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/models/graph_nn.py
++++ /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/models/graph_nn.py
+@@ -8,7 +8,7 @@
+             encoder_layer,
+             num_layers=6,
+             norm=nn.modules.normalization.LayerNorm(in_feat))
+-        self.is_low_level = False
++
+         self._reset_parameters()
+ 
+     def _reset_parameters(self):
+@@ -19,8 +19,7 @@
+                 nn.init.xavier_uniform_(p)
+ 
+     def forward(self, inputs, mask_nodes):
+-        if self.is_low_level:
+-            mask_nodes = 1 - mask_nodes
++        mask_nodes = 1 - mask_nodes
+         outputs = self.transformer(inputs.transpose(0,1), src_key_padding_mask=mask_nodes.bool())
+         outputs = outputs.squeeze(0).transpose(0,1)
+         return outputs

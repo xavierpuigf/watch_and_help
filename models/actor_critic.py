@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import os
+import ipdb
 
 import torch.nn.functional as F
 import torchvision.models as models
@@ -95,7 +96,7 @@ class ActorCritic(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks=None, deterministic=False, epsilon=0.0, action_indices=None):
-
+        # ipdb.set_trace()
         if self.is_cuda():
             new_inputs = {}
             for name, inp in inputs.items():

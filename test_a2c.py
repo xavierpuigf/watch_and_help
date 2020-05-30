@@ -1,4 +1,15 @@
 """
+
+NO TELEPORT
+CUDA_VISIBLE_DEVICES=0 python test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
+--max-episode-length 250 --batch_size 32 --obs_type mcts --gamma 0.95 --lr 1e-4 \
+--task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
+--base_net TF --log-interval 1 --long-log 50 --logging --base-port 8681 --num-processes 5 \
+--executable_file /data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.05.29.x86_64 \
+--agent_type hrl_mcts --num_steps_mcts 24
+
+
+
 CUDA_VISIBLE_DEVICES=5 python test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
 --max-episode-length 250 --batch_size 32 --obs_type mcts --gamma 0.95 --lr 1e-4 \
 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \

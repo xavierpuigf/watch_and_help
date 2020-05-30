@@ -384,7 +384,7 @@ class HRL_agent:
         #                                   spaces.Discrete(2)))
         self.actor_critic = actor_critic_hl_mcts.ActorCritic(self.action_space, base_name=args.base_net,
                                                              base_kwargs=base_kwargs, seed=seed)
-
+        self.actor_critic.base.main.main.bad_transformer = False
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
 
@@ -538,9 +538,9 @@ class HRL_agent:
             container_pred = p_spl[2]
             # Check if the predicate corresponds to the goal
 
-            # if obj_pred not in obj_pred_names or container_pred not in loc_pred_names and self.mode == 'train':
-            #     info_model['bad_predicate'] = True
-            #     action_str = None
+            if obj_pred not in obj_pred_names or container_pred not in loc_pred_names and self.mode == 'train':
+                info_model['bad_predicate'] = True
+                action_str = None
                 # print(predicate, loc_pred_names, obj_pred_names)
 
         if action_str is not None:

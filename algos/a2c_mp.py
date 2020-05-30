@@ -7,6 +7,7 @@ import pdb
 import copy
 import ray
 import json
+import ipdb
 from utils.utils_models import Logger
 from utils import utils_models
 import models.actor_critic as actor_critic
@@ -60,11 +61,17 @@ class A2C:
                                          spaces.Discrete(args.max_num_objects)))
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
+        self.actor_critic_low_level = None
+        # ipdb.set_trace()
         if self.args.num_processes == 1:
 
             self.rl_agent_id = [ag_id for ag_id, agent in enumerate(self.arenas[0].agents) if 'RL' in agent.agent_type][
                 0]
+            # ipdb.set_trace()
             self.actor_critic = self.arenas[0].agents[self.rl_agent_id].actor_critic
+            if self.arenas[0].agents[self.rl_agent_id].agent_type == 'RL_MCTS_RL':
+                self.actor_critic_low_level = self.arenas[0].agents[self.rl_agent_id].actor_critic_low_level
+
         else:
             if args.use_alice:
                 self.rl_agent_id = 1
@@ -73,6 +80,8 @@ class A2C:
             if args.agent_type == 'hrl_mcts':
                 self.actor_critic = actor_critic_hl_mcts.ActorCritic(action_space, base_name=args.base_net,
                                                                      base_kwargs=base_kwargs)
+                self.actor_critic.base.main.main.bad_transformer = False
+
             else:
                 self.actor_critic = actor_critic.ActorCritic(action_space, base_name=args.base_net, base_kwargs=base_kwargs)
 
@@ -136,10 +145,25 @@ class A2C:
 
     def load_model(self, model_path):
         model = torch.load(model_path)[0]
+        # ipdb.set_trace()
+        # ipdb.set_trace()
         self.actor_critic.load_state_dict(model.state_dict())
+        if self.actor_critic_low_level is not None:
+            model_path_lowlevel = ('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/'
+            'trained_models/env.virtualhome/task.put-numproc.1-obstype.mcts-sim.unity/'\
+            'taskset.full/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.1.0-cgoal.0.0-lr0.0001/26200_all.pt')
+            # torch.nn.Module.dump_patches = True
+            model_low_level = torch.load(model_path_lowlevel)[-1]
+
+            # ipdb.set_trace()
+            # ipdb.set_trace()
+            self.actor_critic_low_level.load_state_dict(model_low_level.state_dict())
 
     def eval(self, episode_id):
         self.actor_critic.eval()
+        for agent in self.arenas[0].agents:
+            if 'RL' in agent.agent_type:
+                agent.epsilon = 0.
         with torch.no_grad():
             c_r_all, info_rollout = self.rollout(episode_id=episode_id, logging_value=2, train=False)
         return c_r_all, info_rollout

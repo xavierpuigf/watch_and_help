@@ -39,9 +39,7 @@ class ArenaMP(object):
             ob = self.env.reset(task_id=task_id)
 
         for it, agent in enumerate(self.agents):
-            if agent.agent_type == 'MCTS':
-                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
-            elif agent.agent_type == 'RL_MCTS':
+            if 'MCTS' in agent.agent_type:
                 agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
             else:
                 agent.reset(self.env.python_graph)
@@ -65,7 +63,7 @@ class ArenaMP(object):
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.get_goal(self.env.task_goal[it], self.env.agent_goals[it]), opponent_subgoal)
                 # pdb.set_trace()
             elif 'RL' in agent.agent_type:
-                if agent.agent_type == 'RL_MCTS':
+                if 'MCTS' in agent.agent_type:
                     dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.env.goal_spec[it],
                                                                        action_space_ids=action_space[it], full_graph=self.env.get_graph())
 
@@ -280,6 +278,7 @@ class ArenaMP(object):
         info_rollout['t_reset'] = t_reset
         info_rollout['t_steps'] = t_steps
 
+        # pdb.set_trace()
         for agent_index in agent_info.keys():
             success_r_all[agent_index] = env_info['finished']
 

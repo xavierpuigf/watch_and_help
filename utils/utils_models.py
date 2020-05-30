@@ -168,7 +168,7 @@ class Logger():
         args = self.args
         info_mcts = 'stepmcts.{}-lep.{}-teleport.{}-beliefgraph-forcepred'.format(args.num_steps_mcts, args.max_episode_length, args.teleport)
         experiment_name = 'env.{}/task.{}-numproc.{}-obstype.{}-sim.{}/taskset.{}/agent.{}_alice.{}/'\
-                          'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}-bs.{}{}/{}'.format(
+                          'mode.{}-algo.{}-base.{}-gamma.{}-cclose.{}-cgoal.{}-lr{}-bs.{}{}_goodTF/{}'.format(
             args.env_name,
             args.task_type,
             args.num_processes,

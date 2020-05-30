@@ -35,9 +35,11 @@ if __name__ == '__main__':
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
     args.mode = 'check_neurips'
     args.num_per_apartment = '300'
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-    args.mode = 'check_neurips_test_recursive'
+    args.mode = 'check_neurips_test_recursive_multiple2'
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
 
     args.num_per_apartment = '20'
     for env in env_task_set:
@@ -130,7 +132,7 @@ if __name__ == '__main__':
         cnt = 0
         steps_list, failed_tasks = [], []
         for episode_id in episode_ids:
-            pdb.set_trace()
+            # pdb.set_trace()
             curr_log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(
                 env_task_set[episode_id]['task_id'],
                 env_task_set[episode_id]['task_name'],

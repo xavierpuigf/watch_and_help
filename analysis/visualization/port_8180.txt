@@ -9,7 +9,6 @@ Display 3 '3': 1280x1024 (secondary device).
 Display 4 '4': 1280x1024 (secondary device).
 Display 5 '5': 1280x1024 (secondary device).
 Display 6 '6': 1280x1024 (secondary device).
-Display 7 '7': 1280x1024 (secondary device).
 Can't get home directory!
  
 (Filename:  Line: 385)

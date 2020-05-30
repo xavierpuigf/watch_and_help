@@ -363,8 +363,6 @@ class GraphModel(nn.Module):
 
 
 
-
-
 class Transformer(nn.Module):
     def __init__(self, num_classes, num_nodes, in_feat, out_feat, dropout=0.1, activation='relu', nhead=1):
         super(Transformer, self).__init__()
@@ -375,7 +373,7 @@ class Transformer(nn.Module):
             encoder_layer,
             num_layers=6,
             norm=nn.modules.normalization.LayerNorm(in_feat))
-
+        self.bad_transformer = False
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -386,7 +384,11 @@ class Transformer(nn.Module):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, inputs, mask_nodes):
-
+        if not self.bad_transformer:
+            mask_nodes = 1 - mask_nodes
         outputs = self.transformer(inputs.transpose(0,1), src_key_padding_mask=mask_nodes.bool())
         outputs = outputs.squeeze(0).transpose(0,1)
         return outputs
+
+
+
