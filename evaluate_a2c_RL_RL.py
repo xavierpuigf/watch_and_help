@@ -42,14 +42,16 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8082
+    args.base_port = 8113
     args.evaluation = True
     args.init_epsilon = 0.
     args.mode = 'check_neurips_RL_RL'
-    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
+    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.05.29.x86_64'
 
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('../data_challenge/train_env_set_help_50_neurips.pik', 'rb'))
+    #env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
+
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -225,7 +227,9 @@ if __name__ == '__main__':
                     'gt_goals': arenas[0].env.task_goal[0],
                     'goals_finished': res[1][0]['goals_finished'],
                     'goals': arenas[0].env.task_goal,
-                    'obs': res[1][0]['obs']
+                    'obs': res[1][0]['obs'],
+                    'action': res[1][0]['action']
+
                 }
                 successes.append(finished)
                 lengths.append(length)

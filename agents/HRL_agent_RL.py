@@ -387,15 +387,21 @@ class HRL_agent_RL:
                                                              base_kwargs=base_kwargs, seed=seed)
         self.actor_critic_low_level = actor_critic.ActorCritic(self.action_space_lowlevel, base_name=args.base_net,
                                                                base_kwargs=base_kwargs, seed=seed)
+        self.actor_critic_low_level_put = actor_critic.ActorCritic(self.action_space_lowlevel, base_name=args.base_net,
+                                                                   base_kwargs=base_kwargs, seed=seed)
+
         self.actor_critic.base.main.main.bad_transformer = True
 
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
         self.hidden_state_low_level = self.init_hidden_state()
+        self.hidden_state_low_level_put = self.init_hidden_state()
+        self.put_policy = False
 
         if torch.cuda.is_available():
             self.actor_critic.cuda()
             self.actor_critic_low_level.cuda()
+            self.actor_critic_low_level_put.cuda()
 
         self.previous_belief_graph = None
 
@@ -436,11 +442,16 @@ class HRL_agent_RL:
         self.id2node = {node['id']: node for node in gt_graph['nodes']}
         self.hidden_state = self.init_hidden_state()
         self.hidden_state_low_level = self.init_hidden_state()
+        self.hidden_state_low_level_put = self.init_hidden_state()
+        self.put_policy = False
 
     def evaluate(self, rollout):
         pass
 
     def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None, full_graph=None):
+
+        # ipdb.set_trace()
+
         full_graph = None
         if full_graph is not None:
             observation_belief = self.sample_belief(full_graph)
@@ -451,12 +462,14 @@ class HRL_agent_RL:
 
         rnn_hxs = self.hidden_state
         rnn_hxs_low_level = self.hidden_state_low_level
+        rnn_hxs_low_level_put = self.hidden_state_low_level_put
 
         masks = torch.ones(rnn_hxs[0].shape).type(rnn_hxs[0].type())
 
         if torch.cuda.is_available():
             rnn_hxs = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
-            rnn_hxs_low_level = (rnn_hxs[0].cuda(), rnn_hxs[1].cuda())
+            rnn_hxs_low_level = (rnn_hxs_low_level[0].cuda(), rnn_hxs_low_level[1].cuda())
+            rnn_hxs_low_level_put = (rnn_hxs_low_level_put[0].cuda(), rnn_hxs_low_level_put[1].cuda())
             masks = masks.cuda()
         inputs, info = self.graph_helper.build_graph(observation,
                                                      include_edges=self.args.base_net == 'GNN',
@@ -519,7 +532,7 @@ class HRL_agent_RL:
             inputs_tensor[input_name] = inp_tensor
 
 
-        # pdb.set_trace()
+        # ipdb.set_trace()
 
         if self.action_count == 0:
             self.last_action_low_level = None
@@ -561,10 +574,11 @@ class HRL_agent_RL:
         # pdb.set_trace()
         action_str, action_tried, plan, predicate = self.get_action_instr(next_action, visible_objects, observation_belief)
         pred_name = predicate
-        pred_name = 'put_cupcake_coffeetable'
+        #pred_name = list(self.goal_spec.keys())[0]
+        # pred_name = 'on_pudding_73'
         pred_goal_spec = {pred_name: [1, True, 1]}
-
-        pdb.set_trace()
+        # ipdb.set_trace()
+        # pdb.set_trace()
         if predicate is not None:
             if not self.last_action_low_level is None:
                 # If action is walking we dont save
@@ -596,6 +610,7 @@ class HRL_agent_RL:
                     #     continue
 
                     elements = predicate.split('_')
+                    # print('PRED_OB', elements[1])
                     obj_class_id = int(self.graph_helper.object_dict.get_id(elements[1]))
                     if elements[2].isdigit():
                         loc_class_id = int(self.graph_helper.object_dict.get_id(self.id2node[int(elements[2])]['class_name']))
@@ -607,7 +622,9 @@ class HRL_agent_RL:
                         mask_goal_pred_pred[pre_id] = 1.0
                         pre_id += 1
 
-                ipdb.set_trace()
+                # ipdb.set_trace()
+                # ipdb.set_trace()
+
                 inputs_ll.update({
                     'affordance_matrix': self.graph_helper.obj1_affordance,
                     'target_obj_class': target_obj_class_pred,
@@ -615,7 +632,7 @@ class HRL_agent_RL:
                     'mask_goal_pred': mask_goal_pred_pred,
                     'gt_goal': obj_class_id
                 })
-                ipdb.set_trace()
+                # ipdb.set_trace()
                 #### END INPUTS LOW LEVEL ####
                 # ipdb.set_trace()
                 inputs_tensor_ll = {}
@@ -624,15 +641,31 @@ class HRL_agent_RL:
                     if inp_tensor.type() == 'torch.DoubleTensor':
                         inp_tensor = inp_tensor.float()
                     inputs_tensor_ll[input_name] = inp_tensor
-                value_ll, action_ll, action_probs_ll, rnn_state_ll, out_dict_ll = self.actor_critic_low_level.act(inputs_tensor_ll, rnn_hxs_low_level, masks)
-                self.hidden_state_low_level = rnn_state_ll
+
+                if self.put_policy is False:
+                    value_ll, action_ll, action_probs_ll, rnn_state_ll, out_dict_ll = self.actor_critic_low_level.act(inputs_tensor_ll, rnn_hxs_low_level, masks)
+                    self.hidden_state_low_level_put = self.init_hidden_state()
+                    self.hidden_state_low_level = rnn_state_ll
+                else:
+                    value_ll, action_ll, action_probs_ll, rnn_state_ll, out_dict_ll = self.actor_critic_low_level_put.act(
+                        inputs_tensor_ll, rnn_hxs_low_level_put, masks)
+                    self.hidden_state_low_level_put = rnn_state_ll
+                    self.hidden_state_low_level = self.init_hidden_state()
+
                 action_str, action_tried = self.get_action_instr_low_level(action_ll, visible_objects, observation)
-                print("LOW LEVEL ACTION" , action_str)
                 if action_str is not None:
-                    self.last_action_low_level = action_str
+                    print(action_str)
+                    if self.put_policy and '[put' in action_str:
+                        self.put_policy = False
+                    elif 'grab' in action_str:
+                        self.put_policy = True
+                    # ipdb.set_trace()
+                    # print("LOW LEVEL ACTION" , action_str)
+                    if action_str is not None:
+                        self.last_action_low_level = action_str
 
             else:
-                print("SAME")
+                # print("SAME")
 
                 action_str = self.last_action_low_level
 
@@ -646,7 +679,7 @@ class HRL_agent_RL:
             self.action_count = 0
 
 
-        print("Action low level", action_str, predicate)
+        # print("Action low level", action_str, predicate)
         info_model['action_tried'] = action_tried
         info_model['predicate'] = predicate
         # print('ACTIONS', info_model['actions'], action_str, action_probs[0],

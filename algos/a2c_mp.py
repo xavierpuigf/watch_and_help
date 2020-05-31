@@ -62,6 +62,7 @@ class A2C:
 
         self.device = torch.device('cuda:0' if args.cuda else 'cpu')
         self.actor_critic_low_level = None
+        self.actor_critic_low_level_put = None
         # ipdb.set_trace()
         if self.args.num_processes == 1:
 
@@ -71,6 +72,7 @@ class A2C:
             self.actor_critic = self.arenas[0].agents[self.rl_agent_id].actor_critic
             if self.arenas[0].agents[self.rl_agent_id].agent_type == 'RL_MCTS_RL':
                 self.actor_critic_low_level = self.arenas[0].agents[self.rl_agent_id].actor_critic_low_level
+                self.actor_critic_low_level_put = self.arenas[0].agents[self.rl_agent_id].actor_critic_low_level_put
 
         else:
             if args.use_alice:
@@ -152,12 +154,13 @@ class A2C:
             model_path_lowlevel = ('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/'
             'trained_models/env.virtualhome/task.put-numproc.1-obstype.mcts-sim.unity/'\
             'taskset.full/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.1.0-cgoal.0.0-lr0.0001/26200_all.pt')
-            # torch.nn.Module.dump_patches = True
-            model_low_level = torch.load(model_path_lowlevel)[-1]
+            torch.nn.Module.dump_patches = True
+            model_low_level = torch.load(model_path_lowlevel)
 
             # ipdb.set_trace()
             # ipdb.set_trace()
-            self.actor_critic_low_level.load_state_dict(model_low_level.state_dict())
+            self.actor_critic_low_level.load_state_dict(model_low_level[0].state_dict())
+            self.actor_critic_low_level_put.load_state_dict(model_low_level[1].state_dict())
 
     def eval(self, episode_id, goals=None):
         self.actor_critic.eval()

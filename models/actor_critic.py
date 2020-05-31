@@ -103,7 +103,7 @@ class ActorCritic(nn.Module):
                 new_inputs[name] = inp.cuda()
             inputs = new_inputs
         affordance_obj1 = inputs['affordance_matrix']
-        ipdb.set_trace()
+        # ipdb.set_trace()
         # value function, history, node_embedding, rnn
         context_goal, object_goal, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         value = self.critic_linear(context_goal)

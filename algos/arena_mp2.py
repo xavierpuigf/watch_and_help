@@ -41,7 +41,7 @@ class ArenaMP(object):
             ob = self.env.reset(task_id=task_id)
 
         for it, agent in enumerate(self.agents):
-            if 'MCTS' in agent.agent_type:
+            if 'MCTS' in agent.agent_type or "Random" in agent.agent_type:
                 agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
             else:
                 agent.reset(self.env.python_graph)
