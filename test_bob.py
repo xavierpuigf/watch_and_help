@@ -30,15 +30,15 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8932
+    args.base_port = 8082
 
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
     args.mode = 'check_neurips'
     args.num_per_apartment = '300'
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-    # args.mode = 'check_neurips_test_recursive_multiple2'
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    args.mode = 'check_neurips_test_recursive_multiple2'
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
 
 
     args.num_per_apartment = '20'
@@ -50,7 +50,7 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/rec_good_test/multiBob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,

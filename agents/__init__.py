@@ -10,5 +10,7 @@ from models import *
 from .base_agent import *
 from .MCTS_agent import *
 from .RL_agent import *
+from .HRL_agent_mcts import *
+from .HRL_agent_RL import *
 from .random_agent import *
 
