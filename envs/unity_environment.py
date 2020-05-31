@@ -150,6 +150,7 @@ class UnityEnvironment(BaseEnvironment):
                 success, message = self.comm.render_script(script_list,
                                                            recording=False,
                                                            gen_vid=False,
+                                                           camera_mode=['AUTO'],
                                                            processing_time_limit=20,
                                                            smooth_walk=False,
                                                            time_scale=20.)

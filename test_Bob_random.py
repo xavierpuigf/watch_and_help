@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8932
+    args.base_port = 8100
 
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
     args.mode = 'check_neurips'
