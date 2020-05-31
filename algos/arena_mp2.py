@@ -41,7 +41,7 @@ class ArenaMP(object):
             ob = self.env.reset(task_id=task_id)
 
         for it, agent in enumerate(self.agents):
-            if 'MCTS' in agent.agent_type:
+            if 'MCTS' in agent.agent_type or 'Random' in agent.agent_type:
                 agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
             else:
                 agent.reset(self.env.python_graph)
@@ -64,7 +64,7 @@ class ArenaMP(object):
             else:
                 goal_spec = self.env.get_goal(self.task_goal[it], self.env.agent_goals[it])
             # ipdb.set_trace()
-            if agent.agent_type == 'MCTS':
+            if agent.agent_type in ['MCTS', 'Random']:
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
@@ -72,7 +72,7 @@ class ArenaMP(object):
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec, opponent_subgoal)
                 # pdb.set_trace()
             elif 'RL' in agent.agent_type:
-                if 'MCTS' in agent.agent_type:
+                if 'MCTS' in agent.agent_type or 'Random' in agent.agent_type:
                     dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec,
                                                                        action_space_ids=action_space[it], full_graph=self.env.get_graph())
 

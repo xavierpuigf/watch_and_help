@@ -12,7 +12,7 @@ import pickle as pkl
 from pathlib import Path
 
 from envs.unity_environment import UnityEnvironment
-from agents import MCTS_agent
+from agents import MCTS_agent, Random_agent
 from arguments import get_args
 from algos.arena import Arena
 from algos.arena_mp2 import ArenaMP
@@ -50,7 +50,9 @@ if __name__ == '__main__':
             g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
 
 
-    args.record_dir = 'record_scratch/rec_good_test/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    # args.record_dir = 'record_scratch/random_test/multiBob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = 'record_scratch/random_test/Bob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+
     executable_args = {
                     'file_name': args.executable_file,
                     'x_display': 0,
@@ -123,7 +125,7 @@ if __name__ == '__main__':
     args_agent1.update(args_common)
     args_agent2.update(args_common)
     args_agent2.update({'recursive': True})
-    agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
+    agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: Random_agent(**args_agent2)]
     arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
     for iter_id in range(num_tries):
