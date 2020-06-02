@@ -1,6 +1,6 @@
 
 """
-CUDA_VISIBLE_DEVICES=4 python evaluate_a2c_pred.py \
+CUDA_VISIBLE_DEVICES=0 python evaluate_a2c_pred.py \
 --num-per-apartment 3 --max-num-edges 10 --max-episode-length 250 --batch_size 32 --obs_type mcts \
 --gamma 0.95 --lr 1e-4 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
 --base_net TF --log-interval 1 --long-log 50 --base-port 8589 --num-processes 1 \
@@ -36,13 +36,18 @@ import ray
 if __name__ == '__main__':
     args = get_args()
 
-    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
+    #pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
 
     #pred_file = '/data/vision/torralba/ls-objectvideo/2icml2020/1virtualhome/vh_multiagent_models_goal_inference_video_eval/data/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1.p'
+
+    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_newtest.p'
     with open(pred_file, 'rb') as f:
         predictions = pkl.load(f)
-    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test.json', 'r') as f:
+    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test_multiple.json', 'r') as f:
         match_demo_test = json.load(f)
+
+    with open(pred_file, 'rb') as f:
+        predictions = pkl.load(f)
 
     env_to_pred = {}
     for i in range(100):
@@ -68,12 +73,14 @@ if __name__ == '__main__':
     args.num_per_apartment = '20'
     args.base_port = 8082
     args.evaluation = True
-    args.mode = 'check_neurips_RL_MCTS_pred'
+    args.mode = 'check_neurips_RL_MCTS_pred_multiple'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
 
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
     #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
 
 

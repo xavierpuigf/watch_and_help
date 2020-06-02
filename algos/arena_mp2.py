@@ -209,10 +209,8 @@ class ArenaMP(object):
                     info_rollout['step_info'].append((node_id, edges_char))
                     info_rollout['script'].append(agent_actions[agent_id])
                     info_rollout['goals_finished'].append(env_info['satisfied_goals'])
-                    if done:
-                        info_rollout['finished'] = True
-                    else:
-                        info_rollout['finished'] = False
+                    info_rollout['finished'] = env_info['finished']
+
 
                     # pdb.set_trace()
                     for agenti in range(len(self.agents)):

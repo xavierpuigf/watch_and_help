@@ -164,7 +164,7 @@ if __name__ == '__main__':
 
             is_finished = 0
             steps = 250
-            if True:
+            try:
                 arena.reset(episode_id)
                 success, steps, saved_info = arena.run()
                 print('-------------------------------------')
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                 else:
                     with open(log_file_name, 'w+') as f:
                         f.write(json.dumps(saved_info, indent=4))
-            else:
+            except:
                 arena.reset_env()
 
             S[episode_id][current_tried] = is_finished

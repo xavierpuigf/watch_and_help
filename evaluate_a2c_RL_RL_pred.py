@@ -1,9 +1,9 @@
 
 """
-CUDA_VISIBLE_DEVICES=4 python evaluate_a2c.py \
+CUDA_VISIBLE_DEVICES=1 python evaluate_a2c_RL_RL_pred.py \
 --num-per-apartment 3 --max-num-edges 10 --max-episode-length 250 --batch_size 32 --obs_type mcts \
 --gamma 0.95 --lr 1e-4 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
---base_net TF --log-interval 1 --long-log 50 --base-port 8589 --num-processes 1 \
+--base_net TF --log-interval 1 --long-log 50 --base-port 8389 --num-processes 1 \
 --agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
 --load-model trained_models/env.virtualhome/\
 task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
@@ -12,6 +12,7 @@ stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
 
 """
 import sys
+import os
 sys.path.append('../virtualhome/')
 sys.path.append('../vh_mdp/')
 sys.path.append('../virtualhome/simulation/')
@@ -19,19 +20,19 @@ sys.path.append('../virtualhome/simulation/')
 from envs.python_environment import PythonEnvironment
 from envs.unity_environment import UnityEnvironment
 import pdb
-import os
-from tqdm import tqdm
 from pathlib import Path
 import pickle
 import random
 import copy
-from agents import MCTS_agent, RL_agent, HRL_agent
+from agents import MCTS_agent, RL_agent, HRL_agent, HRL_agent_RL
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c import A2C
 from algos.a2c_mp import A2C as A2C_MP
 from utils import utils_goals, utils_rl_agent
 import ray
+import json
+import pickle as pkl
 
 if __name__ == '__main__':
     args = get_args()
@@ -44,15 +45,41 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8082
+    args.base_port = 8313
     args.evaluation = True
-    args.mode = 'check_neurips_RL_MCTS'
-    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
+    args.init_epsilon = 0.
+    args.mode = 'check_neurips_RL_RL_pred_multiple'
+    args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.05.29.x86_64'
 
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('../data_challenge/train_env_set_help_50_neurips.pik', 'rb'))
+    #env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
 
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
+    # with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test.json', 'r') as f:
+
+
+    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test_multiple.json', 'r') as f:
+        match_demo_test = json.load(f)
+
+    # pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
+    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_newtest.p'
+
+    with open(pred_file, 'rb') as f:
+        predictions = pkl.load(f)
+
+    env_to_pred = {}
+    for i in range(100):
+        demo_env = match_demo_test[str(i)][0].replace('.pik', '')
+        curr_pred = predictions[demo_env]['prediction']
+        pred_dict = {}
+        for p in curr_pred:
+            if p != 'None':
+                if p not in pred_dict:
+                    pred_dict[p] = 0
+                pred_dict[p] += 1
+        env_to_pred[str(i)] = pred_dict
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -189,7 +216,7 @@ if __name__ == '__main__':
         args_agent2 = {'agent_id': rl_agent_id, 'char_index': rl_agent_id - 1,
                        'args': args, 'graph_helper': graph_helper}
         args_agent2['seed'] = arena_id
-        return HRL_agent(**args_agent2)
+        return HRL_agent_RL(**args_agent2)
 
 
 
@@ -209,19 +236,46 @@ if __name__ == '__main__':
     a2c.load_model(args.load_model)
 
     test_results = []
-    for i in tqdm(range(100)):
+    for i in range(100):
         successes = []
         lengths = []
         for seed in range(5):
-            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(env_task_set[i]['task_id'],
+            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(i,
                                                                                 env_task_set[i]['task_name'],
                                                                                 seed)
             if os.path.isfile(log_file_name):
                 continue
+
             try:
                 for agent in arenas[0].agents:
                     agent.seed = seed
-                res = a2c.eval(i)
+
+                episode_id = i
+                predicted_goal_class = env_to_pred[str(episode_id)]
+                arenas[0].env.reset(task_id=i)
+                graph = arenas[0].env.graph
+                idnodes = {}
+                for class_name in ['fridge', 'dishwasher', 'kitchentable', 'coffeetable', 'sofa']:
+                    idnodes[class_name] = [node['id'] for node in graph['nodes'] if node['class_name'] == class_name][0]
+
+                predicted_goal = {}
+                for kpred, itv in predicted_goal_class.items():
+                    spl = kpred.split('_')
+                    if not spl[-1] in idnodes:
+                        if spl[0] == 'sit':
+                           target_name = '_'.join([spl[0], '1', spl[1]])
+                        else:
+                            target_name = '_'.join([spl[0], spl[1], '1'])
+                    else:
+                        id_target = idnodes[spl[-1]]
+                        if spl[0] == 'sit':
+                            spl[1] = '1'
+                        target_name = '{}_{}_{}'.format(spl[0], spl[1], id_target)
+                    predicted_goal[target_name] = itv
+
+                original_goal = arenas[0].env.task_goal[0]
+                res = a2c.eval(i, goals={0: original_goal, 1: predicted_goal})
+
                 finished = res[1][0]['finished']
                 length = len(res[1][0]['action'][0])
                 info_results = {
@@ -235,6 +289,7 @@ if __name__ == '__main__':
                     'goals': arenas[0].env.task_goal,
                     'obs': res[1][0]['obs'],
                     'action': res[1][0]['action']
+
                 }
                 successes.append(finished)
                 lengths.append(length)
@@ -248,4 +303,4 @@ if __name__ == '__main__':
                 arenas[0].reset_env()
         test_results.append({'S': successes, 'L': lengths})
     pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
-    # pdb.set_trace()
+    pdb.set_trace()

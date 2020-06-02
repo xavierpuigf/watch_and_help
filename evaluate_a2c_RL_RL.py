@@ -12,6 +12,7 @@ stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
 
 """
 import sys
+import os
 sys.path.append('../virtualhome/')
 sys.path.append('../vh_mdp/')
 sys.path.append('../virtualhome/simulation/')
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8113
+    args.base_port = 8313
     args.evaluation = True
     args.init_epsilon = 0.
     args.mode = 'check_neurips_RL_RL'
@@ -52,6 +53,9 @@ if __name__ == '__main__':
     #env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
 
     env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+
+
 
     for env in env_task_set:
         if env['env_id'] == 6:
@@ -212,6 +216,12 @@ if __name__ == '__main__':
         successes = []
         lengths = []
         for seed in range(5):
+            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(i,
+                                                                                env_task_set[i]['task_name'],
+                                                                                seed)
+            if os.path.isfile(log_file_name):
+                continue
+
             try:
                 for agent in arenas[0].agents:
                     agent.seed = seed

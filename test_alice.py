@@ -45,7 +45,7 @@ if __name__ == '__main__':
     # args.task = 'setup_table'
     args.max_episode_length = 250
     args.num_per_apartment = 10
-    args.mode = 'check_neurips_test_multiple2'
+    args.mode = 'check_neurips_test'
     # args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
     #                                                                                        args.num_per_apartment,
     #                                                                                     args.mode)
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
 
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
-    #env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
+    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
+    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
 
     if args.use_editor:
         env_task_set = [env_task_set[q] for q in [82]]
@@ -140,27 +140,28 @@ if __name__ == '__main__':
     # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
     # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
     # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
-    for iter_id in range(4, 5):
+    for iter_id in range(5):
         #if iter_id > 0:
 
         cnt = 0
         steps_list, failed_tasks = [], []
-
+        current_tried = iter_id
         for episode_id in episode_ids:
-            if episode_id < 41:
+            if episode_id not in [31,32,86]:
                 continue
+
             if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
                 test_results = {}
             else:
                 test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(0), 'rb'))
 
-            if episode_id in test_results:
-                if len(test_results[episode_id]['S']) > num_tries:
-                    continue
-                else:
-                    current_tried = len(test_results[episode_id]['S'])
-            else:
-                current_tried = 0
+            # if episode_id in test_results:
+            #     if len(test_results[episode_id]['S']) > num_tries:
+            #         continue
+            #     else:
+            #         current_tried = len(test_results[episode_id]['S'])
+            # else:
+            #     current_tried = 0
             print('episode:', episode_id)
 
             for it_agent, agent in enumerate(arena.agents):

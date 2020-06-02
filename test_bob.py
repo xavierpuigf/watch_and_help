@@ -30,14 +30,13 @@ if __name__ == '__main__':
     # data = pickle.load(open(args.dataset_path, 'rb'))
     args.max_episode_length = 250
     args.num_per_apartment = '20'
-    args.base_port = 8082
+    args.base_port = 8679
 
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
-    args.mode = 'check_neurips'
     args.num_per_apartment = '300'
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
     # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-    args.mode = 'check_neurips_test_recursive_multiple2'
+    args.mode = 'check_neurips_test_recursive_keep_open_multiple'
     env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
 
 
@@ -126,12 +125,15 @@ if __name__ == '__main__':
     agents = [lambda x, y: MCTS_agent(**args_agent1), lambda x, y: MCTS_agent(**args_agent2)]
     arena = ArenaMP(args.max_episode_length, id_run, env_fn, agents)
 
+    steps_list, failed_tasks = [], []
+
     for iter_id in range(num_tries):
+    # for iter_id in range(num_tries):
         # if iter_id > 0:
         #     test_results = pickle.load(open(args.record_dir + '/results_{}.pik'.format(iter_id - 1), 'rb'))
-        cnt = 0
-        steps_list, failed_tasks = [], []
-        for episode_id in episode_ids:
+        # cnt = 0
+        # steps_list, failed_tasks = [], []
+        for episode_id in episode_ids[3:]:
             # pdb.set_trace()
             curr_log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(
                 env_task_set[episode_id]['task_id'],

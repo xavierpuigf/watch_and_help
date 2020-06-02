@@ -73,7 +73,10 @@ def get_metrics(alice_results, test_results, episode_ids):
         alice_L.append(L_A)
         Ls += LB
         Ss += SB
-        SWSs += [0 if sb < 1 else max(L_A / lb - 1.0, 0) for sb, lb in zip(SB, LB)]
+        try:
+            SWSs += [0 if sb < 1 else max(L_A / lb - 1.0, 0) for sb, lb in zip(SB, LB)]
+        except:
+            pdb.set_trace()
         if S_A > 0 and SWSs[-1] > 1.:
             pass
             # pdb.set_trace()
@@ -120,9 +123,13 @@ if __name__ == '__main__':
     record_dirs = [
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal',
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal_correct', ###
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive',
      '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS_pred',
+     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_RL', #
      '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test'
+
     ]
 
     # args.record_dir = './record_scratch/rec_good_test/Alice_env_task_set_20_check_neurips_test'
@@ -131,7 +138,7 @@ if __name__ == '__main__':
     final_results = {'S': {}, 'SWS': {}, 'L': {}, 'classes': task_names}
     for record_dir in record_dirs:
         test_results = pickle.load(open(record_dir + '/results_{}.pkl'.format('redo'), 'rb'))
-        method_name = record_dir.split('_')[-1]
+        method_name = record_dir.split('20_')[-1]
         final_results['S'][method_name] = [], []
         final_results['SWS'][method_name] = [], []
         final_results['L'][method_name] = [], []
@@ -180,5 +187,5 @@ if __name__ == '__main__':
         print(','.join(al_list))
         print("SWS")
         print(','.join(sws_list))
-    with open('results_mcts_across_seeds.json', 'w+') as f:
+    with open('results_mcts_across_seeds_all_baselines.json', 'w+') as f:
         f.write(json.dumps(final_results))

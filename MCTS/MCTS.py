@@ -132,6 +132,8 @@ class MCTS:
                     break
         if self.verbose:
             print('last_opened:', self.last_opened, need_to_close)
+        if self.agent_id > 1:
+            need_to_close = False
         for subgoal in subgoals:
             if subgoal[0] == last_subgoal:
                 heuristic = heuristic_dict[last_subgoal.split('_')[0]]

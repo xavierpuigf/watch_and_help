@@ -12,13 +12,14 @@ import json
 import os
 import argparse
 import glob
+
 # home_path = '/Users/xavierpuig/Desktop/MultiAgentBench/'
 home_path = os.getcwd()
 home_path = '/'.join(home_path.split('/')[:-2])
 
-sys.path.append(home_path+'/vh_mdp')
-sys.path.append(home_path+'/virtualhome')
-sys.path.append(home_path+'/vh_multiagent_models')
+sys.path.append(home_path + '/vh_mdp')
+sys.path.append(home_path + '/virtualhome')
+sys.path.append(home_path + '/vh_multiagent_models')
 
 import utils
 from simulation.evolving_graph.utils import load_graph_dict
@@ -26,10 +27,9 @@ from profilehooks import profile
 import pickle
 import pdb
 
-
 # Options, should go as argparse arguments
-agent_type = 'MCTS' # PG/MCTS
-simulator_type = 'unity' # unity/python
+agent_type = 'MCTS'  # PG/MCTS
+simulator_type = 'unity'  # unity/python
 dataset_path = '../dataset_toy4/init_envs/'
 
 
@@ -51,7 +51,7 @@ def get_metrics(alice_results, test_results, episode_ids):
         alice_L = []
 
         for episode_id in episode_ids:
-            if episode_id in [31,32,86]:
+            if episode_id in [31, 32, 86]:
                 continue
             L_A_seeds = []
             for seed_alice in range(5):
@@ -102,7 +102,7 @@ def get_metrics(alice_results, test_results, episode_ids):
         mL.append(np.mean(Ls))
         mSwS.append(np.mean(SWSs))
 
-    return np.mean(mS), np.mean(mL), np.mean(mSwS), np.std(mS), np.std(mL),  np.std(mSwS)
+    return np.mean(mS), np.mean(mL), np.mean(mSwS), np.std(mS), np.std(mL), np.std(mSwS)
 
 
 parser = argparse.ArgumentParser()
@@ -121,15 +121,14 @@ parser.add_argument('--display', type=str, default='2', help='display')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--num-per-task', type=int, default=30, help='Maximum #episodes/taks')
 
-
 if __name__ == '__main__':
     args = parser.parse_args()
-    print (' ' * 26 + 'Options')
+    print(' ' * 26 + 'Options')
     for k, v in vars(args).items():
-            print(' ' * 26 + k + ': ' + str(v))
-    env_task_set = pickle.load(open(home_path+'/data_challenge//test_env_set_help_20_neurips.pik', 'rb'))
+        print(' ' * 26 + k + ': ' + str(v))
+    env_task_set = pickle.load(open(home_path + '/data_challenge//test_env_set_help_20_neurips.pik', 'rb'))
     # env_task_set = pickle.load(open(home_path+'/vh_multiagent_models/initial_environments/data/init_envs/train_demo_set.pik', 'rb'))
-    
+
     args.record_dir_alice = '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test'
     print(args.record_dir_alice + '/results_{}.pik'.format(1))
     alice_results = pickle.load(open(args.record_dir_alice + '/results_{}.pik'.format(0), 'rb'))
@@ -144,17 +143,16 @@ if __name__ == '__main__':
     # ]
 
     record_dirs = [
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_random',
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal',
-     # '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal',
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal_correct', ###
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive',
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS',
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS_pred',
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_RL', #
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_RL_pred',  #
-     '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive_keep_open',
-     '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test',
+        # '../record_scratch/rec_good_test/multiBob_env_task_set_20_random',
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_randomgoal_multiple', ## 514
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_predgoal_correct_multiple',  ### 490
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive_multiple2',
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS_multiple', ## 483
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_MCTS_pred_multiple', ## 491
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_RL',  # 449
+        '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_RL_RL_pred',  # 422
+        # '../record_scratch/rec_good_test/multiBob_env_task_set_20_check_neurips_test_recursive_keep_open',
+        '../record_scratch/rec_good_test/multiAlice_env_task_set_20_check_neurips_test_multiple2',
 
     ]
     # record_dirs = [record_dirs[-2]]
@@ -171,32 +169,11 @@ if __name__ == '__main__':
         final_results['L'][method_name] = [], []
         num_agents = 1
 
-        episode_ids = list(range(len(env_task_set)))
+        episode_ids = list(range(100))
         S = [0] * len(episode_ids)
-        L = [200] * len(episode_ids)
+        L = [250] * len(episode_ids)
         SRO, ALO, SWSO, stdRO, stdLO, stdSO = get_metrics(alice_results, test_results, episode_ids)
-        print('overall:', SRO, ALO, SWSO)
 
-
-
-        sr_list, al_list, sws_list = [], [], []
-        for task_name in task_names:
-            episode_ids_task = [episode_id for episode_id in episode_ids if env_task_set[episode_id]['task_name'] == task_name]
-            SR, AL, SWS, stdR, stdL, stdS = get_metrics(alice_results, test_results, episode_ids_task)
-            sr_list.append(str(SR))
-            al_list.append(str(AL))
-            sws_list.append(str(SWS))
-
-            final_results['S'][method_name][0].append(SR)
-            final_results['SWS'][method_name][0].append(SWS)
-            final_results['L'][method_name][0].append(AL)
-            final_results['S'][method_name][1].append(stdR)
-            final_results['SWS'][method_name][1].append(stdS)
-            final_results['L'][method_name][1].append(stdL)
-
-
-
-            print('{}:'.format(task_name), SR, AL, SWS)
         final_results['S'][method_name][0].append(SRO)
         final_results['SWS'][method_name][0].append(SWSO)
         final_results['L'][method_name][0].append(ALO)
@@ -204,15 +181,5 @@ if __name__ == '__main__':
         final_results['SWS'][method_name][1].append(stdSO)
         final_results['L'][method_name][1].append(stdLO)
 
-        sr_list.append(str(SRO))
-        al_list.append(str(ALO))
-        sws_list.append(str(SWSO))
-
-        print("SR")
-        print(','.join(sr_list))
-        print("AL")
-        print(','.join(al_list))
-        print("SWS")
-        print(','.join(sws_list))
-    with open('results_mcts_across_seeds_all_baselines.json', 'w+') as f:
+    with open('results_mcts_across_seeds_all_baselines_multiple.json', 'w+') as f:
         f.write(json.dumps(final_results))
