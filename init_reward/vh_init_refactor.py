@@ -11,11 +11,9 @@ import argparse
 random.seed(10)
 
 home_path = '../../'
-sys.path.append(home_path + '/vh_mdp')
 sys.path.append(home_path + '/virtualhome')
 
-from simulation.unity_simulator import comm_unity as comm_unity
-from simulation.evolving_graph.utils import load_graph_dict
+from simulation.unity_simulator import comm_unity
 from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
@@ -23,7 +21,7 @@ from init_goal_setter.tasks import Task
 parser = argparse.ArgumentParser()
 parser.add_argument('--num-per-apartment', type=int, default=40, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
-parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='Task name')
+parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='The apartments where we will generate the data')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
 parser.add_argument('--display', type=int, default=0, help='Task name')
 parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Task name')

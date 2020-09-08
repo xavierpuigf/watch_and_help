@@ -11,11 +11,9 @@ import argparse
 random.seed(10)
 
 home_path = '../../'
-sys.path.append(home_path + '/vh_mdp')
 sys.path.append(home_path + '/virtualhome')
 
-from simulation.unity_simulator import comm_unity as comm_unity
-from simulation.evolving_graph.utils import load_graph_dict
+from simulation.unity_simulator import comm_unity
 from profilehooks import profile
 
 
@@ -260,6 +258,7 @@ class SetInitialGoal:
 
         if surface_id not in self.surface_used_size:
             objs_on_surface = [edge['from_id'] for edge in graph['edges'] if edge['to_id'] == surface_id]
+            pdb.set_trace()
             objs_on_surface_node = [node for node in graph['nodes'] if node['id'] in objs_on_surface]
             objs_on_surface_size = [self.convert_size(self.class_name_size[node['class_name']]) for node in
                                     objs_on_surface_node]

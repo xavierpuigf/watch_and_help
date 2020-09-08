@@ -12,11 +12,9 @@ import pickle as pkl
 random.seed(10)
 
 home_path = '../../'
-sys.path.append(home_path+'/vh_mdp')
 sys.path.append(home_path+'/virtualhome')
 
 from simulation.unity_simulator import comm_unity as comm_unity
-from simulation.evolving_graph.utils import load_graph_dict
 from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
