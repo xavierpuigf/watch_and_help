@@ -13,8 +13,8 @@ from profilehooks import profile
 import os
 
 
-from vh_graph.envs import belief as Belief
-from vh_graph.envs.vh_env import VhGraphEnv
+from . import belief
+from envs.graph_env import VhGraphEnv
 from utils import utils_rl_agent
 
 import sys

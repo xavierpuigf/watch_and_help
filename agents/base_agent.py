@@ -8,11 +8,9 @@ import importlib
 import multiprocessing
 
 import sys
-sys.path.append('../../vh_mdp/')
-sys.path.append('../../virtualhome/')
-import vh_graph
-from vh_graph.envs import belief
-from vh_graph.envs.vh_env import VhGraphEnv
+# import vh_graph
+# from vh_graph.envs import belief
+# from vh_graph.envs.vh_env import VhGraphEnv
 
 
 class BaseAgent:

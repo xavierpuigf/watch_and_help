@@ -6,8 +6,8 @@ import numpy as np
 import pdb
 import ipdb
 import copy
-from vh_graph.envs import belief as Belief
-from vh_graph.envs.vh_env import VhGraphEnv
+from . import belief
+from envs.graph_env import VhGraphEnv
 import random
 
 import numpy as np
@@ -23,8 +23,6 @@ import pickle
 from pathlib import Path
 from profilehooks import profile
 
-from vh_graph.envs import belief as Belief
-from vh_graph.envs.vh_env import VhGraphEnv
 #
 from MCTS import *
 

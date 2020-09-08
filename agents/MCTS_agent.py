@@ -8,12 +8,11 @@ import json
 import multiprocessing
 import ipdb
 import pickle
-from pathlib import Path
 from profilehooks import profile
 
 
-from vh_graph.envs import belief as Belief
-from vh_graph.envs.vh_env import VhGraphEnv
+from . import belief
+from envs.graph_env import VhGraphEnv
 #
 from MCTS import *
 
@@ -535,7 +534,7 @@ class MCTS_agent:
         """TODO: do no need this?"""
 
         self.previous_belief_graph = None
-        self.belief = Belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
+        self.belief = belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
         # print("set")
         self.belief.sample_from_belief()
         graph_belief = self.sample_belief(observed_graph) #self.env.get_observations(char_index=self.char_index))
