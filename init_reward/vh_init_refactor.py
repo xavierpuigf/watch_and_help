@@ -8,18 +8,24 @@ import numpy as np
 import copy
 import argparse
 
-random.seed(10)
 
+curr_dir = os.path.dirname(os.path.abspath(__file__))
 home_path = '../../'
 sys.path.append(home_path + '/virtualhome')
+sys.path.append(f'{curr_dir}/..')
 
 from simulation.unity_simulator import comm_unity
 from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
+
+from utils import utils_goals
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--num-per-apartment', type=int, default=1, help='Maximum #episodes/apartment')
+parser.add_argument('--seed', type=int, default=10, help='Seed for the apartments')
+
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='The apartments where we will generate the data')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
@@ -32,12 +38,16 @@ parser.add_argument('--exec_file', type=str,
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    if args.seed == 0:
+        rand = random.Random()
+    else:
+        rand = random.Random(args.seed)
     # Better to not sue UnityEnv here, it is faster and it allows to create an env without agents
 
     ## -------------------------------------------------------------
     ## load task from json, the json file contain max number of objects for each task
     ## -------------------------------------------------------------
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    
 
 
     with open(f'{curr_dir}/data/init_pool.json') as file:
@@ -187,14 +197,13 @@ if __name__ == "__main__":
                 ## -------------------------------------------------------------
                 ## setup goal based on currect environment
                 ## -------------------------------------------------------------
-                set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False)
+                set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, rand=rand)
                 init_graph, env_goal, success_setup = getattr(Task, task_name)(set_init_goal, graph)
                 if env_goal is None:
                     pdb.set_trace()
                 if success_setup:
                     # If all objects were well added
-                    success, message = comm.expand_scene(init_graph)
-                    # pdb.set_trace()
+                    success, message = comm.expand_scene(init_graph, transfer_transform=False)
                     print('----------------------------------------------------------------------')
                     print(task_name, success, message, set_init_goal.num_other_obj)
                     # print(env_goal)
@@ -227,7 +236,7 @@ if __name__ == "__main__":
                         else:
                             init_graph = set_init_goal.remove_obj(init_graph, obj_ids)
                             comm.reset(apartment)
-                            success2, message2 = comm.expand_scene(init_graph)
+                            success2, message2 = comm.expand_scene(init_graph, transfer_transform=False)
                             success = True
 
                     else:
@@ -253,7 +262,7 @@ if __name__ == "__main__":
                             #             ith_old_plate += 1
                             init_graph0 = copy.deepcopy(init_graph)
                             comm.reset(apartment)
-                            comm.expand_scene(init_graph)
+                            comm.expand_scene(init_graph, transfer_transform=False)
                             s, init_graph = comm.environment_graph()
                             print('final s:', s)
                             if s:
@@ -310,6 +319,7 @@ if __name__ == "__main__":
                                 check_result = set_init_goal.check_graph(init_graph, apartment + 1, original_graph)
                                 assert check_result == True
 
+                                # pdb.set_trace()
                                 success_init_graph.append({'id': count_success,
                                                            'apartment': (apartment + 1),
                                                            'task_name': task_name,
@@ -322,11 +332,34 @@ if __name__ == "__main__":
                 if count_success >= num_per_apartment:
                     break
 
-    # pdb.set_trace()
-    # pickle.dump(success_init_graph, open("../0result/read_book.pik".format(task, num_per_apartment), "wb"))
-    pickle.dump(success_init_graph,
-                open(home_path+"data_challenge/init_envs/5apartment_{}_task_{}_apartment_{}.p".format(
-                    args.num_per_apartment, args.task, args.apt_str), "wb"))
+    
+    data = success_init_graph
+    env_task_set = []
+
+    for task in ['setup_table', 'put_fridge', 'put_dishwasher', 'prepare_food', 'read_book']:
+        
+        for task_id, problem_setup in enumerate(data):
+            env_id = problem_setup['apartment'] - 1
+            task_name = problem_setup['task_name']
+            init_graph = problem_setup['init_graph']
+            goal = problem_setup['goal'][task_name]
+
+            goals = utils_goals.convert_goal_spec(task_name, goal, init_graph,
+                                                  exclude=['cutleryknife'])
+            print('env_id:', env_id)
+            print('task_name:', task_name)
+            print('goals:', goals)
+
+            task_goal = {}
+            for i in range(2):
+                task_goal[i] = goals
+
+            env_task_set.append({'task_id': task_id, 'task_name': task_name, 'env_id': env_id, 'init_graph': init_graph,
+                                 'task_goal': task_goal,
+                                 'level': 0, 'init_rooms': rand.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)})
+
+    pickle.dump(env_task_set, open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'wb'))
+
     # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
 
 

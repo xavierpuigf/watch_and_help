@@ -6,7 +6,7 @@ class Task:
     def setup_table(init_goal_manager, graph, start=True):
         ## setup table
         # max_num_table = 4
-        # num_table = random.randint(1, max_num_table)
+        # num_table = init_goal_manager.rand.randint(1, max_num_table)
 
         # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         # init_goal_manager.remove_obj(graph, table_ids)
@@ -15,7 +15,7 @@ class Task:
 
         # table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_ids = [node['id'] for node in graph['nodes'] if ('kitchentable' in node['class_name'])]
-        table_id = random.choice(table_ids)
+        table_id = init_goal_manager.rand.choice(table_ids)
 
         ## remove objects on table
         id2node = {node['id']: node for node in graph['nodes']}
@@ -46,7 +46,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                                 objs_in_room=objs_in_room, except_position=except_position_ids,
                                                                 goal_obj=True)
@@ -71,7 +71,7 @@ class Task:
     def clean_table(init_goal_manager, graph, start=True):
         ## clean table
         # max_num_table = 4
-        # num_table = random.randint(1, max_num_table)
+        # num_table = init_goal_manager.rand.randint(1, max_num_table)
 
         # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         # init_goal_manager.remove_obj(graph, table_ids)
@@ -80,7 +80,7 @@ class Task:
 
         # table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_ids = [node['id'] for node in graph['nodes'] if ('kitchentable' in node['class_name'])]
-        table_id = random.choice(table_ids)
+        table_id = init_goal_manager.rand.choice(table_ids)
 
         ## remove objects on table
         id2node = {node['id']: node for node in graph['nodes']}
@@ -101,7 +101,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, v, init_goal_manager.object_id_count, objs_in_room=objs_in_room,
                                                        only_position=table_id,
                                                        goal_obj=True)  ## add the first v objects on this table
@@ -128,7 +128,7 @@ class Task:
     def put_dishwasher(init_goal_manager, graph, start=True):
         ## setup dishwasher
         # max_num_dishwasher = 4
-        # num_dishwasher = random.randint(1, max_num_dishwasher)
+        # num_dishwasher = init_goal_manager.rand.randint(1, max_num_dishwasher)
 
         # dishwasher_ids = [node['id'] for node in graph['nodes'] if 'dishwasher' in node['class_name']]
         # init_goal_manager.remove_obj(graph, dishwasher_ids)
@@ -136,7 +136,7 @@ class Task:
         # init_goal_manager.add_obj(graph, 'dishwasher', num_dishwasher, dishwasher_position_pool)
 
         dishwasher_ids = [node['id'] for node in graph['nodes'] if 'dishwasher' in node['class_name']]
-        dishwasher_id = random.choice(dishwasher_ids)
+        dishwasher_id = init_goal_manager.rand.choice(dishwasher_ids)
 
         ## remove objects in dishwasher
         objs_in_dishwasher = [edge['from_id'] for edge in graph['edges'] if
@@ -155,7 +155,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                        objs_in_room=objs_in_room, except_position=except_position_ids,
                                                        goal_obj=True)
@@ -177,7 +177,7 @@ class Task:
     def unload_dishwasher(init_goal_manager, graph, start=True):
         ## setup dishwasher
         # max_num_dishwasher = 4
-        # num_dishwasher = random.randint(1, max_num_dishwasher)
+        # num_dishwasher = init_goal_manager.rand.randint(1, max_num_dishwasher)
 
         # dishwasher_ids = [node['id'] for node in graph['nodes'] if 'dishwasher' in node['class_name']]
         # init_goal_manager.remove_obj(graph, dishwasher_ids)
@@ -185,7 +185,7 @@ class Task:
         # init_goal_manager.add_obj(graph, 'dishwasher', num_dishwasher, dishwasher_position_pool)
 
         dishwasher_ids = [node['id'] for node in graph['nodes'] if 'dishwasher' in node['class_name']]
-        dishwasher_id = random.choice(dishwasher_ids)
+        dishwasher_id = init_goal_manager.rand.choice(dishwasher_ids)
 
         ## remove objects in dishwasher
         objs_in_dishwasher = [edge['from_id'] for edge in graph['edges'] if
@@ -204,7 +204,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, v, init_goal_manager.object_id_count, objs_in_room=objs_in_room,
                                                                 only_position=dishwasher_id,
                                                                 goal_obj=True)  ## add the first v objects on this table
@@ -231,7 +231,7 @@ class Task:
     def put_fridge(init_goal_manager, graph, start=True):
         ## setup fridge
         # max_num_fridge = 4
-        # num_fridge = random.randint(1, max_num_fridge)
+        # num_fridge = init_goal_manager.rand.randint(1, max_num_fridge)
 
         # fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
         # init_goal_manager.remove_obj(graph, fridge_ids)
@@ -239,7 +239,7 @@ class Task:
         # init_goal_manager.add_obj(graph, 'fridge', num_fridge, fridge_position_pool)
 
         fridge_ids = [node['id'] for node in graph['nodes'] if 'fridge' in node['class_name']]
-        fridge_id = random.choice(fridge_ids)
+        fridge_id = init_goal_manager.rand.choice(fridge_ids)
 
         ## remove objects in fridge
         objs_in_fridge = [edge['from_id'] for edge in graph['edges'] if
@@ -258,7 +258,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                        objs_in_room=objs_in_room, except_position=except_position_ids,
                                                        goal_obj=True)
@@ -279,7 +279,7 @@ class Task:
     @staticmethod
     def prepare_food(init_goal_manager, graph, start=True):
         # max_num_table = 4
-        # num_table = random.randint(1, max_num_table)
+        # num_table = init_goal_manager.rand.randint(1, max_num_table)
 
         # table_ids = [node['id'] for node in graph['nodes'] if 'table' in node['class_name']]
         # init_goal_manager.remove_obj(graph, table_ids)
@@ -288,7 +288,7 @@ class Task:
 
         # table_ids = [node['id'] for node in graph['nodes'] if ('coffeetable' in node['class_name']) or ('kitchentable' in node['class_name'])]
         table_ids = [node['id'] for node in graph['nodes'] if ('kitchentable' in node['class_name'])]
-        table_id = random.choice(table_ids)
+        table_id = init_goal_manager.rand.choice(table_ids)
 
         ## remove objects on table
         id2node = {node['id']: node for node in graph['nodes']}
@@ -313,7 +313,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                        objs_in_room=objs_in_room, except_position=except_position_ids,
                                                        goal_obj=True)
@@ -372,7 +372,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k == node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                        objs_in_room=objs_in_room, except_position=except_position_ids,
                                                        goal_obj=True)
@@ -393,7 +393,7 @@ class Task:
         return graph, env_goal, True
 
         # max_num_objs = init_goal_manager.init_pool['book']['env_max_num']
-        # num_obj = random.randint(init_goal_manager.goal['book'], max_num_objs+1)
+        # num_obj = init_goal_manager.rand.randint(init_goal_manager.goal['book'], max_num_objs+1)
 
         # target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
         # graph = init_goal_manager.remove_obj(graph, target_ids)
@@ -404,7 +404,7 @@ class Task:
         # target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
 
         # if len(target_ids)!=0:
-        #     target_id = random.choice(target_ids)
+        #     target_id = init_goal_manager.rand.choice(target_ids)
 
         #     if init_goal_manager.same_room:
         #         objs_in_room = init_goal_manager.get_obj_room(target_id)
@@ -470,7 +470,7 @@ class Task:
             obj_ids = [node['id'] for node in graph['nodes'] if k in node['class_name']]
             graph = init_goal_manager.remove_obj(graph, obj_ids)
 
-            num_obj = random.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
+            num_obj = init_goal_manager.rand.randint(v, init_goal_manager.init_pool[k]['env_max_num'] + 1)  # random select objects >= goal
             init_goal_manager.object_id_count, graph, success = init_goal_manager.add_obj(graph, k, num_obj, init_goal_manager.object_id_count,
                                                        objs_in_room=objs_in_room, except_position=except_position_ids,
                                                        goal_obj=True)
@@ -493,7 +493,7 @@ class Task:
         return graph, env_goal, True
 
         # max_num_objs = init_goal_manager.init_pool['remotecontrol']['env_max_num']
-        # num_obj = random.randint(init_goal_manager.goal['remotecontrol'], max_num_objs+1)
+        # num_obj = init_goal_manager.rand.randint(init_goal_manager.goal['remotecontrol'], max_num_objs+1)
 
         # target_ids = [node['id'] for node in graph['nodes'] if 'remotecontrol' in node['class_name']]
         # if len(target_ids)==0:
@@ -501,7 +501,7 @@ class Task:
         #     target_ids = [node['id'] for node in graph['nodes'] if 'book' in node['class_name']]
 
         # assert len(target_ids)!=0
-        # target_id = random.choice(target_ids)
+        # target_id = init_goal_manager.rand.choice(target_ids)
 
         # if init_goal_manager.same_room:
         #     objs_in_room = init_goal_manager.get_obj_room(target_id)
@@ -510,7 +510,7 @@ class Task:
 
         # ## set TV off
         # tv_ids = [node['id'] for node in graph['nodes'] if 'tv' in node['class_name']]
-        # tv_id = random.choice(tv_ids)
+        # tv_id = init_goal_manager.rand.choice(tv_ids)
         # graph = init_goal_manager.set_tv_off(graph, tv_id)
 
         # ## set other objects

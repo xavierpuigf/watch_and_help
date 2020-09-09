@@ -8,7 +8,6 @@ import numpy as np
 import copy
 import argparse
 
-random.seed(10)
 
 home_path = '../../'
 sys.path.append(home_path + '/virtualhome')
@@ -18,7 +17,7 @@ from profilehooks import profile
 
 
 class SetInitialGoal:
-    def __init__(self, obj_position, class_name_size, init_pool_tasks, task_name, same_room=True, goal_template=None):
+    def __init__(self, obj_position, class_name_size, init_pool_tasks, task_name, same_room=True, goal_template=None, rand=None):
         self.task_name = task_name
         self.init_pool_tasks = init_pool_tasks
         self.obj_position = obj_position
@@ -33,9 +32,16 @@ class SetInitialGoal:
         self.max_num_other_object = 0  # 45
 
         self.add_goal_obj_success = True
+        if rand is not None:
+            self.rand = rand
+        else:
+            self.rand = random.Random()
+        
         self.set_goal()
 
         self.same_room = same_room
+
+
 
     def set_goal(self):
 
@@ -101,7 +107,7 @@ class SetInitialGoal:
             while 1:
                 self.goal = {}
                 for k, v in self.init_pool.items():
-                    self.goal[k] = random.randint(v['min_num'], v['max_num'])
+                    self.goal[k] = self.rand.randint(v['min_num'], v['max_num'])
 
                 # break
 
@@ -324,7 +330,7 @@ class SetInitialGoal:
                     while 1:
                         if num_place2 > self.max_num_place:
                             break
-                        target_id = random.choice(only_position)
+                        target_id = self.rand.choice(only_position)
                         if self.same_room and goal_obj:
                             if target_id in objs_in_room:
                                 break
@@ -333,7 +339,7 @@ class SetInitialGoal:
                         else:
                             break
 
-                    # target_id = random.choice(only_position)
+                    # target_id = self.rand.choice(only_position)
 
                     target_id_name = [node['class_name'] for node in graph['nodes'] if node['id'] == target_id]
                     if 'livingroom' in target_id_name and obj_name == 'plate':
@@ -346,7 +352,7 @@ class SetInitialGoal:
                         num_place += 1
                         continue
                     else:
-                        relation = random.choice(target_position_pool)
+                        relation = self.rand.choice(target_position_pool)
 
 
 
@@ -356,8 +362,8 @@ class SetInitialGoal:
                         if num_place2 > self.max_num_place:
                             break
 
-                        relation, target_classname = random.choice(candidates)
-                        target_id = random.choice(ids_class[target_classname])
+                        relation, target_classname = self.rand.choice(candidates)
+                        target_id = self.rand.choice(ids_class[target_classname])
 
                         target_id_name = [node['class_name'] for node in graph['nodes'] if node['id'] == target_id]
                         if 'livingroom' in target_id_name and obj_name == 'plate':
@@ -413,9 +419,9 @@ class SetInitialGoal:
         new_object_pool = [tem for tem in self.obj_position.keys() if
                            tem not in list(self.goal.keys())]  # remove objects in goal
 
-        self.num_other_obj = random.choice(list(range(self.min_num_other_object, self.max_num_other_object + 1)))
+        self.num_other_obj = self.rand.choice(list(range(self.min_num_other_object, self.max_num_other_object + 1)))
         for i in range(self.num_other_obj):
-            obj_name = random.choice(new_object_pool)
+            obj_name = self.rand.choice(new_object_pool)
             obj_in_graph = [node for node in graph['nodes'] if
                             node['class_name'] == obj_name]  # if the object already in env, skip
             object_id, graph = self.add_obj(graph, obj_name, 1, object_id, objs_in_room=objs_in_room,
