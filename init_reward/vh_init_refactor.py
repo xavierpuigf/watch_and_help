@@ -19,7 +19,7 @@ from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--num-per-apartment', type=int, default=40, help='Maximum #episodes/apartment')
+parser.add_argument('--num-per-apartment', type=int, default=1, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--apt_str', type=str, default='0,1,2,4,5', help='The apartments where we will generate the data')
 parser.add_argument('--port', type=str, default='8092', help='Task name')
@@ -37,7 +37,10 @@ if __name__ == "__main__":
     ## -------------------------------------------------------------
     ## load task from json, the json file contain max number of objects for each task
     ## -------------------------------------------------------------
-    with open('data/init_pool.json') as file:
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+    with open(f'{curr_dir}/data/init_pool.json') as file:
         init_pool = json.load(file)
     # comm = comm_unity.UnityCommunication()
     if args.use_editor:
@@ -84,7 +87,7 @@ if __name__ == "__main__":
 
     ## -------------------------------------------------------------
     ## step3 load object size
-    with open('data/class_name_size.json', 'r') as file:
+    with open(f'{curr_dir}/data/class_name_size.json', 'r') as file:
         class_name_size = json.load(file)
 
     ## -------------------------------------------------------------
@@ -128,7 +131,7 @@ if __name__ == "__main__":
             # if apartment != 4: continue
             # apartment = 3
 
-            with open('data/object_info%s.json' % (apartment + 1), 'r') as file:
+            with open(f'{curr_dir}/data/object_info%s.json' % (apartment + 1), 'r') as file:
                 obj_position = json.load(file)
 
             # pdb.set_trace()bathroomcounter
