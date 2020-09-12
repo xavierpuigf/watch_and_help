@@ -21,9 +21,7 @@ def inside_not_trans(graph):
         if edge['relation_type'] == 'INSIDE' and id2node[edge['to_id']]['category'] == 'Rooms':
             if len(parents[edge['from_id']]) == 1:
                 edges.append(edge)
-            else:
-                if edge['from_id'] > 1000:
-                    pdb.set_trace()
+            
         else:
             edges.append(edge)
     graph['edges'] = edges
