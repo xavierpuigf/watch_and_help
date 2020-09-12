@@ -494,13 +494,15 @@ class BeliefPlotter():
         """
 
         # graph = delete_redundant_edges_and_ids(graph)
+        old_graph = graph
+        graph = {}
 
         class_nodes_delete = ['wall', 'floor', 'ceiling', 'door', 'curtain', 'wallpictureframe', 
                               'clothespile', 'closetdrawer', 'hanger', 'rug', 'curtains', 'lightswitch', 'ceilinglamp', 'towel']
-        ids_delete = [x['id'] for x in graph['nodes'] if x['class_name'] in class_nodes_delete]
+        ids_delete = [x['id'] for x in old_graph['nodes'] if x['class_name'] in class_nodes_delete]
 
-        graph['nodes'] = [x for x in graph['nodes'] if x not in ids_delete]
-        graph['edges'] = [x for x in graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
+        graph['nodes'] = [x for x in old_graph['nodes'] if x not in ids_delete]
+        graph['edges'] = [x for x in old_graph['edges'] if x['from_id'] not in ids_delete and x['to_id'] not in ids_delete]
 
         id2node = {x['id']: x for x in graph['nodes']}
 
@@ -561,6 +563,15 @@ class BeliefPlotter():
                         else:
                             cng.node(name=str(child), label=self.getclass(id2node[child]), pos=position)
 
+                if id2node[curr_subgraph_id]['category'] == 'Rooms':
+                    coords = id2node[curr_subgraph_id]['bounding_box']
+                    positionsx = [-1, -1, 1, 1]
+                    positionsy = [-1, 1, -1, 1]
+                    positionsrx = [coords['center'][0] + px/2. * coords['size'][0] for px in positionsx]
+                    positionsry = [coords['center'][2] + py/2. * coords['size'][2] for py in positionsy]
+                    for itp, (px,py) in enumerate(zip(positionsrx, positionsry)):
+                        cng.node(name='{}.{}'.format(curr_subgraph_id, itp), label='{}.{}'.format(curr_subgraph_id, itp), pos='{},{}!'.format(px/2000., py/2000.))
+
                 subgraphs_added[curr_subgraph_id] = cng
                 if curr_subgraph_id == 1:
                     pdb.set_trace()
@@ -581,11 +592,15 @@ class BeliefPlotter():
             'FACING': 'red',
             'BETWEEN': 'green',
             'CLOSEg': 'blue'
+            'HOLDS_R': 'cyan',
+            'HOLDS_L': 'cyan',
 
         }
         style = {
             'INSIDE': '',
             'ON': '',
+            'HOLDS_R': '',
+            'HOLDS_L': '',
             'CLOSE': 'invis',
             'CLOSEg': 'invis',
             'FACING': 'invis',
