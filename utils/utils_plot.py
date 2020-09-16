@@ -591,7 +591,7 @@ class BeliefPlotter():
             'CLOSE_CHAR': 'orange',
             'FACING': 'red',
             'BETWEEN': 'green',
-            'CLOSEg': 'blue'
+            'CLOSEg': 'blue',
             'HOLDS_R': 'cyan',
             'HOLDS_L': 'cyan',
 

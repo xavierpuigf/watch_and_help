@@ -50,18 +50,26 @@ class Belief():
         ]
 
         self.class_nodes_delete = ['wall', 'floor', 'ceiling', 'curtain', 'window']
-        
+        self.categories_delete = ['Doors']
+
         self.agent_id = agent_id
         self.grabbed_object = []
 
 
-        self.categories_delete = ['Doors']
 
         self.graph_helper = vh_utils.graph_dict_helper()
         self.binary_variables = self.graph_helper.binary_variables
+
+        self.prohibit_ids = [node['id'] for node in graph_gt['nodes'] if node['class_name'].lower() in self.class_nodes_delete or 
+                             node['category'] in self.categories_delete]
+        new_graph = {
+            'nodes': [node for node in graph_gt['nodes'] if node['id'] not in self.prohibit_ids],
+            'edges': [edge for edge in graph_gt['edges'] if edge['to_id'] not in self.prohibit_ids and edge['from_id'] not in self.prohibit_ids]
+        }
         self.graph_init = graph_gt
         # ipdb.set_trace()
-        self.sampled_graph = copy.deepcopy(graph_gt)
+        self.sampled_graph = new_graph
+        
 
         self.states_consider = ['OFF', 'CLOSED']
         self.edges_consider = ['INSIDE', 'ON']
@@ -119,7 +127,7 @@ class Belief():
 
 
     def _remove_house_obj(self, state):
-        delete_ids = [x['id'] for x in state['nodes'] if x['class_name'].lower() in self.house_obj]
+        delete_ids = [x['id'] for x in state['nodes'] if x['class_name'].lower() in self.class_nodes_delete]
         state['nodes'] = [x for x in state['nodes'] if x['id'] not in delete_ids]
         state['edges'] = [x for x in state['edges'] if x['from_id'] not in delete_ids and x['to_id'] not in delete_ids]
         return state
@@ -300,7 +308,6 @@ class Belief():
         #     pdb.set_trace()
 
         # Include the doors
-        # if ids_update is None:
         for node_door in self.door_edges.keys():
             node_1, node_2 = self.door_edges[node_door]
             self.sampled_graph['edges'].append({'to_id': node_1, 'from_id': node_door, 'relation_type': 'BETWEEN'})
@@ -308,6 +315,8 @@ class Belief():
 
         if as_vh_state:
             return self.to_vh_state(self.sampled_graph)
+
+        
         return self.sampled_graph
 
     def to_vh_state(self, graph):
@@ -327,7 +336,13 @@ class Belief():
         Updates the current sampled graph with a set of observations
         """
         # Here we have a graph sampled from our belief, and want to update it with gt graph
-        id2node = {}
+        id2node = {} 
+        gt_graph = {
+            'nodes': [node for node in gt_graph['nodes'] if node['id'] not in self.prohibit_ids],
+            'edges': [edge for edge in gt_graph['edges'] if edge['from_id'] not in self.prohibit_ids and edge['to_id'] not in self.prohibit_ids]
+        }
+        
+        edges_gt_graph = gt_graph['edges']
         for x in gt_graph['nodes']:
             id2node[x['id']] = x
 
@@ -338,7 +353,7 @@ class Belief():
 
 
         inside = {}
-        for x in gt_graph['edges']:
+        for x in edges_gt_graph:
             if x['relation_type'] == 'INSIDE':
                 if x['from_id'] in inside.keys():
                     print('Already inside', id2node[x['from_id']]['class_name'], id2node[inside[x['from_id']]]['class_name'], id2node[x['to_id']]['class_name'])
@@ -398,12 +413,12 @@ class Belief():
                         continue
             edges_keep.append(edge)
 
-        self.sampled_graph['edges'] = edges_keep + gt_graph['edges']
+        self.sampled_graph['edges'] = edges_keep + edges_gt_graph
 
         # For objects that are inside in the belief, character should also be close to those, so that when we open the object
         # we are already close to what is inside
 
-        nodes_close = [x['to_id'] for x in gt_graph['edges'] if x['from_id'] == char_node and x['relation_type'] == 'CLOSE']
+        nodes_close = [x['to_id'] for x in edges_gt_graph if x['from_id'] == char_node and x['relation_type'] == 'CLOSE']
         inside_belief = {}
         for edge in edges_keep:
             if edge['relation_type'] == 'INSIDE':
@@ -477,10 +492,16 @@ class Belief():
             if id_node in grabbed_object:
                 continue
 
-            if id_node in visible_ids:
+            if id_node in visible_ids:  
                 # TODO: what happens when object grabbed
                 assert(id_node in inside.keys())
                 inside_obj = inside[id_node]
+                
+                # Some objects have the relationship inside but they are not part of the belief because
+                # they are visible anyways like bookshelf
+                if inside_obj != visible_room and inside_obj not in self.container_index_belief_dict:
+                    inside_obj = inside[inside_obj]
+
                 # If object is inside a room, for sure it is not insde another object
                 if inside_obj == visible_room:
                     self.edge_belief[id_node]['INSIDE'][1][:] = self.low_prob

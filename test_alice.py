@@ -40,38 +40,17 @@ class MCTSArena(ArenaMP):
 
 if __name__ == '__main__':
     args = get_args()
-    # ray.init()
-    # MCTSArena = ray.remote(MCTSArena)
-    # args.task = 'setup_table'
+
     args.max_episode_length = 250
     args.num_per_apartment = 10
     args.mode = 'check_neurips_test'
-    # args.dataset_path = 'initial_environments/data/init_envs/init7_{}_{}_{}.pik'.format(args.task,
-    #                                                                                        args.num_per_apartment,
-    #                                                                                     args.mode)
-    # data = pickle.load(open(args.dataset_path, 'rb'))
-    # args.record_dir = 'record/Alice_test_set_30'
     args.executable_file = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64'
-
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'rb'))
-    # env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_10_multitask_neurips.pik', 'rb'))
-    env_task_set = pickle.load(open('initial_environments/data/init_envs/test_env_set_help_20_neurips.pik', 'rb'))
-
-    if args.use_editor:
-        env_task_set = [env_task_set[q] for q in [82]]
-        # args.recording = True
-
-    # Filter out the rug and door
-    for env in env_task_set:
-        if env['env_id'] == 6:
-            g = env['init_graph']
-            door_ids = [302, 213]
-            g['nodes'] = [node for node in g['nodes'] if node['id'] not in door_ids]
-            g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in door_ids and edge['to_id'] not in door_ids]
+    env_task_set = pickle.load(open(args.dataset_path, 'rb'))
 
 
-    args.record_dir = 'record_scratch/rec_good_test/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
-    # args.record_dir = 'record_scratch/rec_good/Alice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    args.record_dir = '../test_results/multiAlice_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    if not os.path.exists(args.record_dir):
+        os.makedirs(args.record_dir)
 
     executable_args = {
                     'file_name': args.executable_file,
@@ -140,6 +119,7 @@ if __name__ == '__main__':
     # can_id = [node['id'] for node in env_task_set[3351]['init_graph']['nodes'] if 'garbage' in node['class_name']][0]
     # env_task_set[3351]['init_graph']['nodes'] = [node for node in g['nodes'] if node['id'] != can_id]
     # env_task_set[3351]['init_graph']['edges'] = [edge for edge in g['edges'] if edge['from_id'] != can_id and edge['to_id'] != can_id]
+    pdb.set_trace()
     for iter_id in range(5):
         #if iter_id > 0:
 
@@ -147,9 +127,6 @@ if __name__ == '__main__':
         steps_list, failed_tasks = [], []
         current_tried = iter_id
         for episode_id in episode_ids:
-            if episode_id not in [31,32,86]:
-                continue
-
             if not os.path.isfile(args.record_dir + '/results_{}.pik'.format(0)):
                 test_results = {}
             else:

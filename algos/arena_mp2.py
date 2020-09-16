@@ -42,9 +42,9 @@ class ArenaMP(object):
 
         for it, agent in enumerate(self.agents):
             if 'MCTS' in agent.agent_type or 'Random' in agent.agent_type:
-                agent.reset(ob[it], self.env.python_graph, self.env.task_goal, seed=agent.seed)
+                agent.reset(ob[it], self.env.full_graph, self.env.task_goal, seed=agent.seed)
             else:
-                agent.reset(self.env.python_graph)
+                agent.reset(self.env.full_graph)
 
     def set_weigths(self, epsilon, weights):
         for agent in self.agents:

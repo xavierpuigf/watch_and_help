@@ -16,7 +16,7 @@ from evolving_graph.utils import load_graph_dict, load_name_equivalence, graph_d
 from evolving_graph.execution import ScriptExecutor, ExecutionInfo
 from evolving_graph.scripts import read_script_from_string
 
-# from evolving_graph.environment import *
+from evolving_graph.environment import EnvironmentGraph, EnvironmentState
 from profilehooks import profile
 
 

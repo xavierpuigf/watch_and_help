@@ -1,5 +1,6 @@
 import pickle
 import pdb
+import ipdb
 import sys
 import os
 import random
@@ -263,6 +264,7 @@ if __name__ == "__main__":
                             init_graph0 = copy.deepcopy(init_graph)
                             comm.reset(apartment)
                             comm.expand_scene(init_graph, transfer_transform=False)
+                            ipdb.set_trace()
                             s, init_graph = comm.environment_graph()
                             print('final s:', s)
                             if s:

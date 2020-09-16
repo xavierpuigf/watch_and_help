@@ -538,7 +538,12 @@ class MCTS_agent:
         # print("set")
         self.belief.sample_from_belief()
         graph_belief = self.sample_belief(observed_graph) #self.env.get_observations(char_index=self.char_index))
-        self.sim_env.reset(graph_belief, task_goal)
+        try:
+            self.sim_env.reset(graph_belief, task_goal)
+        except:
+            import ipdb
+
+            ipdb.set_trace()
         self.sim_env.to_pomdp()
         self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
                          self.num_simulation, self.max_rollout_steps,

@@ -6,6 +6,9 @@ import pdb
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
+
+    parser.add_argument('--dataset_path', type=str, help="The path of the environments where we test")
+
     parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full', 'check', 'check_neurips'], help='Environment type')
 
     parser.add_argument('--load-model', type=str, default='',
@@ -145,8 +148,8 @@ def get_args():
     parser.add_argument(
         '--obs_type',
         type=str,
-        default='mcts',
-        choices=['full', 'rgb', 'visibleid', 'mcts'],
+        default='partial',
+        choices=['full', 'rgb', 'visibleid', 'partial'],
     )
 
     parser.add_argument(
