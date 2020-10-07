@@ -8,6 +8,8 @@ from environment.unity_environment import UnityEnvironment as BaseUnityEnvironme
 from evolving_graph import utils as utils_env
 import pdb
 import numpy as np
+import copy
+import ipdb
 
 class UnityEnvironment(BaseUnityEnvironment):
 
@@ -99,6 +101,7 @@ class UnityEnvironment(BaseUnityEnvironment):
     def reset(self, environment_graph=None, task_id=None):
 
         # Make sure that characters are out of graph, and ids are ok
+        # ipdb.set_trace()
         if task_id is None:
             task_id = self.rnd.choice(list(range(len(self.env_task_set))))
         print('TaskId: {}'.format(task_id))
@@ -137,26 +140,26 @@ class UnityEnvironment(BaseUnityEnvironment):
             self.max_ids[self.env_id] = max_id
 
         max_id = self.max_ids[self.env_id]
+
         if environment_graph is not None:
-            # TODO: this should be modified to extend well
-            # updated_graph = utils.separate_new_ids_graph(environment_graph, max_id)
             updated_graph = environment_graph
             s, g = self.comm.environment_graph()
-            udpated_graph = self.remove_floor(updated_graph, g)
+            updated_graph = utils.separate_new_ids_graph(updated_graph, max_id)
             success, m = self.comm.expand_scene(updated_graph)
         else:
             updated_graph = env_task['init_graph']
             s, g = self.comm.environment_graph()
-            udpated_graph = self.remove_floor(updated_graph, g)
             updated_graph = utils.separate_new_ids_graph(updated_graph, max_id)
             success, m = self.comm.expand_scene(updated_graph)
         
-        if not success:
-            print("Error expanding scene")
-            pdb.set_trace()
-            return None
-        self.offset_cameras = self.comm.camera_count()[1]
 
+        if not success:
+            ipdb.set_trace()
+            print("Error expanding scene")
+            ipdb.set_trace()
+            return None
+        
+        self.offset_cameras = self.comm.camera_count()[1]
         if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
             rooms = self.rnd.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)
         else:
@@ -212,32 +215,5 @@ class UnityEnvironment(BaseUnityEnvironment):
         else:
             raise NotImplementedError
 
-    def remove_floor(self, updated_graph, curr_graph):
-        # translate_prefab = {
-        #     'Cupcake_1': 'DHP_PRE_Pink_cupcake_1024',
-        #     'Cupcake_2': 'DHP_PRE_Rainbow_cupcake_1024',
-        #     'PRE_PRO_Box_02': 'PRE_PRO_Box_01'
-        # }
-        # ipdb.set_trace()
-        floor_none_ids = sorted([node['id'] for node in updated_graph['nodes'] if node['prefab_name'] == "Floor" or 
-            node['id'] == 197 or node['prefab_name'] == 'mH_Bucket01_s'])
 
-        node_id_mapping = {}
-        updated_graph['nodes'] = [node for node in updated_graph['nodes'] if node['id'] not in floor_none_ids]
-        updated_graph['edges'] = [edge for edge in updated_graph['edges'] if edge['from_id'] not in floor_none_ids and edge['to_id'] not in floor_none_ids]
-        
-        for node in updated_graph['nodes']:
-            curr_idx = len([it for it, elem in enumerate(floor_none_ids) if elem < node['id']])
-            new_id = node['id'] - curr_idx
-            node_id_mapping[node['id']] = node['id'] - curr_idx
-            node['id'] = new_id
-
-            # if node['prefab_name'] in translate_prefab:
-            #     node['prefab_name'] = translate_prefab[node['prefab_name']]
-        
-        for edge in updated_graph['edges']:
-            edge['from_id'] = node_id_mapping[edge['from_id']]
-            edge['to_id'] = node_id_mapping[edge['to_id']]
-        updated_graph['nodes'] = [node for node in updated_graph['nodes'] if node['class_name'] != 'kitchencabinets']
-        updated_graph['nodes'] += [node for node in curr_graph['nodes'] if node['class_name'] == 'kitchencabinet']
         return updated_graph

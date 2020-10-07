@@ -1,5 +1,4 @@
 import random
-import pdb
 import torch
 import copy
 import numpy as np
@@ -63,14 +62,14 @@ class ArenaMP(object):
 
             else:
                 goal_spec = self.env.get_goal(self.task_goal[it], self.env.agent_goals[it])
-            # ipdb.set_trace()
+            
             if agent.agent_type in ['MCTS', 'Random']:
                 opponent_subgoal = None
                 if agent.recursive:
                     opponent_subgoal = self.agents[1 - it].last_subgoal
-                # pdb.set_trace()
+                
                 dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec, opponent_subgoal)
-                # pdb.set_trace()
+                
             elif 'RL' in agent.agent_type:
                 if 'MCTS' in agent.agent_type or 'Random' in agent.agent_type:
                     dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec,
@@ -324,6 +323,7 @@ class ArenaMP(object):
 
         dict_actions, dict_info = self.get_actions(obs, action_space)
         try:
+            print(dict_actions)
             step_info = self.env.step(dict_actions)
         except:
             print("Time out for action: ", dict_actions)
@@ -353,7 +353,6 @@ class ArenaMP(object):
                       'action': {0: [], 1: []},
                       'plan': {0: [], 1: []},
                       'subgoals': {0: [], 1: []},
-                      # 'init_pos': {0: None, 1: None},
                       'finished': None,
                       'init_unity_graph': self.env.init_graph,
                       'goals_finished': [],
