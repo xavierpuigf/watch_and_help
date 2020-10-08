@@ -1,65 +1,40 @@
-
-"""
-CUDA_VISIBLE_DEVICES=0 python evaluate_a2c_pred.py \
---num-per-apartment 3 --max-num-edges 10 --max-episode-length 250 --batch_size 32 --obs_type mcts \
---gamma 0.95 --lr 1e-4 --task_type find  --nb_episodes 100000 --save-interval 200 --simulator-type unity \
---base_net TF --log-interval 1 --long-log 50 --base-port 8589 --num-processes 1 \
---agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
---load-model trained_models/env.virtualhome/\
-task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
-mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32_finetuned/\
-stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
-
-"""
 import sys
-sys.path.append('../virtualhome/')
-sys.path.append('../vh_mdp/')
-sys.path.append('../virtualhome/simulation/')
-
-from envs.python_environment import PythonEnvironment
-from envs.unity_environment import UnityEnvironment
-import pdb
-from pathlib import Path
+import os
+import ipdb
 import pickle
+import json
 import random
-import copy
+import numpy as np
+from tqdm import tqdm
+from pathlib import Path
+
+from envs.unity_environment import UnityEnvironment
 from agents import MCTS_agent, RL_agent, HRL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
-from algos.a2c import A2C
 from algos.a2c_mp import A2C as A2C_MP
 from utils import utils_goals, utils_rl_agent
-import pickle as pkl
-import json
 import ray
+
 
 if __name__ == '__main__':
     args = get_args()
+    
+    args.max_episode_length = 250
+    args.num_per_apartment = 10
+    args.mode = 'hybrid_predgoal'
+    args.dataset_path = './dataset/test_env_set_help_20_neurips.pik'
 
-    #pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_v1.p'
+    env_task_set = pickle.load(open(args.dataset_path, 'rb'))
+    args.record_dir = '../test_results/multiBob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
+    executable_args = {
+                    'file_name': args.executable_file,
+                    'x_display': 0,
+                    'no_graphics': True
+    }
 
-    #pred_file = '/data/vision/torralba/ls-objectvideo/2icml2020/1virtualhome/vh_multiagent_models_goal_inference_video_eval/data/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1.p'
-
-    pred_file = 'interface/test_json_output_graph_sort_avg_insamelen_hid512_larger_largerv2_smallerv2_tranf_dp0_lstmavg_h2l1_newtest.p'
-    with open(pred_file, 'rb') as f:
-        predictions = pkl.load(f)
-    with open('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/match_demo_test_multiple.json', 'r') as f:
-        match_demo_test = json.load(f)
-
-    with open(pred_file, 'rb') as f:
-        predictions = pkl.load(f)
-
-    env_to_pred = {}
-    for i in range(100):
-        demo_env = match_demo_test[str(i)][0].replace('.pik', '')
-        curr_pred = predictions[demo_env]['prediction']
-        pred_dict = {}
-        for p in curr_pred:
-            if p != 'None':
-                if p not in pred_dict:
-                    pred_dict[p] = 0
-                pred_dict[p] += 1
-        env_to_pred[str(i)] = pred_dict
+    with open('dataset/env_to_pred.json', 'r') as f:
+        env_to_pred = json.load(f)
 
 
     # args.task = 'setup_table'
@@ -98,56 +73,9 @@ if __name__ == '__main__':
         'x_display': 0,
         'no_graphics': True
     }
-    args.load_model = ('trained_models/env.virtualhome/task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/'
-                      'agent.hrl_mcts_alice.False/mode.RL-algo.a2c-base.TF-gamma.0.95'
-                      '-cclose.0.0-cgoal.0.0-lr0.0001-bs.32/stepmcts.24-lep.250-teleport.True-gtgraph/4200.pt')
-    if args.debug:
-        # # debug 1: 1 predicate, 1 room
-        # env_task_set = env_task_set[0]
-        # single_goal = [x for x,y in env_task_set['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']][0]
-
-        # if args.obs_type == 'mcts':
-        #     env_task_set['init_rooms'] = ['kitchen']
-        # env_task_set['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
-        # env_task_set = [env_task_set]
-
-        # debug 2: multiple predicates, 1 room
-        # env_task_set0 = copy.deepcopy(env_task_set)
-        # env_task_set = []
-        # env_task = env_task_set0[0]
-        # single_goals = [x for x,y in env_task_set0[0]['task_goal'][0].items() if y > 0 and x.split('_')[0] in ['on', 'inside']]
-        # # pdb.set_trace()
-        # if args.obs_type == 'mcts':
-        #     env_task['init_rooms'] = ['kitchen']
-        #
-        # for single_goal in single_goals:
-        #     env_task_new = copy.deepcopy(env_task)
-        #     env_task_new['task_goal'] = {0: {single_goal: 1}, 1: {single_goal: 1}}
-        #     env_task_set.append(env_task_new)
-        #
-        # print('# env_task for debug:', len(env_task_set))
-        #
-        # for env_task in env_task_set:
-        #     print(env_task['task_name'], env_task['task_goal'][0])
-
-
-        # One room, multi preds in same task
-        env_task_set = [env_task_set[0]]
-
-        # # debug 3: 1 predicate, multiple rooms
-        # env_task_set0 = copy.deepcopy(env_task_set)
-        # env_task_set = []
-        # for env_task in env_task_set0:
-        #   if env_task['task_name'] == 'setup_table':
-        #     single_goal = [x for x, y in env_task['task_goal'][0].items() if y > 0 and x.split('_')[1] == 'plate']  
-        #     if len(single_goal) == 1:
-        #       env_task_new = copy.deepcopy(env_task)
-        #       env_task_new['task_goal'] = {0: {single_goal[0]: 1}, 1: {single_goal[0]: 1}}
-        #       env_task_set.append(env_task_new)
-        # print('# env_task for debug:', len(env_task_set))
-    else:
-        if args.task_set != 'full':
-            env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
+    
+    if args.task_set != 'full':
+        env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
 
@@ -155,8 +83,6 @@ if __name__ == '__main__':
 
     agent_goal = 'full'
     args.task_type = 'full'
-    # if args.task_type == 'put':
-    #     agent_goal = 'put'
     num_agents = 1
     agent_goals = [agent_goal]
     if args.use_alice:
@@ -168,23 +94,23 @@ if __name__ == '__main__':
         rl_agent_id = 1
         observation_types = [args.obs_type]
 
+    episode_ids = list(range(len(env_task_set)))
+    episode_ids = sorted(episode_ids)
+    num_tries = 5
+    S = [[] for _ in range(len(episode_ids))]
+    L = [[] for _ in range(len(episode_ids))]
+
     def env_fn(env_id):
-        if args.simulator_type == 'unity':
-            return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
-                                    port_id=env_id,
-                                    env_task_set=env_task_set,
-                                    agent_goals=agent_goals,
-                                    observation_types=observation_types,
-                                    use_editor=args.use_editor,
-                                    executable_args=executable_args,
-                                    base_port=args.base_port,
-                                    seed=None)
-        else:
-            return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
-                                    env_task_set=env_task_set,
-                                    agent_goals=agent_goals,
-                                    observation_types=observation_types,
-                                    seed=env_id)
+        return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+                                port_id=env_id,
+                                env_task_set=env_task_set,
+                                agent_goals=agent_goals,
+                                observation_types=observation_types,
+                                use_editor=args.use_editor,
+                                executable_args=executable_args,
+                                base_port=args.base_port,
+                                seed=None)
+
 
 
     graph_helper = utils_rl_agent.GraphHelper(max_num_objects=args.max_num_objects,
@@ -208,13 +134,6 @@ if __name__ == '__main__':
         args_mcts['char_index'] = 0
         return MCTS_agent(**args_mcts)
 
-    def RL_agent_fn(arena_id, env):
-        args_agent2 = {'agent_id': 1, 'char_index': 0,
-                       'args': args, 'graph_helper': graph_helper}
-        args_agent2['seed'] = arena_id
-        return RL_agent(**args_agent2)
-
-
     def HRL_agent_fn(arena_id, env):
         args_agent2 = {'agent_id': rl_agent_id, 'char_index': rl_agent_id - 1,
                        'args': args, 'graph_helper': graph_helper}
@@ -222,9 +141,6 @@ if __name__ == '__main__':
         return HRL_agent(**args_agent2)
 
 
-
-
-    # agents = [RL_agent_fn]
     agents = [HRL_agent_fn]
 
     if args.use_alice:
@@ -238,18 +154,24 @@ if __name__ == '__main__':
         a2c = A2C_MP(arenas, graph_helper, args)
     a2c.load_model(args.load_model)
 
-    test_results = []
-    for i in range(100):
-        successes = []
-        lengths = []
-        for seed in range(5):
+    test_results = {}
+
+    for iter_id in range(num_tries):
+        seed = iter_id
+        for episode_id in tqdm(range(len(episode_ids))):
+            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(arenas[0].env.task_id,
+                                                                    info_results['task_name'],
+                                                                    seed)
+
+            if os.path.isfile(log_file_name):
+                continue
             try:
                 for agent in arenas[0].agents:
                     agent.seed = seed
 
-                episode_id = i
                 predicted_goal_class = env_to_pred[str(episode_id)]
-                arenas[0].env.reset(task_id=i)
+                
+                arenas[0].env.reset(task_id=episode_id)
                 graph = arenas[0].env.graph
                 idnodes = {}
                 for class_name in ['fridge', 'dishwasher', 'kitchentable', 'coffeetable', 'sofa']:
@@ -287,16 +209,17 @@ if __name__ == '__main__':
                     'obs': res[1][0]['obs'],
                     'action': res[1][0]['action']
                 }
-                successes.append(finished)
-                lengths.append(length)
+                S[episode_id].append(is_finished)
+                L[episode_id].append(steps)
+                test_results[episode_id] = {'S': S[episode_id],
+                                            'L': L[episode_id]}
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
-                log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(arenas[0].env.task_id,
-                                                                                    info_results['task_name'],
-                                                                                    seed)
+
                 with open(log_file_name, 'wb') as flog:
                     pickle.dump(info_results, flog)
             except:
                 arenas[0].reset_env()
-        test_results.append({'S': successes, 'L': lengths})
+
+    test_results.append({'S': S[episode_id], 'L': L[episode_id]})
     pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
     # pdb.set_trace()

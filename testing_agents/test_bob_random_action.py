@@ -133,7 +133,6 @@ if __name__ == '__main__':
             test_results[episode_id] = {'S': S[episode_id],
                                         'L': L[episode_id]}
         
-        pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
         print('average steps (finishing the tasks):', np.array(steps_list).mean() if len(steps_list) > 0 else None)
         print('failed_tasks:', failed_tasks)
         pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))

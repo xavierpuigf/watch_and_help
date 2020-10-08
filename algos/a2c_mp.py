@@ -145,15 +145,13 @@ class A2C:
 
         return rewards, info_rollout
 
-    def load_model(self, model_path):
+    def load_model(self, model_path, model_path_lowlevel=None):
         model = torch.load(model_path)[0]
         # ipdb.set_trace()
         # ipdb.set_trace()
         self.actor_critic.load_state_dict(model.state_dict())
-        if self.actor_critic_low_level is not None:
-            model_path_lowlevel = ('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/'
-            'trained_models/env.virtualhome/task.put-numproc.1-obstype.mcts-sim.unity/'\
-            'taskset.full/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.1.0-cgoal.0.0-lr0.0001/26200_all.pt')
+        if self.actor_critic_low_level is not None and model_path_lowlevelis not None:
+            
             torch.nn.Module.dump_patches = True
             model_low_level = torch.load(model_path_lowlevel)
 

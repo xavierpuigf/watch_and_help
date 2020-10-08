@@ -139,14 +139,11 @@ if __name__ == '__main__':
                     steps_list.append(steps)
                 is_finished = 1 if success else 0
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
-                log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(saved_info['task_id'],
-                                                                                    saved_info['task_name'],
-                                                                                    current_tried)
 
                 if len(saved_info['obs']) > 0:
-                    pickle.dump(saved_info, open(log_file_name, 'wb'))
+                    pickle.dump(saved_info, open(curr_log_file_name, 'wb'))
                 else:
-                    with open(log_file_name, 'w+') as f:
+                    with open(curr_log_file_name, 'w+') as f:
                         f.write(json.dumps(saved_info, indent=4))
             except:
                 ipdb.set_trace()
