@@ -182,7 +182,6 @@ class Random_agent:
         for obj in content.values():
             object_names += obj
         object_names += ['bathroom', 'bedroom', 'kitchen', 'livingroom', 'character']
-        print(object_names)
 
         self.sample_belief(obs)
         self.sim_env.reset(self.previous_belief_graph, {0: goal_spec, 1: goal_spec})
@@ -226,13 +225,11 @@ class Random_agent:
         """TODO: do no need this?"""
 
         self.previous_belief_graph = None
-        self.belief = Belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
+        self.belief = belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
         # print("set")
         self.belief.sample_from_belief()
-        graph_belief = self.sample_belief(observed_graph) #self.env.get_observations(char_index=self.char_index))
+        graph_belief = self.sample_belief(observed_graph)
         self.sim_env.reset(graph_belief, task_goal)
         self.sim_env.to_pomdp()
-        # self.mcts = MCTS(self.sim_env, self.agent_id, self.char_index, self.max_episode_length,
-        #                  self.num_simulation, self.max_rollout_steps,
-        #                  self.c_init, self.c_base, seed=seed)
+        
 
