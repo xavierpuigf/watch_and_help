@@ -148,8 +148,8 @@ if __name__ == '__main__':
                     'action': res[1][0]['action']
                 }
                 
-                S[episode_id].append(is_finished)
-                L[episode_id].append(steps)
+                S[episode_id].append(finished)
+                L[episode_id].append(length)
                 test_results[episode_id] = {'S': S[episode_id],
                                             'L': L[episode_id]}
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)

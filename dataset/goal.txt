@@ -1,1 +1,0 @@
-(and (on television[248]) (sitting character[65] bench[228]))

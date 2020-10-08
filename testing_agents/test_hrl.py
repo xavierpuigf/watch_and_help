@@ -9,20 +9,19 @@ from tqdm import tqdm
 from pathlib import Path
 
 from envs.unity_environment import UnityEnvironment
-from agents import MCTS_agent, RL_agent, HRL_agent
+from agents import MCTS_agent, RL_agent, HRL_agent_RL
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c_mp import A2C as A2C_MP
 from utils import utils_goals, utils_rl_agent
 import ray
 
-
 if __name__ == '__main__':
     args = get_args()
-    
     args.max_episode_length = 250
     args.num_per_apartment = 10
-    args.mode = 'hybrid_predgoal'
+    args.evaluation = True
+    args.mode = 'hrl_truegoal'
     args.dataset_path = './dataset/test_env_set_help_20_neurips.pik'
 
     env_task_set = pickle.load(open(args.dataset_path, 'rb'))
@@ -33,19 +32,17 @@ if __name__ == '__main__':
                     'no_graphics': True
     }
 
-    with open('dataset/env_to_pred.json', 'r') as f:
-        env_to_pred = json.load(f)
-
     
     if args.task_set != 'full':
         env_task_set = [env_task for env_task in env_task_set if env_task['task_name'] == args.task_set]
 
 
 
-    print('Number of episides: {}'.format(len(env_task_set)))
 
     agent_goal = 'full'
     args.task_type = 'full'
+    # if args.task_type == 'put':
+    #     agent_goal = 'put'
     num_agents = 1
     agent_goals = [agent_goal]
     if args.use_alice:
@@ -97,17 +94,24 @@ if __name__ == '__main__':
         args_mcts['char_index'] = 0
         return MCTS_agent(**args_mcts)
 
+
+
+
     def HRL_agent_fn(arena_id, env):
         args_agent2 = {'agent_id': rl_agent_id, 'char_index': rl_agent_id - 1,
                        'args': args, 'graph_helper': graph_helper}
         args_agent2['seed'] = arena_id
-        return HRL_agent(**args_agent2)
+        return HRL_agent_RL(**args_agent2)
 
 
+
+
+    # agents = [RL_agent_fn]
     agents = [HRL_agent_fn]
 
     if args.use_alice:
         agents = [MCTS_agent_fn] + agents
+
     if args.num_processes > 1:
         ArenaMP = ray.remote(ArenaMP) #, max_reconstructions=ray.ray_constants.INFINITE_RECONSTRUCTION)
         arenas = [ArenaMP.remote(args.max_number_steps, arena_id, env_fn, agents) for arena_id in range(args.num_processes)]
@@ -118,46 +122,21 @@ if __name__ == '__main__':
     a2c.load_model(args.load_model)
 
     test_results = {}
-
     for iter_id in range(num_tries):
         seed = iter_id
-        for episode_id in tqdm(range(len(episode_ids))):
-            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(arenas[0].env.task_id,
-                                                                    info_results['task_name'],
-                                                                    seed)
 
+        for episode_id in tqdm(range(len(episode_ids))):
+            log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(episode_id,
+                                                                                env_task_set[episode_id]['task_name'],
+                                                                                seed)
             if os.path.isfile(log_file_name):
                 continue
+
             try:
                 for agent in arenas[0].agents:
                     agent.seed = seed
 
-                predicted_goal_class = env_to_pred[str(episode_id)]
-                
-                arenas[0].env.reset(task_id=episode_id)
-                graph = arenas[0].env.graph
-                idnodes = {}
-                for class_name in ['fridge', 'dishwasher', 'kitchentable', 'coffeetable', 'sofa']:
-                    idnodes[class_name] = [node['id'] for node in graph['nodes'] if node['class_name'] == class_name][0]
-
-                predicted_goal = {}
-                for kpred, itv in predicted_goal_class.items():
-                    spl = kpred.split('_')
-                    if not spl[-1] in idnodes:
-                        if spl[0] == 'sit':
-                           target_name = '_'.join([spl[0], '1', spl[1]])
-                        else:
-                            target_name = '_'.join([spl[0], spl[1], '1'])
-                    else:
-                        id_target = idnodes[spl[-1]]
-                        if spl[0] == 'sit':
-                            spl[1] = '1'
-                        target_name = '{}_{}_{}'.format(spl[0], spl[1], id_target)
-                    predicted_goal[target_name] = itv
-
-                original_goal = arenas[0].env.task_goal[0]
-                res = a2c.eval(i, goals={0: original_goal, 1: predicted_goal})
-
+                res = a2c.eval(episode_id)
                 finished = res[1][0]['finished']
                 length = len(res[1][0]['action'][0])
                 info_results = {
@@ -171,6 +150,7 @@ if __name__ == '__main__':
                     'goals': arenas[0].env.task_goal,
                     'obs': res[1][0]['obs'],
                     'action': res[1][0]['action']
+
                 }
                 S[episode_id].append(finished)
                 L[episode_id].append(length)
@@ -182,7 +162,6 @@ if __name__ == '__main__':
                     pickle.dump(info_results, flog)
             except:
                 arenas[0].reset_env()
-
-    test_results.append({'S': S[episode_id], 'L': L[episode_id]})
+    test_results.append({'S': successes, 'L': lengths})
     pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))
     # pdb.set_trace()
