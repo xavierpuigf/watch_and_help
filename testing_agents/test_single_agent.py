@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     args.max_episode_length = 250
     args.num_per_apartment = 10
-    args.dataset_path = './dataset/test_env_set_help_20_neurips.pik'
+    args.dataset_path = './dataset/test_env_set_help.pik'
     args.mode = 'planner'
     env_task_set = pickle.load(open(args.dataset_path, 'rb'))
 

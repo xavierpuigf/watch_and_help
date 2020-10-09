@@ -31,12 +31,21 @@ Download the simulator
 
 
 ## Dataset
+We include a dataset of environments and activities that agents have to perform in them. We use a set of 5 environments to train our models for the challenge, and 2 environments to evaluate it.
+
+You can find the *train* and *test* datasets used for the paper in `dataset/train_env_set_help.pik` and `dataset/test_env_set_help.pik`.
+
+
+### Create your own dataset 
+You can also create your dataset, and modify it to incorporate new tasks.
 
 ## Watch
 Include here the code for the goal inference part
 
 ## Help
-We provide planning and learning-based agents for the Helping stage. The agents have partial observability on the environment, and plan according to a belief that updates with new observations.
+We provide planning and learning-based agents for the Helping stage. The agents have partial observability in the environment, and plan according to a belief that updates with new observations.
+
+![](assets/collab_fig.gif)
 
 ### Train baselines
 

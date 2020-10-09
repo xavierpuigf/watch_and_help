@@ -22,7 +22,7 @@ if __name__ == '__main__':
     args.num_per_apartment = 10
     args.evaluation = True
     args.mode = 'hrl_predgoal'
-    args.dataset_path = './dataset/test_env_set_help_20_neurips.pik'
+    args.dataset_path = './dataset/test_env_set_help.pik'
 
     env_task_set = pickle.load(open(args.dataset_path, 'rb'))
     args.record_dir = '../test_results/multiBob_env_task_set_{}_{}'.format(args.num_per_apartment, args.mode)
