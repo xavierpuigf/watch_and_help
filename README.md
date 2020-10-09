@@ -44,7 +44,7 @@ We provide planning and learning-based agents for the Helping stage. The agents 
 ### Evaluate baselines
 Below is the code to evaluate the different planning-based models.
 
-```
+```bash
 # Alice alone
 python testing_agents/test_single_agent.py
 
