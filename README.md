@@ -37,7 +37,16 @@ You can find the *train* and *test* datasets used for the paper in `dataset/trai
 
 
 ### Create your own dataset 
-You can also create your dataset, and modify it to incorporate new tasks.
+You can also create your dataset, and modify it to incorporate new tasks. For that, run
+
+```
+python gen_data/vh_init.py --num_per_apartment {NUM_APT} --task {TASK_NAME}
+```
+Where `NUM_APT` corresponds to the number of episodes you want for each apartment and task and `TASK_NAME` corresponds to the task name you want to generate, which can be `setup_table`, `clean_table`, `put_fridge`, `prepare_food`, `read_book`, `watch_tv` or `all` to generate all the tasks.
+
+You can also generate a dataset in a new environment, where the tasks match some existing dataset. We do that to make sure that the environment in the **Watch** phase is different than that in the **Help Phase** while having the same task specification. You can do that as follows:
+
+
 
 ## Watch
 Include here the code for the goal inference part

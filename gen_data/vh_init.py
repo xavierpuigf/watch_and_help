@@ -43,12 +43,6 @@ if __name__ == "__main__":
         rand = random.Random()
     else:
         rand = random.Random(args.seed)
-    # Better to not sue UnityEnv here, it is faster and it allows to create an env without agents
-
-    ## -------------------------------------------------------------
-    ## load task from json, the json file contain max number of objects for each task
-    ## -------------------------------------------------------------
-    
 
 
     with open(f'{curr_dir}/data/init_pool.json') as file:
@@ -216,7 +210,7 @@ if __name__ == "__main__":
                             goal_objs += [int(list(goal.keys())[0].split('_')[-1]) for goal in goals if
                                           list(goal.keys())[0].split('_')[-1] not in ['book', 'remotecontrol']]
                             goal_names += [list(goal.keys())[0].split('_')[1] for goal in goals]
-
+                        print(message)
                         obj_names = [obj.split('.')[0] for obj in message['unplaced']]
                         obj_ids = [int(obj.split('.')[1]) for obj in message['unplaced']]
                         id2node = {node['id']: node for node in init_graph['nodes']}
@@ -225,7 +219,7 @@ if __name__ == "__main__":
                             print("Objects unplaced")
                             print([id2node[edge['to_id']]['class_name'] for edge in init_graph['edges'] if
                                    edge['from_id'] == obj_id])
-
+                            ipdb.set_trace()
                         if task_name != 'read_book' and task_name != 'watch_tv':
                             intersection = set(obj_names) & set(goal_names)
                         else:
@@ -264,7 +258,6 @@ if __name__ == "__main__":
                             init_graph0 = copy.deepcopy(init_graph)
                             comm.reset(apartment)
                             comm.expand_scene(init_graph, transfer_transform=False)
-                            ipdb.set_trace()
                             s, init_graph = comm.environment_graph()
                             print('final s:', s)
                             if s:
@@ -321,7 +314,7 @@ if __name__ == "__main__":
                                 check_result = set_init_goal.check_graph(init_graph, apartment + 1, original_graph)
                                 assert check_result == True
 
-                                # pdb.set_trace()
+                                ipdb.set_trace()
                                 success_init_graph.append({'id': count_success,
                                                            'apartment': (apartment + 1),
                                                            'task_name': task_name,
@@ -360,9 +353,7 @@ if __name__ == "__main__":
                                  'task_goal': task_goal,
                                  'level': 0, 'init_rooms': rand.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)})
 
-    pickle.dump(env_task_set, open('initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'wb'))
-
-    # tem = pickle.load( open( "result/init1_10.p", "rb" ) )
+    pickle.dump(env_task_set, open('dataset/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'wb'))
 
 
 

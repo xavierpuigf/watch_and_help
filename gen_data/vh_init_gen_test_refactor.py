@@ -30,11 +30,7 @@ parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/fram
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    # Better to not sue UnityEnv here, it is faster and it allows to create an env without agents
 
-    ## -------------------------------------------------------------
-    ## load task from json, the json file contain max number of objects for each task
-    ## -------------------------------------------------------------
     with open('data/init_pool.json') as file:
         init_pool = json.load(file)
 
@@ -69,10 +65,7 @@ if __name__ == "__main__":
 
     print("Done")
     pdb.set_trace()
-    # args.dataset_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models/analysis/info_demo_scenes_posteccv.json'
-    args.record_dir = '../initial_environments/data/init_envs'
-    # data = json.load(open(args.dataset_path, 'r'))
-    # json_file_list = data['split']['test_prog']
+
 
     simulator_args={
                    'file_name': args.exec_file,
@@ -105,7 +98,7 @@ if __name__ == "__main__":
 
     success_init_graph = []
 
-    apartment_list = [3, 6] # [0, 1, 2, 4, 5] # [3, 6]
+    apartment_list = [3, 6] 
 
     task_counts = {"setup_table": 0, 
                    "put_dishwasher": 0, 
@@ -325,7 +318,7 @@ if __name__ == "__main__":
     # pdb.set_trace()
     print(len(test_set))
     print(task_counts)
-    pickle.dump(test_set, open(args.record_dir + '/test_env_set_help_{}_multitask_neurips.pik'.format(args.num_per_task), 'wb'))
+    pickle.dump(test_set, open('dataset/test_env_set_help_{}.pik'.format(args.num_per_task), 'wb'))
 
 
 
