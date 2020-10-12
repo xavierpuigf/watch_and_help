@@ -9,8 +9,8 @@ import copy
 import argparse
 import pickle as pkl
 
-random.seed(10)
 
+curr_dir = os.path.dirname(os.path.abspath(__file__))
 home_path = '../../'
 sys.path.append(home_path+'/virtualhome')
 
@@ -25,17 +25,17 @@ parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
 parser.add_argument('--port-number', type=int, default=8290, help='port')
+parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--display', type=str, default='2', help='display')
 parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64', help='Use unity editor')
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    with open('data/init_pool.json') as file:
+    with open(f'{curr_dir}/data/init_pool.json') as file:
         init_pool = json.load(file)
 
-    # file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_split.json'
-    file_split = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/data_challenge/split/watch_scenes_mutliple_split.json'
+    file_split = f'{curr_dir}/../dataset/watch_scenes_split.json'
 
     with open(file_split, 'r') as f:
         content_split = json.load(f)
@@ -44,12 +44,6 @@ if __name__ == "__main__":
     cache_files = []
     predicates = {'train': [], 'test': []}
 
-    # for elem in content_split['train']:
-    #     if elem['pred_str'] not in cache_files:
-    #         cache_files.append(elem['pred_str'])
-    #     else:
-    #         continue
-    #     predicates['train'].append((elem['pred_dict'], elem['task_name'], elem['pred_str']))
 
     for elem in content_split['test']:
         # Create a has pred str
@@ -59,12 +53,10 @@ if __name__ == "__main__":
         if pred_str not in cache_files:
             cache_files.append(elem['pred_str'])
         else:
-            pdb.set_trace()
             continue
         predicates['test'].append((elem['pred_dict'], elem['task_name'], pred_str))
 
     print("Done")
-    pdb.set_trace()
 
 
     simulator_args={
@@ -73,7 +65,11 @@ if __name__ == "__main__":
                     'logging': False,
                     'no_graphics': True,
                 }
-    comm = comm_unity.UnityCommunication(port=str(args.port_number), **simulator_args)
+
+    if args.use_editor: 
+        comm = comm_unity.UnityCommunication()
+    else:
+        comm = comm_unity.UnityCommunication(port=str(args.port_number), **simulator_args)
     comm.reset()
     s, graph = comm.environment_graph()
     
@@ -81,7 +77,7 @@ if __name__ == "__main__":
     
     ## -------------------------------------------------------------
     ## step3 load object size
-    with open('data/class_name_size.json', 'r') as file:
+    with open(f'{curr_dir}/data/class_name_size.json', 'r') as file:
         class_name_size = json.load(file)
 
     ## -------------------------------------------------------------
@@ -112,19 +108,9 @@ if __name__ == "__main__":
 
 
 
-    for predicates_dict, task_name, pred_str in predicates['test']: # test
-        # json_path = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/vh_multiagent_models' + \
-        #             json_file[2:]
-        # if json_path.endswith('json'):
-        #     content = json.load(open(json_path, 'r'))
-        # else:
-        #     with open(json_path, 'rb') as f:
-        #         content = pkl.load(f)
-        #env_id = content['env_id']
-        #task_name = content['task_name']
+    for predicates_dict, task_name, pred_str in predicates['test']:
         demo_goals = predicates_dict
-        # {predicate: count for predicate, count in predicates_dict.items() if predicate.startswith('on') or predicate.startswith('inside')}
-        #print('env_id:', env_id)
+
         print('task_name:', task_name)
         print('goals:', demo_goals)
         task_goal = {}
@@ -132,12 +118,10 @@ if __name__ == "__main__":
             task_goal[i] = demo_goals
 
         goal_class = {}
-        pdb.set_trace()
-        # id2node = {node['id']: node for node in content['init_unity_graph']['nodes']}
         for predicate, count in task_goal[0].items():
             elements = predicate.split('_')
             if elements[2].isdigit():
-                pdb.set_trace()
+                ipdb.set_trace()
                 new_predicate = '{}_{}_{}'.format(elements[0], elements[1], id2node[int(elements[2])]['class_name'])
                 location_name = id2node[int(elements[2])]['class_name']
             else:
@@ -145,8 +129,6 @@ if __name__ == "__main__":
             print(new_predicate)
             goal_class[new_predicate] = count
 
-        # pdb.set_trace()
-        # if task_counts[task_name] >= args.num_per_task: continue
 
         num_test = 10
         count_success = 0
@@ -160,12 +142,9 @@ if __name__ == "__main__":
             s, original_graph = comm.environment_graph()
             graph = copy.deepcopy(original_graph)
 
-            with open('data/object_info%s.json'%(apartment+1), 'r') as file:
+            with open(f'{curr_dir}/data/object_info%s.json'%(apartment+1), 'r') as file:
                 obj_position = json.load(file)
 
-            # pdb.set_trace()bathroomcounter
-
-            # filtering out certain locations
             for obj, pos_list in obj_position.items():
                 if obj in ['book', 'remotecontrol']:
                     positions = [pos for pos in pos_list if \
@@ -191,7 +170,6 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## setup goal based on currect environment
             ## -------------------------------------------------------------
-            pdb.set_trace()
             set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_goals)
             # pdb.set_trace()
             init_graph, env_goal, success_expand = getattr(Task, task_name)(set_init_goal, graph)
@@ -235,22 +213,12 @@ if __name__ == "__main__":
                     
 
                 if success2 and success:
-                    # if apartment == 4:
-                    #     init_graph = set_init_goal.remove_obj(init_graph, [348])
-                    # elif apartment == 6:
-                    #     init_graph = set_init_goal.remove_obj(init_graph, [173])
 
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal, apartment)
 
                     if success:
                         comm.reset(apartment)
-                        # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
-                        # ith_old_plate = 0
-                        # for ith_node, node in enumerate(init_graph['nodes']):
-                        #     if node['class_name'] == 'plate':
-                        #         if ith_old_plate < len(plate_ids):
-                        #             init_graph['nodes'][ith_node] = plate_ids[ith_old_plate]
-                        #             ith_old_plate += 1
+
                         init_graph0 = copy.deepcopy(init_graph)
                         comm.expand_scene(init_graph)
                         s, init_graph = comm.environment_graph()
@@ -259,8 +227,6 @@ if __name__ == "__main__":
                             for subgoal in env_goal[task_name]:
                                 for k, v in subgoal.items():
                                     elements = k.split('_')
-                                    # print(elements)
-                                    # pdb.set_trace()
                                     if len(elements) == 4:
                                         obj_class_name = elements[1]
                                         ids = [node['id'] for node in init_graph['nodes'] if node['class_name'] == obj_class_name]
@@ -269,7 +235,6 @@ if __name__ == "__main__":
                                             print(obj_class_name, v, ids)
                                             s = 0
                                             break
-                                        #     pdb.set_trace()
 
                             count_success += s
                         if s:
@@ -277,8 +242,6 @@ if __name__ == "__main__":
 
                             for predicate, count in task_goal[0].items():
                                 elements = predicate.split('_')
-                                # pdb.set_trace()
-                                # Add ids
                                 if elements[2].isdigit():
                                     location_id = list([node['id'] for node in init_graph['nodes'] if node['class_name'] == location_name])[0]
                                     new_predicate = '{}_{}_{}'.format(elements[0], elements[1], location_id)
@@ -293,7 +256,6 @@ if __name__ == "__main__":
                                     new_predicate = '{}_{}_{}'.format(elements[0], elements[1], location_id)
                                     cur_goal_spec[new_predicate] = count
 
-                            # pdb.set_trace()
                             test_set.append({'task_id': task_id, 
                                       'task_name': task_name, 
                                       'env_id': apartment, 
@@ -306,19 +268,15 @@ if __name__ == "__main__":
                             print('task_name:', test_set[-1]['task_name'])
                             print('task_goal:', test_set[-1]['task_goal'])
                             task_id += 1
-                            # pdb.set_trace()
-
+                            
 
             print('apartment: %d: success %d over %d (total: %d)' % (apartment, count_success, i+1, num_test) )
 
             if count_success>=1:
                 task_counts[task_name] += 1
                 break
-    
-    # pdb.set_trace()
-    print(len(test_set))
-    print(task_counts)
-    pickle.dump(test_set, open('dataset/test_env_set_help_{}.pik'.format(args.num_per_task), 'wb'))
+    ipdb.set_trace()
+    pickle.dump(test_set, open(f'{curr_dir}/../dataset/test_env_set_help_{args.num_per_task}.pik', 'wb'))
 
 
 

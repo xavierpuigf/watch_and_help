@@ -58,38 +58,6 @@ if __name__ == "__main__":
                                              x_display=args.display)
     comm.reset()
 
-    # ## show images
-    # indices = [-6]
-    # _, ncameras = comm.camera_count()
-    # cameras_select = list(range(ncameras))
-    # cameras_select = [cameras_select[x] for x in indices]
-    # (ok_img, imgs) = comm.camera_image(cameras_select, mode='seg_class')
-    # import cv2
-    # cv2.imwrite('test.png', imgs[0])
-    # pdb.set_trace()
-
-    ## -------------------------------------------------------------
-    ## get object sizes
-    ## -------------------------------------------------------------
-
-    ## step1 write object size of each apartment
-    # class_name_size = {node['class_name']: node['bounding_box']['size'] for node in graph['nodes']}
-    # with open('class_name_size7.json', 'w') as file:
-    #     json.dump(class_name_size, file)
-
-    ## -------------------------------------------------------------
-    ## step2 combine object size from each apartment
-    # class_name_size = {}
-    # for i in range(7):
-    #     with open('data/class_name_size%s.json' % str(i+1), 'r') as file:
-    #         class_name_size.update(json.load(file))
-
-    # class_name = np.unique(list(class_name_size.keys()))
-    # class_name_size = {tem: class_name_size[tem] for tem in class_name}
-
-    # with open('data/class_name_size.json', 'w') as file:
-    #     json.dump(class_name_size, file)
-
     ## -------------------------------------------------------------
     ## step3 load object size
     with open(f'{curr_dir}/data/class_name_size.json', 'r') as file:
@@ -113,13 +81,6 @@ if __name__ == "__main__":
 
     success_init_graph = []
 
-    # task = args.task
-    # task = 'setup_table'
-    # task = 'put_fridge'
-    # task = 'prepare_food'
-    # task = 'put_dishwasher'
-    # task = 'read_book'
-    #apartment_ids = [0,1,2,4,5] # range(7) # TODO: maybe only want the trainign apts
     apartment_ids = [int(apt_id) for apt_id in args.apt_str.split(',')]
     if args.task == 'all':
         tasks = ['setup_table', 'put_fridge', 'prepare_food', 'put_dishwasher', 'read_book']
@@ -168,21 +129,6 @@ if __name__ == "__main__":
                 s, original_graph = comm.environment_graph()
                 graph = copy.deepcopy(original_graph)
 
-                # pdb.set_trace()
-                ## -------------------------------------------------------------
-                ## debug
-                ## -------------------------------------------------------------
-                # debug_function(comm)
-
-                ## -------------------------------------------------------------
-                ## choose tasks
-                ## -------------------------------------------------------------
-                # while True:
-                #     task_name = random.choice(task_names[apartment+1])
-                #     if task_name in ['read_book', 'watch_tv']:
-                #         continue
-                #     else:
-                #         break
                 task_name = task
 
                 print('------------------------------------------------------------------------------')
@@ -238,23 +184,11 @@ if __name__ == "__main__":
                         success2 = True
 
                     if success2 and success:
-                        # if apartment == 4:
-                        #     init_graph = set_init_goal.remove_obj(init_graph, [348])
 
-                        # elif apartment == 6:
-                        #     init_graph = set_init_goal.remove_obj(init_graph, [173])
 
                         success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal, apartment)
 
                         if success:
-                            #comm.reset(apartment)
-                            # plate_ids = [node for node in original_graph['nodes'] if node['class_name'] == 'plate']
-                            # ith_old_plate = 0
-                            # for ith_node, node in enumerate(init_graph['nodes']):
-                            #     if node['class_name'] == 'plate':
-                            #         if ith_old_plate < len(plate_ids):
-                            #             init_graph['nodes'][ith_node] = plate_ids[ith_old_plate]
-                            #             ith_old_plate += 1
                             init_graph0 = copy.deepcopy(init_graph)
                             comm.reset(apartment)
                             comm.expand_scene(init_graph, transfer_transform=False)
@@ -271,46 +205,9 @@ if __name__ == "__main__":
                                             ids = [node['id'] for node in init_graph['nodes'] if
                                                    node['class_name'] == obj_class_name]
                                             print(obj_class_name, v, ids)
-                                            # if len(ids) < v:
-                                            #     print(obj_class_name, v, ids)
-                                            #     pdb.set_trace()
+
 
                                 count_success += s
-                                # if s:
-                                # print('-------------------------------------------------------------------------------')
-                                # print('-------------------------------------------------------------------------------')
-                                # print('-------------------------------------------------------------------------------')
-                                # floorid = [tem['id'] for tem in init_graph['nodes'] if 'floor' in tem['class_name']]
-                                # print(floorid)
-                                # tem2 = [tem['to_id'] for tem in init_graph['edges'] if tem['from_id'] in floorid]
-                                # tem3 = [tem['from_id'] for tem in init_graph['edges'] if tem['to_id'] in floorid]
-                                # objects = [tem['class_name'] for tem in init_graph['nodes'] if tem['id'] in tem2+tem3]
-                                # objectonfloor = set(list(obj_position.keys())).intersection(set(objects))
-                                # print(objectonfloor)
-                                # print('-------------------------------------------------------------------------------')
-
-                                # print('-------------------------------------------------------------------------------')
-                                # print('-------------------------------------------------------------------------------')
-                                # print('-------------------------------------------------------------------------------')
-
-                                # objects = []
-                                # for node in init_graph['nodes']:
-                                #     for edge in init_graph['edges']:
-                                #         if (node['id']==edge['from_id']) or (node['id']==edge['to_id']):
-                                #             if node not in objects:
-                                #                 objects.append(node)
-
-                                # nodes = []
-                                # for node in init_graph['nodes']:
-                                #     if node not in objects:
-                                #         nodes.append(node)
-
-                                # try:
-                                #     assert len(nodes)==0
-                                # except:
-                                #     print(nodes)
-                                #     pdb.set_trace()
-
                                 check_result = set_init_goal.check_graph(init_graph, apartment + 1, original_graph)
                                 assert check_result == True
 
@@ -353,7 +250,7 @@ if __name__ == "__main__":
                                  'task_goal': task_goal,
                                  'level': 0, 'init_rooms': rand.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2)})
 
-    pickle.dump(env_task_set, open('dataset/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode), 'wb'))
+    pickle.dump(env_task_set, open(f'{curr_dir}/dataset/env_task_set_{args.num_per_apartment}_{args.mode}.pik', 'wb'))
 
 
 

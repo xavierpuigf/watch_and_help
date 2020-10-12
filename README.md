@@ -31,20 +31,28 @@ Download the simulator
 
 
 ## Dataset
-We include a dataset of environments and activities that agents have to perform in them. We use a set of 5 environments to train our models for the challenge, and 2 environments to evaluate it.
+We include a dataset of environments and activities that agents have to perform in them. During the **Watch** phase and the training of the **Help** phase, we use a dataset of 5 environments. When evaluating the **Help** phase, we use a dataset of 2 held out environments.
 
-You can find the *train* and *test* datasets used for the paper in `dataset/train_env_set_help.pik` and `dataset/test_env_set_help.pik`.
+The **Watch** phase consists of a set of episodes in 5 environments showing Alice performing the task. These episodes were generated using a planner, and they can be downloaded [here](). The training and testing splits for this phase can be found in [datasets/watch_scenes_split.json](datasets/watch_scenes_split.json). 
+
+The **Help** phase, contains a set of environments and tasks definitions. You can find the *train* and *test* datasets used in `dataset/train_env_set_help.pik` and `dataset/test_env_set_help.pik`. Note that the *train* environments are independent, whereas the *test* environments match the tasks in the **Watch** test split.
 
 
 ### Create your own dataset 
 You can also create your dataset, and modify it to incorporate new tasks. For that, run
 
 ```
-python gen_data/vh_init.py --num_per_apartment {NUM_APT} --task {TASK_NAME}
+python gen_data/vh_init.py --num-per-apartment {NUM_APT} --task {TASK_NAME}
 ```
 Where `NUM_APT` corresponds to the number of episodes you want for each apartment and task and `TASK_NAME` corresponds to the task name you want to generate, which can be `setup_table`, `clean_table`, `put_fridge`, `prepare_food`, `read_book`, `watch_tv` or `all` to generate all the tasks.
 
-You can also generate a dataset in a new environment, where the tasks match some existing dataset. We do that to make sure that the environment in the **Watch** phase is different than that in the **Help Phase** while having the same task specification. You can do that as follows:
+After creating your dataset, you can create the data for the **Watch** phase running the *Alice alone* baseline (see [Evaluate Baselines](###Evaluate Baselines)).
+
+You can then generate a dataset of tasks in a new environment where the tasks match those of the **Watch phase**. We do that in our work to make sure that the environment in the **Watch** phase is different than that in the **Help Phase** while having the same task specification. You can do that by running:
+
+
+
+It will use the tasks from the test split of the **Watch** phase to create a **Help** dataset.
 
 
 
