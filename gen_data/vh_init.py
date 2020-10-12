@@ -9,14 +9,12 @@ import numpy as np
 import copy
 import argparse
 
-
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 home_path = '../../'
-sys.path.append(home_path + '/virtualhome')
+sys.path.append(f'{curr_dir}/../../virtualhome')
 sys.path.append(f'{curr_dir}/..')
 
 from simulation.unity_simulator import comm_unity
-from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
@@ -34,7 +32,7 @@ parser.add_argument('--display', type=int, default=0, help='Task name')
 parser.add_argument('--mode', type=str, default='full', choices=['simple', 'full'], help='Task name')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--exec_file', type=str,
-                    default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64',
+                    default='../executable/linux_exec.x86_64',
                     help='Use unity editor')
 
 if __name__ == "__main__":
@@ -51,6 +49,7 @@ if __name__ == "__main__":
     if args.use_editor:
         comm = comm_unity.UnityCommunication()
     else:
+        print(comm_unity)
         comm = comm_unity.UnityCommunication(port=args.port,
                                              file_name=args.exec_file,
                                              no_graphics=True,
@@ -211,7 +210,6 @@ if __name__ == "__main__":
                                 check_result = set_init_goal.check_graph(init_graph, apartment + 1, original_graph)
                                 assert check_result == True
 
-                                ipdb.set_trace()
                                 success_init_graph.append({'id': count_success,
                                                            'apartment': (apartment + 1),
                                                            'task_name': task_name,

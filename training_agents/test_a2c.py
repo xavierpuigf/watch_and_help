@@ -34,11 +34,10 @@ stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
 
 """
 import sys
-sys.path.append('../virtualhome/')
-sys.path.append('../vh_mdp/')
-sys.path.append('../virtualhome/simulation/')
+import os
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(f'{curr_dir}/..')
 
-from envs.python_environment import PythonEnvironment
 from envs.unity_environment import UnityEnvironment
 import pdb
 import pickle

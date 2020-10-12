@@ -8,7 +8,6 @@ import json
 import multiprocessing
 import ipdb
 import pickle
-from profilehooks import profile
 
 
 from . import belief

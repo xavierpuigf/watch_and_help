@@ -8,28 +8,35 @@ import numpy as np
 import copy
 import argparse
 import pickle as pkl
+import ipdb
 
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 home_path = '../../'
-sys.path.append(home_path+'/virtualhome')
+sys.path.append(f'{curr_dir}/../../virtualhome')
 
 from simulation.unity_simulator import comm_unity as comm_unity
-from profilehooks import profile
 from init_goal_setter.init_goal_base import SetInitialGoal
 from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num-per-task', type=int, default=10, help='Maximum #episodes/task')
+parser.add_argument('--seed', type=int, default=15, help='Seed for the apartments')
+
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
 parser.add_argument('--port-number', type=int, default=8290, help='port')
+parser.add_argument('--logging', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--display', type=str, default='2', help='display')
-parser.add_argument('--exec_file', type=str, default='', help='Use unity editor')
+parser.add_argument('--exec_file', type=str, default='../executable/linux_exec_v2.x86_64', help='Path to the executable')
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    if args.seed == 0:
+        rand = random.Random()
+    else:
+        rand = random.Random(args.seed)
 
     with open(f'{curr_dir}/data/init_pool.json') as file:
         init_pool = json.load(file)
@@ -61,7 +68,7 @@ if __name__ == "__main__":
     simulator_args={
                    'file_name': args.exec_file,
                     'x_display': 0,
-                    'logging': False,
+                    'logging': args.logging,
                     'no_graphics': True,
                 }
 
@@ -136,7 +143,7 @@ if __name__ == "__main__":
             # Select apartments that allow the task
             apt_list = [capt for capt in apartment_list if task_name in task_names[capt+1]]
             assert(len(apt_list) > 0)
-            apartment = random.choice(apt_list)
+            apartment = rand.choice(apt_list)
             comm.reset(apartment)
             s, original_graph = comm.environment_graph()
             graph = copy.deepcopy(original_graph)
@@ -169,7 +176,7 @@ if __name__ == "__main__":
             ## -------------------------------------------------------------
             ## setup goal based on currect environment
             ## -------------------------------------------------------------
-            set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_goals)
+            set_init_goal = SetInitialGoal(obj_position, class_name_size, init_pool, task_name, same_room=False, goal_template=demo_goals, rand=rand)
             # pdb.set_trace()
             init_graph, env_goal, success_expand = getattr(Task, task_name)(set_init_goal, graph)
 
@@ -180,7 +187,6 @@ if __name__ == "__main__":
                 print('----------------------------------------------------------------------')
                 print(task_name, success, message, set_init_goal.num_other_obj)
                 # print(env_goal)
-
                 if not success:
                     goal_objs = []
                     goal_names = []
@@ -204,13 +210,12 @@ if __name__ == "__main__":
                         success2 = False
                     else:
                         init_graph = set_init_goal.remove_obj(init_graph, obj_ids)
-                        success2, message2 = comm.expand_scene(init_graph)
+                        success2, message2 = comm.expand_scene(init_graph, transfer_transform=False)
                         success = True
                 
                 else:
                     success2 = True
-                    
-
+                
                 if success2 and success:
 
                     success = set_init_goal.check_goal_achievable(init_graph, comm, env_goal, apartment)
@@ -219,7 +224,9 @@ if __name__ == "__main__":
                         comm.reset(apartment)
 
                         init_graph0 = copy.deepcopy(init_graph)
-                        comm.expand_scene(init_graph)
+                        s, m = comm.expand_scene(init_graph, transfer_transform=False)
+                        if not s:
+                            ipdb.set_trace()
                         s, init_graph = comm.environment_graph()
                         print('final s:', s)
                         if s:
@@ -232,10 +239,13 @@ if __name__ == "__main__":
                                         print(obj_class_name, v, ids)
                                         if len(ids) < v:
                                             print(obj_class_name, v, ids)
+
+                                            ipdb.set_trace()
                                             s = 0
                                             break
 
                             count_success += s
+
                         if s:
                             cur_goal_spec = {}
 
@@ -262,7 +272,7 @@ if __name__ == "__main__":
                                       'task_goal': {0: cur_goal_spec, 1: cur_goal_spec},
                                       'goal_class': goal_class,
                                       'level': 1, 
-                                      'init_rooms': random.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2),
+                                      'init_rooms': rand.sample(['kitchen', 'bedroom', 'livingroom', 'bathroom'], 2),
                                       'pred_str': pred_str})
                             print('task_name:', test_set[-1]['task_name'])
                             print('task_goal:', test_set[-1]['task_goal'])

@@ -16,17 +16,28 @@ Clone the VirtualHome API repository one folder above this repository
 ```bash
 cd ..
 git clone https://github.com/xavierpuigf/virtualhome.git
+cd virtualhome
+pip install -r requirements.txt
 ```
 
-Download the simulator
+Download the simulator, and put it in an `executable` folder
+
 
 - [Download](http://virtual-home.org/release/simulator/linux_sim.zip) Linux x86-64 version.
 - [Download](http://virtual-home.org/release/simulator/mac_sim.zip) Mac OS X version.
 - [Download](http://virtual-home.org/release/simulator/windows_sim.zip) Windows version.
 
+```bash
+cd ..
+mkdir executable
+wget {simulator_file}
+```
+
 ### Install Requirements
-
-
+```bash
+cd 
+pip install -r requirements.txt
+```
 
 
 
@@ -41,7 +52,7 @@ The **Help** phase, contains a set of environments and tasks definitions. You ca
 ### Create your own dataset 
 You can also create your dataset, and modify it to incorporate new tasks. For that, run
 
-```
+```bash
 python gen_data/vh_init.py --num-per-apartment {NUM_APT} --task {TASK_NAME}
 ```
 Where `NUM_APT` corresponds to the number of episodes you want for each apartment and task and `TASK_NAME` corresponds to the task name you want to generate, which can be `setup_table`, `clean_table`, `put_fridge`, `prepare_food`, `read_book`, `watch_tv` or `all` to generate all the tasks.
@@ -50,7 +61,7 @@ After creating your dataset, you can create the data for the **Watch** phase run
 
 You can then generate a dataset of tasks in a new environment where the tasks match those of the **Watch phase**. We do that in our work to make sure that the environment in the **Watch** phase is different than that in the **Help Phase** while having the same task specification. You can do that by running:
 
-```
+```bash
 python gen_data/vh_init_gen_test.py
 ```
 

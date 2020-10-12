@@ -6,9 +6,6 @@ import itertools
 import os
 import sys
 
-from gym import error, spaces, utils
-from gym.utils import seeding
-
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{curr_dir}/../../virtualhome/simulation/')
 
@@ -17,7 +14,6 @@ from evolving_graph.execution import ScriptExecutor, ExecutionInfo
 from evolving_graph.scripts import read_script_from_string
 
 from evolving_graph.environment import EnvironmentGraph, EnvironmentState
-from profilehooks import profile
 
 
 class VhGraphEnv():
@@ -91,10 +87,8 @@ class VhGraphEnv():
     def __init__(self, n_chars=1, max_nodes=200):
         self.graph_helper = graph_dict_helper()
         self.n_chars = n_chars
-        self.action_space_n = [spaces.Discrete(len(self.actions)) for i in range(self.n_chars)] # TODO: not sure what this is for
         self.name_equivalence = load_name_equivalence()
         
-        self.seed()
         self.state = None
         self.observable_state_n = [None for i in range(self.n_chars)]
         self.character_n = [None for i in range(self.n_chars)]
@@ -120,9 +114,6 @@ class VhGraphEnv():
         self.pomdp = False
         self.observable_object_ids = [None for i in range(self.n_chars)]
 
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def _remove_house_obj(self, state):
         delete_ids = [x['id'] for x in state['nodes'] if x['class_name'].lower() in self.house_obj]

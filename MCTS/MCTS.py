@@ -3,7 +3,6 @@ import numpy as np
 from anytree import AnyNode as Node
 import copy
 import ipdb
-from profilehooks import profile
 from tqdm import tqdm
 
 class MCTS:

@@ -13,7 +13,6 @@ home_path = '../../'
 sys.path.append(home_path + '/virtualhome')
 
 from simulation.unity_simulator import comm_unity
-from profilehooks import profile
 
 
 class SetInitialGoal:
