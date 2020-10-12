@@ -21,13 +21,12 @@ from init_goal_setter.tasks import Task
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num-per-task', type=int, default=10, help='Maximum #episodes/task')
-parser.add_argument('--num-per-apartment', type=int, default=10, help='Maximum #episodes/apartment')
 parser.add_argument('--task', type=str, default='setup_table', help='Task name')
 parser.add_argument('--demo-id', type=int, default=0, help='demo index')
 parser.add_argument('--port-number', type=int, default=8290, help='port')
 parser.add_argument('--use-editor', action='store_true', default=False, help='Use unity editor')
 parser.add_argument('--display', type=str, default='2', help='display')
-parser.add_argument('--exec_file', type=str, default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64', help='Use unity editor')
+parser.add_argument('--exec_file', type=str, default='', help='Use unity editor')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -276,7 +275,7 @@ if __name__ == "__main__":
                 task_counts[task_name] += 1
                 break
     ipdb.set_trace()
-    pickle.dump(test_set, open(f'{curr_dir}/../dataset/test_env_set_help_{args.num_per_task}.pik', 'wb'))
+    pickle.dump(test_set, open(f'{curr_dir}/../dataset/test_env_set_help.pik', 'wb'))
 
 
 
