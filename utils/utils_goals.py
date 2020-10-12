@@ -1,4 +1,7 @@
 def convert_goal_spec(task_name, goal, state, exclude=[]):
+    """
+    Convert the task goal into a format interpreted by the planner and model
+    """
     goals = {}
     containers = [[node['id'], node['class_name']] for node in state['nodes'] if
                   node['class_name'] in ['kitchencabinets', 'kitchencounterdrawer', 'kitchencounter']]
@@ -19,11 +22,6 @@ def convert_goal_spec(task_name, goal, state, exclude=[]):
             predicate = 'offOn'
             predicate = 'offOn_{}_{}'.format(elements[1], elements[3])
             goals[predicate] = count
-            # for edge in state['edges']:
-            #     if edge['relation_type'] == 'ON' and edge['to_id'] == int(elements[3]) and id2node[edge['from_id']]['class_name'] == elements[1]:
-            #         container = random.choice(containers)
-            #         predicate = '{}_{}_{}'.format('on' if container[1] == 'kitchencounter' else 'inside', edge['from_id'], container[0])
-            #         goals[predicate] = 1
         elif task_name == 'unload_dishwahser':
             predicate = 'offInside'
             predicate = 'offOn_{}_{}'.format(elements[1], elements[3])
