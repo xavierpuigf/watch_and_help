@@ -1,5 +1,4 @@
 import torch
-from gym import spaces, envs
 from dgl import DGLGraph
 import numpy as np
 import os
@@ -346,8 +345,6 @@ def can_perform_action(action, o1, o1_id, agent_id, graph, graph_helper=None, te
     if o1_id == agent_id:
         return None
 
-    if o1_id == agent_id:
-        return None
 
     if (action in ['grab', 'open', 'close']) and not close_edge:
         return None
@@ -397,7 +394,7 @@ def can_perform_action(action, o1, o1_id, agent_id, graph, graph_helper=None, te
                 action = 'putback'
 
     if action.startswith('walk') and teleport:
-        action = 'walkto'
+        action = 'walk'
 
     action_str = f'[{action}] {obj2_str} {obj1_str}'.strip()
     # print(action_str)
@@ -419,12 +416,12 @@ def args_per_action(action):
     'walk': 1}
     return action_dict[action]
 
-class GraphSpace(spaces.Space):
-    def __init__(self):
-        self.shape = None
-        self.dtype = "graph"
+# class GraphSpace(spaces.Space):
+#     def __init__(self):
+#         self.shape = None
+#         self.dtype = "graph"
 
-        pass
+#         pass
 
 def update_probs(log_probs, i, actions, object_classes, mask_observations, obj1_affordance):
     """

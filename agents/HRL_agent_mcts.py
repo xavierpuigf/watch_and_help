@@ -21,7 +21,6 @@ import json
 import multiprocessing
 import ipdb
 import pickle
-from profilehooks import profile
 
 #
 from MCTS import *
@@ -420,7 +419,7 @@ class HRL_agent:
 
     def reset(self, observed_graph, gt_graph, task_goal={}, seed=0):
         self.action_count = 0
-        self.belief = Belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
+        self.belief = belief.Belief(gt_graph, agent_id=self.agent_id, seed=seed)
         self.belief.sample_from_belief()
         graph_belief = self.sample_belief(observed_graph)  # self.env.get_observations(char_index=self.char_index))
         self.sim_env.reset(graph_belief, task_goal)
@@ -434,7 +433,7 @@ class HRL_agent:
         pass
 
     def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None, full_graph=None):
-        full_graph = None
+        # ipdb.set_trace()
         if full_graph is not None:
             observation_belief = self.sample_belief(full_graph)
         else:
@@ -494,7 +493,10 @@ class HRL_agent:
 
         inputs_tensor = {}
         for input_name, inp in inputs.items():
-            inp_tensor = torch.tensor(inp).unsqueeze(0)
+            if type(inp) is int:
+                inp_tensor = torch.tensor(inp).unsqueeze(0)
+            else:
+                inp_tensor = torch.tensor(inp.copy()).unsqueeze(0)
             if inp_tensor.type() == 'torch.DoubleTensor':
                 inp_tensor = inp_tensor.float()
             inputs_tensor[input_name] = inp_tensor
@@ -531,17 +533,19 @@ class HRL_agent:
         info_model['obs'] = observation['nodes']
 
         action_str, action_tried, plan, predicate = self.get_action_instr(next_action, visible_objects, observation_belief)
+        # print("HRL plan ", action_str, action_tried, predicate)
         if "put" in predicate:
             p_spl = predicate.split('_')
             obj_pred = p_spl[1]
             container_pred = p_spl[2]
             # Check if the predicate corresponds to the goal
-
+            # This is to facilitate traiing
             if obj_pred not in obj_pred_names or container_pred not in loc_pred_names and self.mode == 'train':
+                # ipdb.set_trace()
                 info_model['bad_predicate'] = True
                 action_str = None
-                # print(predicate, loc_pred_names, obj_pred_names)
-
+                action_tried += ' (offgoal)'
+                
         if action_str is not None:
             # print('{} --> {}'.format(action_tried, action_str))
 
@@ -583,6 +587,7 @@ class HRL_agent:
             container_name = self.objects2[action[1].item()]
             container_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects2[action[1].item()]]
             if len(container_id) == 0:
+                # this should only happen in one of the scenes
                 return None, 'put_{}_{}'.format(obj_name, container_name), [], 'put_{}_{}'.format(obj_name, container_name)
             obj_rel_container = [edge['from_id'] for edge in current_graph['edges'] if edge['to_id'] == container_id[0]
                                  and edge['relation_type'] in ['ON', 'INSIDE']]
@@ -591,7 +596,6 @@ class HRL_agent:
             object_id = [node['id'] for node in current_graph['nodes'] if node['class_name'] == self.objects1[action[0].item()] and
                          node['id'] not in obj_rel_container]
             if len(object_id) == 0:
-
                 return None, 'put_{}_{}'.format(obj_name, container_name), [], 'put_{}_{}'.format(obj_name, container_name)
 
 

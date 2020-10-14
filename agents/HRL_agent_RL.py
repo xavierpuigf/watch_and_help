@@ -21,7 +21,6 @@ import multiprocessing
 import ipdb
 import pickle
 from pathlib import Path
-from profilehooks import profile
 
 #
 from MCTS import *
@@ -449,7 +448,7 @@ class HRL_agent_RL:
     def get_action(self, observation, goal_spec, action_space_ids=None, action_indices=None, full_graph=None):
 
         # ipdb.set_trace()
-
+        print("GETTING ACTION")
         full_graph = None
         if full_graph is not None:
             observation_belief = self.sample_belief(full_graph)

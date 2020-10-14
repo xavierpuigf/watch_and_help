@@ -1,8 +1,9 @@
-import pdb
+import ipdb
 import copy
 import random
 
 def inside_not_trans(graph):
+    #print([{'from_id': 425, 'to_id': 396, 'relation_type': 'ON'}, {'from_id': 425, 'to_id': 396, 'relation_type': 'INSIDE'}])
     id2node = {node['id']: node for node in graph['nodes']}
     parents = {}
     grabbed_objs = []
@@ -13,6 +14,7 @@ def inside_not_trans(graph):
                 parents[edge['from_id']] = [edge['to_id']]
             else:
                 parents[edge['from_id']] += [edge['to_id']]
+
         elif edge['relation_type'].startswith('HOLDS'):
             grabbed_objs.append(edge['to_id'])
 
@@ -52,16 +54,18 @@ def inside_not_trans(graph):
                 elif edge['to_id'] == char_id and edge['from_id'] not in char_close[char_id]:
                     char_close[char_id].append(edge['from_id'])
     ## Check that each node has at most one parent
+    objects_to_check = []
     for edge in graph['edges']:
         if edge['relation_type'] == 'INSIDE':
             if edge['from_id'] in parent_for_node and not id2node[edge['from_id']]['class_name'].startswith('closet'):
                 print('{} has > 1 parent'.format(edge['from_id']))
-                pdb.set_trace()
+                ipdb.set_trace()
                 raise Exception
             parent_for_node[edge['from_id']] = edge['to_id']
             # add close edge between objects in a container and the character
-            if id2node[edge['to_id']]['class_name'] in ['fridge', 'kitchencabinets', 'cabinet', 'microwave',
+            if id2node[edge['to_id']]['class_name'] in ['fridge', 'kitchencabinet', 'cabinet', 'microwave',
                                                         'dishwasher', 'stove']:
+                objects_to_check.append(edge['from_id'])
                 for char_id in range(1, 3):
                     if edge['to_id'] in char_close[char_id] and edge['from_id'] not in char_close[char_id]:
                         graph['edges'].append({
@@ -79,12 +83,12 @@ def inside_not_trans(graph):
     nodes_not_rooms = [node['id'] for node in graph['nodes'] if node['category'] not in ['Rooms', 'Doors']]
     nodes_without_parent = list(set(nodes_not_rooms) - set(parent_for_node.keys()))
     nodes_without_parent = [node for node in nodes_without_parent if node not in grabbed_objs]
+    graph['edges'] = [edge for edge in graph['edges'] if not (edge['from_id'] in objects_to_check and edge['relation_type'] == 'ON')]
     if len(nodes_without_parent) > 0:
         for nd in nodes_without_parent:
             print(id2node[nd])
-        pdb.set_trace()
+        ipdb.set_trace()
         raise Exception
-
     return graph
 
 
@@ -109,7 +113,7 @@ def convert_action(action_dict):
         script_list = [x + '|' + y if len(x) > 0 else y for x, y in zip(script_list, current_script)]
 
     # if self.follow:
-    script_list = [x.replace('[walk]', '[walktowards]') for x in script_list]
+    #script_list = [x.replace('[walk]', '[walktowards]') for x in script_list]
     # script_all = script_list
     return script_list
 

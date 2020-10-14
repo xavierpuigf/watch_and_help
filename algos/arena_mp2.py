@@ -51,7 +51,8 @@ class ArenaMP(object):
                 agent.epsilon = epsilon
                 agent.actor_critic.load_state_dict(weights)
 
-    def get_actions(self, obs, action_space=None):
+    def get_actions(self, obs, action_space=None, true_graph=False):
+        # ipdb.set_trace()
         dict_actions, dict_info = {}, {}
         op_subgoal = {0: None, 1: None}
         # pdb.set_trace()
@@ -72,24 +73,27 @@ class ArenaMP(object):
                 
             elif 'RL' in agent.agent_type:
                 if 'MCTS' in agent.agent_type or 'Random' in agent.agent_type:
+                    if true_graph:
+                        full_graph = self.env.get_graph()
+                    else:
+                        full_graph = None
                     dict_actions[it], dict_info[it] = agent.get_action(obs[it], goal_spec,
-                                                                       action_space_ids=action_space[it], full_graph=self.env.get_graph())
+                                                                       action_space_ids=action_space[it], full_graph=full_graph)
 
                 else:
+                    # RL_RL agemt
                     dict_actions[it], dict_info[it] = agent.get_action(obs[it], self.task_goal, action_space_ids=action_space[it])
-
         return dict_actions, dict_info
 
     def reset_env(self):
         self.env.close()
         self.env = self.env_fn(self.arena_id)
 
-    def rollout_reset(self, logging=False, record=False, episode_id=None, is_train=True):
-        try:
-            res = self.rollout(logging, record, episode_id=episode_id, is_train=is_train)
+    def rollout_reset(self, logging=False, record=False, episode_id=None, is_train=True, goals=None):
+        if True:
+            res = self.rollout(logging, record, episode_id=episode_id, is_train=is_train, goals=goals)
             return res
-        except:
-            print("Resetting...")
+        else:
             self.env.close()
             self.env = self.env_fn(self.arena_id)
 
@@ -104,15 +108,15 @@ class ArenaMP(object):
                 self.agents.append(agent_type_fn(self.arena_id, self.env))
 
             self.set_weigths(prev_eps, prev_weights)
-            return self.rollout(logging, record, episode_id=episode_id, is_train=is_train)
+            return self.rollout(logging, record, episode_id=episode_id, is_train=is_train, goals=goals)
 
     def rollout(self, logging=0, record=False, episode_id=None, is_train=True, goals=None):
         t1 = time.time()
-        # pdb.set_trace()
         if episode_id is not None:
             self.reset(episode_id)
         else:
             self.reset()
+
         t2 = time.time()
         t_reset = t2 - t1
         c_r_all = [0] * self.num_agents
@@ -179,11 +183,19 @@ class ArenaMP(object):
         curr_num_steps = 0
         prev_reward = 0
         init_step_agent_info = {}
+        local_rollout_actions = []
         if not is_train:
             pbar = tqdm(total=self.max_episode_length)
         while not done and nb_steps < self.max_episode_length and agent_steps < self.max_number_steps:
-            (obs, reward, done, env_info), agent_actions, agent_info = self.step()
+            (obs, reward, done, env_info), agent_actions, agent_info = self.step(true_graph=is_train)
+            step_failed = env_info['failed_exec']
+            if step_failed:
+                print("FAILING in task")
+                print(agent_actions)
+                print(local_rollout_actions)
+                print('----')
             # print(agent_actions[agent_id], reward)
+            local_rollout_actions.append(agent_actions[0])
             if not is_train:
                 pbar.update(1)
             if logging:
@@ -317,13 +329,16 @@ class ArenaMP(object):
         return c_r_all, info_rollout, rollout_agent
 
 
-    def step(self):
+    def step(self, true_graph=False):
+
+        if self.env.steps == 0:
+            pass
+            #self.env.changed_graph = True
         obs = self.env.get_observations()
         action_space = self.env.get_action_space()
-
-        dict_actions, dict_info = self.get_actions(obs, action_space)
+        dict_actions, dict_info = self.get_actions(obs, action_space, true_graph=true_graph)
         try:
-            print(dict_actions)
+            
             step_info = self.env.step(dict_actions)
         except:
             print("Time out for action: ", dict_actions)

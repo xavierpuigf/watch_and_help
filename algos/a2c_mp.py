@@ -108,7 +108,6 @@ class A2C:
 
         # Reset hidden state of agents
         # TODO: uncomment
-
         if self.args.num_processes == 1:
             info_envs = [self.arenas[0].rollout(logging_value, record, episode_id=episode_id, is_train=train, goals=goals)]
         else:
@@ -150,7 +149,7 @@ class A2C:
         # ipdb.set_trace()
         # ipdb.set_trace()
         self.actor_critic.load_state_dict(model.state_dict())
-        if self.actor_critic_low_level is not None and model_path_lowlevelis not None:
+        if self.actor_critic_low_level is not None and model_path_lowlevel is not None:
             
             torch.nn.Module.dump_patches = True
             model_low_level = torch.load(model_path_lowlevel)
@@ -182,7 +181,9 @@ class A2C:
         total_num_steps = 0
         info_ep = []
         for episode_id in range(start_episode_id, self.args.nb_episodes):
-            eps = utils_models.get_epsilon(self.args.init_epsilon, self.args.final_epsilon, self.args.max_exp_episodes,
+            eps = utils_models.get_epsilon(self.args.init_epsilon, 
+                                           self.args.final_epsilon,
+                                           self.args.max_exp_episodes,
                                            episode_id)
 
             # eps = 0.
@@ -236,7 +237,7 @@ class A2C:
 
             if episode_id % self.args.log_interval == 0:
 
-
+                print(info_rollout_ep['goals'])
                 # Auxiliary task
                 if 'pred_close' in info_rollout[0].keys() and \
                         len(info_rollout[0]['pred_close']) > 0:
@@ -248,8 +249,8 @@ class A2C:
                     mask_nodes = torch.cat(info_rollout[0]['mask_nodes'], 0)
 
                 if episode_id % self.args.long_log == 0:
-                    print("Target:")
-                    print(info_rollout[0]['target'][1])
+                    # print("Target:")
+                    # print(info_rollout[0]['target'][1])
                     script_done = info_rollout[0]['script']
                     script_tried = info_rollout[0]['action_tried']
                     for iti, (script_t, script_d) in enumerate(zip(script_tried, script_done)):

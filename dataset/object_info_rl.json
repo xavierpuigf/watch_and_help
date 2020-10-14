@@ -1,7 +1,7 @@
 
 {
     "objects_inside": [
-      "toilet", "bathroom_cabinet", "kitchencabinets",
+      "toilet", "bathroom_cabinet", "kitchencabinet",
       "bathroom_counter", "kitchencounterdrawer", "cabinet", "fridge", "oven", "dishwasher", "microwave"],
     "objects_surface": ["bathroomcabinet",
                          "bathroomcounter",
@@ -16,7 +16,7 @@
                          "desk",
                          "floor",
                          "fryingpan",
-                         "kitchencabinets",
+                         "kitchencabinet",
                          "kitchencounter",
                          "kitchentable",
                          "mousemat",

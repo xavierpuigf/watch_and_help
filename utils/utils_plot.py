@@ -2,7 +2,7 @@ import json
 import os
 
 import pdb
-import plotly.graph_objects as go
+import plotly.graph_objs as go
 
 import plotly.io
 import matplotlib.pyplot as plt
@@ -320,7 +320,7 @@ class Episode:
             obj_grabbed.append(grabbed_str)
 
             # TODO: uncomment this for potting better
-            # save_graph_2d('{}/plots/plot_{}_{}.png'.format(exp_name, episode, step), self.info['graph'][step], visible_ids, action_ids, goal_ids)
+            save_graph_2d('{}/plots/plot_{}_{}.png'.format(exp_name, episode, step), self.info['graph'][step], visible_ids, action_ids, goal_ids)
 
         col_info = [self.info['script_tried'], self.info['script_done'], obj_close, obj_grabbed]
 
@@ -351,7 +351,7 @@ class Plotter:
         self.experiment_name = experiment_name
         if root_dir is None:
             self.root_path = '/data/vision/torralba/frames/data_acquisition/' \
-                             'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch'
+                             'SyntheticStories/MultiAgent/challenge/vh_multiagent_models/record_scratch/release/'
         else:
             self.root_path = root_dir
         self.dir_name = '{}/plots/{}'.format(self.root_path, self.experiment_name)

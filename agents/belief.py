@@ -18,7 +18,7 @@ class Belief():
 
         # Possible beliefs for some objects
         self.container_restrictions = {
-            'book': ['cabinet', 'kitchencabinets']
+                'book': ['cabinet', 'kitchencabinet']
         }
 
         self.id_restrictions_inside = {
@@ -63,7 +63,7 @@ class Belief():
         self.prohibit_ids = [node['id'] for node in graph_gt['nodes'] if node['class_name'].lower() in self.class_nodes_delete or 
                              node['category'] in self.categories_delete]
         new_graph = {
-            'nodes': [node for node in graph_gt['nodes'] if node['id'] not in self.prohibit_ids],
+            'nodes': [copy.deepcopy(node) for node in graph_gt['nodes'] if node['id'] not in self.prohibit_ids],
             'edges': [edge for edge in graph_gt['edges'] if edge['to_id'] not in self.prohibit_ids and edge['from_id'] not in self.prohibit_ids]
         }
         self.graph_init = graph_gt
@@ -147,7 +147,7 @@ class Belief():
         # TODO: ths class should simply have a surface property
         container_classes = [
         'bathroomcabinet',
-        'kitchencabinets',
+        'kitchencabinet',
         'cabinet',
         'fridge',
         'stove',
@@ -498,16 +498,17 @@ class Belief():
                 inside_obj = inside[id_node]
                 
                 # Some objects have the relationship inside but they are not part of the belief because
-                # they are visible anyways like bookshelf
-                if inside_obj != visible_room and inside_obj not in self.container_index_belief_dict:
+                # they are visible anyways like bookshelf. In that case we consider them to just be
+                # inside the room
+                if inside_obj not in self.room_ids and inside_obj not in self.container_index_belief_dict:
                     inside_obj = inside[inside_obj]
-
+                
                 # If object is inside a room, for sure it is not insde another object
-                if inside_obj == visible_room:
+                if inside_obj in self.room_ids:
                     self.edge_belief[id_node]['INSIDE'][1][:] = self.low_prob
                     self.edge_belief[id_node]['INSIDE'][1][0] = 1.
                     self.room_node[id_node][1][:] = self.low_prob
-                    self.room_node[id_node][1][self.room_index_belief_dict[visible_room]] = 1.
+                    self.room_node[id_node][1][self.room_index_belief_dict[inside_obj]] = 1.
                 else:
                     # If object is inside an object, for sure it is not insde another object
                     index_inside = self.container_index_belief_dict[inside_obj]

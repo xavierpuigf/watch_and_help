@@ -1,4 +1,11 @@
 """
+CUDA_VISIBLE_DEVICES=0 python training_agents/test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
+--max-episode-length 250 --batch_size 32 --obs_type partial --gamma 0.95 \
+--lr 1e-4 --nb_episodes 100000 --save-interval 200 --simulator-type unity \
+--base_net TF --log-interval 1 --long-log 50 --logging --base-port 8681 \
+--num-processes 5 --teleport --executable_file ../../executable/linux_exec_v2.x86_64 \
+--agent_type hrl_mcts --num_steps_mcts 24
+
 
 NO TELEPORT
 CUDA_VISIBLE_DEVICES=0 python test_a2c.py --num-per-apartment 3 --max-num-edges 10 \
@@ -60,11 +67,11 @@ if __name__ == '__main__':
 
     args.mode = 'full'
     num_agents = 1
-    #args.dataset_path = 'initial_environments/data/init_envs/env_task_set_{}_{}.pik'.format(args.num_per_apartment, args.mode)
-    args.dataset_path = '../data_challenge/train_env_set_help_50_neurips.pik'
+    args.dataset_path = 'dataset/train_env_set_help.pik'
 
-    print(args.dataset_path)
     data = pickle.load(open(args.dataset_path, 'rb'))
+    
+    
     executable_args = {
             'file_name': args.executable_file,
             'x_display': 0,
@@ -82,7 +89,8 @@ if __name__ == '__main__':
         g['nodes'] = [node for node in g['nodes'] if node['id'] not in cloth_ids]
         g['edges'] = [edge for edge in g['edges'] if edge['from_id'] not in cloth_ids and edge['to_id'] not in cloth_ids]
 
-
+    
+    #env_task_set = [env_task_set[220]]
     if args.debug:
         # # debug 1: 1 predicate, 1 room
         # env_task_set = env_task_set[0]
@@ -152,7 +160,9 @@ if __name__ == '__main__':
 
     def env_fn(env_id):
         if args.simulator_type == 'unity':
-            return UnityEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
+
+            return UnityEnvironment(num_agents=num_agents, 
+                                    max_episode_length=args.max_episode_length,
                                     port_id=env_id,
                                     env_task_set=env_task_set,
                                     agent_goals=agent_goals,
@@ -160,7 +170,7 @@ if __name__ == '__main__':
                                     use_editor=args.use_editor,
                                     executable_args=executable_args,
                                     base_port=args.base_port,
-                                    seed=None)
+                                    seed=env_id)
         else:
             return PythonEnvironment(num_agents=num_agents, max_episode_length=args.max_episode_length,
                                     env_task_set=env_task_set,

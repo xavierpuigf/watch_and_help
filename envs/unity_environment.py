@@ -45,7 +45,7 @@ class UnityEnvironment(BaseUnityEnvironment):
             use_editor=use_editor,
             base_port=base_port,
             port_id=port_id,
-            executable_args={},
+            executable_args=executable_args,
             recording_options=recording_options,
             seed=seed
             )
@@ -87,7 +87,7 @@ class UnityEnvironment(BaseUnityEnvironment):
             # print('GOAL', candidates, object_grab)
             return {'holds_'+object_grab+'_'+'1': [1, True, 10], 'close_'+object_grab+'_'+'1': [1, False, 0.1]}
         elif agent_goal == 'put':
-            pred = self.rand.choice([x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']])
+            pred = self.rnd.choice([x for x, y in task_spec.items() if y > 0 and x.split('_')[0] in ['on', 'inside']])
             object_grab = pred.split('_')[1]
             return {
                 pred: [1, True, 60],
@@ -104,11 +104,10 @@ class UnityEnvironment(BaseUnityEnvironment):
         # ipdb.set_trace()
         if task_id is None:
             task_id = self.rnd.choice(list(range(len(self.env_task_set))))
-        print('TaskId: {}'.format(task_id))
         env_task = self.env_task_set[task_id]
 
         self.task_id = env_task['task_id']
-        self.init_graph = env_task['init_graph']
+        self.init_graph = copy.deepcopy(env_task['init_graph'])
         self.init_rooms = env_task['init_rooms']
         self.task_goal = env_task['task_goal']
 
@@ -116,7 +115,7 @@ class UnityEnvironment(BaseUnityEnvironment):
 
         old_env_id = self.env_id
         self.env_id = env_task['env_id']
-        print("Resetting", self.env_id, self.task_id)
+        print("Resetting... Envid: {}. Taskid: {}. Index: {}".format(self.env_id, self.task_id, task_id))
 
         # TODO: in the future we may want different goals
         self.goal_spec = {agent_id: self.get_goal(self.task_goal[agent_id], self.agent_goals[agent_id])
@@ -147,7 +146,7 @@ class UnityEnvironment(BaseUnityEnvironment):
             updated_graph = utils.separate_new_ids_graph(updated_graph, max_id)
             success, m = self.comm.expand_scene(updated_graph)
         else:
-            updated_graph = env_task['init_graph']
+            updated_graph = self.init_graph
             s, g = self.comm.environment_graph()
             updated_graph = utils.separate_new_ids_graph(updated_graph, max_id)
             success, m = self.comm.expand_scene(updated_graph)
@@ -158,6 +157,7 @@ class UnityEnvironment(BaseUnityEnvironment):
             print("Error expanding scene")
             ipdb.set_trace()
             return None
+            
         
         self.offset_cameras = self.comm.camera_count()[1]
         if self.init_rooms[0] not in ['kitchen', 'bedroom', 'livingroom', 'bathroom']:
@@ -184,14 +184,57 @@ class UnityEnvironment(BaseUnityEnvironment):
         self.prev_reward = 0.
         return obs
 
+    def step(self, action_dict):
+        script_list = utils.convert_action(action_dict)
+        failed_execution = False
+        if len(script_list[0]) > 0:
+            if self.recording_options['recording']:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=True,
+                                                           gen_vid=False,
+                                                           skip_animation=False,
+                                                           camera_mode=self.recording_options['cameras'],
+                                                           file_name_prefix='task_{}'.format(self.task_id),
+                                                           image_synthesis=self.recording_optios['modality'])
+            else:
+                success, message = self.comm.render_script(script_list,
+                                                           recording=False,
+                                                           image_synthesis=[],
+                                                           gen_vid=False,
+                                                           skip_animation=True)
+            if not success:
+                print("NO SUCCESS")
+                print(message, script_list)
+                failed_execution = True
+            else:
+                self.changed_graph = True
+
+        # Obtain reward
+        reward, done, info = self.reward()
+
+        graph = self.get_graph()
+        self.steps += 1
+        
+        obs = self.get_observations()
+        
+
+        info['finished'] = done
+        info['graph'] = graph
+        info['failed_exec'] = failed_execution
+        if self.steps == self.max_episode_length:
+            done = True
+        return obs, reward, done, info
+
 
     def get_observation(self, agent_id, obs_type, info={}):
         if obs_type == 'partial':
             # agent 0 has id (0 + 1)
             curr_graph = self.get_graph()
             curr_graph = utils.inside_not_trans(curr_graph)
+            #ipdb.set_trace()
             self.full_graph = curr_graph
-            return utils_env.get_visible_nodes(curr_graph, agent_id=(agent_id+1))
+            obs = utils_env.get_visible_nodes(curr_graph, agent_id=(agent_id+1))
+            return obs
 
         elif obs_type == 'full':
             return self.get_graph()
