@@ -387,7 +387,7 @@ class HRL_agent_RL:
         self.actor_critic_low_level_put = actor_critic.ActorCritic(self.action_space_lowlevel, base_name=args.base_net,
                                                                    base_kwargs=base_kwargs, seed=seed)
 
-        self.actor_critic.base.main.main.bad_transformer = True
+        self.actor_critic.base.main.main.bad_transformer = False
 
         self.id2node = None
         self.hidden_state = self.init_hidden_state()
