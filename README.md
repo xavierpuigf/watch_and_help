@@ -79,7 +79,34 @@ We provide planning and learning-based agents for the Helping stage. The agents 
 
 ### Train baselines
 
+#### Hybrid Baseline
+We train the hybrid baseline in 2 stages. One where we allow the agent to teleport to a location and one where the agent has to walk to the location. You can train the hybrid baseline as follows.
 
+``` bash
+# First stage
+python training_agents/train_a2c.py \
+--max-num-edges 10 --max-episode-length 250 \
+--batch_size 32 --obs_type partial --gamma 0.95 \
+--lr 1e-4 --nb_episodes 100000 --save-interval 200
+--simulator-type unity --base_net TF --log-interval 1 \
+--long-log 50 --logging --base-port 8681 
+--num-processes 5 --teleport 
+--executable_file ../executable/linux_exec_v3.x86_64 \
+--agent_type hrl_mcts --num_steps_mcts 24
+
+#Second stage
+python training_agents/test_a2c.py  \
+--max-num-edges 10 --max-episode-length 250 \
+--batch_size 32 --obs_type partial --gamma 0.95 \
+--lr 1e-4 --nb_episodes 100000 --save-interval 200 \
+--simulator-type unity --base_net TF --log-interval 1 \
+--long-log 50 --logging --base-port 8681 \
+--num-processes 5 \
+--executable_file ../executable/linux_exec_v3.x86_64 
+--agent_type hrl_mcts --num_steps_mcts 50 \
+--load-model path to previous model
+
+```
 ### Evaluate baselines
 Below is the code to evaluate the different planning-based models.
 
@@ -97,16 +124,16 @@ python testing_agents/test_hp_pred_goal.py
 python testing_agents/test_hp_random_goal.py
 
 # Bob random actions
-python testing_agents/test_hp_random_action.py
+python testing_agents/test_random_action.py
 ```
 
 Below is the code to evaluate the learning-based methods
 
 ```
-CUDA_VISIBLE_DEVICES=0 python evaluate_a2c.py \
+# Hybrid Baseline
+python testing_agents/test_hybrid.py
 --max-num-edges 10 --max-episode-length 250 --obs_type partial \
---nb_episodes 100000 --save-interval 200 \
---base_net TF --log-interval 1 --long-log 50 --num-processes 1 \
+--base_net TF --num-processes 1 \
 --agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
 --load-model trained_models/env.virtualhome/\
 task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
@@ -115,8 +142,3 @@ stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
 
 ```
 
-```
-model_path_lowlevel = ('/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/tshu/vh_multiagent_models/'
-            'trained_models/env.virtualhome/task.put-numproc.1-obstype.mcts-sim.unity/'\
-            'taskset.full/mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.1.0-cgoal.0.0-lr0.0001/26200_all.pt')
-```
