@@ -9,6 +9,8 @@ This is the official implementation of the paper *Watch-And-Help: A Challenge fo
 
 We provide a dataset of tasks to evaluate the challenge, as well as different baselines consisting on learning and planning-based agents.
 
+Check out a video of the work [here](https://youtu.be/lrB4K2i8xPI).
+
 ## Setup
 ### Get the VirtualHome Simulator and API
 Clone the VirtualHome API repository one folder above this repository
