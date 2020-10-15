@@ -115,7 +115,7 @@ python training_agents/test_a2c.py  \
 --num-processes 5 \
 --executable_file ../executable/linux_exec_v3.x86_64 
 --agent_type hrl_mcts --num_steps_mcts 50 \
---load-model path to previous model
+--load-model {path to previous model}
 
 ```
 ### Evaluate baselines
@@ -142,14 +142,11 @@ Below is the code to evaluate the learning-based methods
 
 ```
 # Hybrid Baseline
-python testing_agents/test_hybrid.py
---max-num-edges 10 --max-episode-length 250 --obs_type partial \
---base_net TF --num-processes 1 \
---agent_type hrl_mcts --num_steps_mcts 40 --use-alice \
---load-model trained_models/env.virtualhome/\
-task.full-numproc.5-obstype.mcts-sim.unity/taskset.full/agent.hrl_mcts_alice.False/\
-mode.RL-algo.a2c-base.TF-gamma.0.95-cclose.0.0-cgoal.0.0-lr0.0001-bs.32_finetuned/\
-stepmcts.50-lep.250-teleport.False-gtgraph-forcepred/2000.pt
+CUDA_VISIBLE_DEVICES=0 python testing_agents/test_hybrid.py \
+--max-num-edges 10 --max-episode-length 250 \
+--num-processes 1 \
+--agent_type hrl_mcts --num_steps_mcts 40 \
+--load-model checkpoints/checkpoint_hybrid.pt
 
 ```
 

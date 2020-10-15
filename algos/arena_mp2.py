@@ -112,6 +112,7 @@ class ArenaMP(object):
 
     def rollout(self, logging=0, record=False, episode_id=None, is_train=True, goals=None):
         t1 = time.time()
+        print("rollout", episode_id, is_train)
         if episode_id is not None:
             self.reset(episode_id)
         else:

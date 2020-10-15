@@ -533,7 +533,6 @@ class HRL_agent:
         info_model['obs'] = observation['nodes']
 
         action_str, action_tried, plan, predicate = self.get_action_instr(next_action, visible_objects, observation_belief)
-        # print("HRL plan ", action_str, action_tried, predicate)
         if "put" in predicate:
             p_spl = predicate.split('_')
             obj_pred = p_spl[1]
@@ -541,7 +540,6 @@ class HRL_agent:
             # Check if the predicate corresponds to the goal
             # This is to facilitate traiing
             if obj_pred not in obj_pred_names or container_pred not in loc_pred_names and self.mode == 'train':
-                # ipdb.set_trace()
                 info_model['bad_predicate'] = True
                 action_str = None
                 action_tried += ' (offgoal)'

@@ -50,7 +50,7 @@ import pdb
 import pickle
 import random
 import copy
-from agents import MCTS_agent, RL_agent, HRL_agent
+from agents import MCTS_agent, HRL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c import A2C
@@ -200,11 +200,6 @@ if __name__ == '__main__':
         args_mcts['char_index'] = 0
         return MCTS_agent(**args_mcts)
 
-    def RL_agent_fn(arena_id, env):
-        args_agent2 = {'agent_id': 1, 'char_index': 0,
-                       'args': args, 'graph_helper': graph_helper}
-        args_agent2['seed'] = arena_id
-        return RL_agent(**args_agent2)
 
 
     def HRL_agent_fn(arena_id, env):
@@ -216,7 +211,6 @@ if __name__ == '__main__':
 
 
 
-    # agents = [RL_agent_fn]
     agents = [HRL_agent_fn]
 
     if args.use_alice:

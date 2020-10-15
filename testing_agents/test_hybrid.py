@@ -9,7 +9,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 from envs.unity_environment import UnityEnvironment
-from agents import MCTS_agent, RL_agent, HRL_agent
+from agents import MCTS_agent, HRL_agent
 from arguments import get_args
 from algos.arena_mp2 import ArenaMP
 from algos.a2c_mp import A2C as A2C_MP
@@ -22,6 +22,9 @@ if __name__ == '__main__':
     args.max_episode_length = 250
     args.num_per_apartment = 20
     args.mode = 'hybrid_truegoal'
+    args.evaluation = True
+    args.use_alice = True
+    args.obs_type = 'partial'
     args.dataset_path = './dataset/test_env_set_help.pik'
 
     env_task_set = pickle.load(open(args.dataset_path, 'rb'))
@@ -45,7 +48,7 @@ if __name__ == '__main__':
     agent_goals = [agent_goal]
     if args.use_alice:
         num_agents += 1
-        observation_types = ['mcts', args.obs_type]
+        observation_types = ['partial', args.obs_type]
         agent_goals.append(agent_goal)
         rl_agent_id = 2
     else:
@@ -124,12 +127,14 @@ if __name__ == '__main__':
         seed = iter_id
 
         for episode_id in tqdm(range(len(episode_ids))):
+            print(episode_id, len(episode_ids))
             log_file_name = args.record_dir + '/logs_agent_{}_{}_{}.pik'.format(env_task_set[episode_id]['task_id'],
                                                                                 env_task_set[episode_id]['task_name'],
                                                                                 seed)
             if os.path.isfile(log_file_name):
+                print('exsits')
                 continue
-            try:
+            if True:
                 for agent in arenas[0].agents:
                     agent.seed = seed
                 res = a2c.eval(episode_id)
@@ -155,7 +160,7 @@ if __name__ == '__main__':
                 Path(args.record_dir).mkdir(parents=True, exist_ok=True)
                 with open(log_file_name, 'wb') as flog:
                     pickle.dump(info_results, flog)
-            except:
+            else:
                 arenas[0].reset_env()
-        test_results.append({'S': S[episode_id], 'L': L[episode_id]})
+        test_results[episode_id] = {'S': S[episode_id], 'L': L[episode_id]}
         pickle.dump(test_results, open(args.record_dir + '/results_{}.pik'.format(0), 'wb'))

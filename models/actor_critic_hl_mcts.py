@@ -12,6 +12,7 @@ from .distributions import Bernoulli, Categorical, DiagGaussian, ElementWiseCate
 from utils.utils_models import init
 from utils import utils_rl_agent
 
+import ipdb
 import pdb
 import sys
 from . import base_nets
@@ -102,7 +103,7 @@ class ActorCritic(nn.Module):
         mask_actions_nodes = inputs['mask_action_node']
 
         # select object1, and mask action accordingly
-        indices = [0, 1] #[0, 1, 2]
+        indices = [0, 1] 
 
         actions = [None] * len(indices)
         actions_probs = [None] * len(indices)

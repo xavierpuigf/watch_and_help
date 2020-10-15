@@ -231,7 +231,6 @@ class UnityEnvironment(BaseUnityEnvironment):
             # agent 0 has id (0 + 1)
             curr_graph = self.get_graph()
             curr_graph = utils.inside_not_trans(curr_graph)
-            #ipdb.set_trace()
             self.full_graph = curr_graph
             obs = utils_env.get_visible_nodes(curr_graph, agent_id=(agent_id+1))
             return obs
