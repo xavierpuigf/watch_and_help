@@ -44,7 +44,7 @@ pip install -r requirements.txt
 ## Dataset
 We include a dataset of environments and activities that agents have to perform in them. During the **Watch** phase and the training of the **Help** phase, we use a dataset of 5 environments. When evaluating the **Help** phase, we use a dataset of 2 held out environments.
 
-The **Watch** phase consists of a set of episodes in 5 environments showing Alice performing the task. These episodes were generated using a planner, and they can be downloaded [here](). The training and testing splits for this phase can be found in [datasets/watch_scenes_split.json](datasets/watch_scenes_split.json). 
+The **Watch** phase consists of a set of episodes in 5 environments showing Alice performing the task. These episodes were generated using a planner, and they can be downloaded [here](http://wednesday.csail.mit.edu/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/release_final/data/watch_data.zip). The training and testing split information can be found in `datasets/watch_scenes_split.json`. 
 
 The **Help** phase, contains a set of environments and tasks definitions. You can find the *train* and *test* datasets used in `dataset/train_env_set_help.pik` and `dataset/test_env_set_help.pik`. Note that the *train* environments are independent, whereas the *test* environments match the tasks in the **Watch** test split.
 
@@ -70,7 +70,18 @@ It will use the tasks from the test split of the **Watch** phase to create a **H
 
 
 ## Watch
-Include here the code for the goal inference part
+First, download the dataset for the **Watch** phase and put it under `dataset`. 
+You can train the goal prediction model for the **Watch** phase as follows:
+
+```bash
+sh train_watch.sh
+```
+
+To test the goal prediction model, run:
+
+```bash
+sh test_watch.sh
+```
 
 ## Help
 We provide planning and learning-based agents for the Helping stage. The agents have partial observability in the environment, and plan according to a belief that updates with new observations.

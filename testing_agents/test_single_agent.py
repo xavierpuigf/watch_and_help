@@ -20,10 +20,11 @@ from utils import utils_goals
 if __name__ == '__main__':
     args = get_args()
 
+    num_tries = 5
     args.max_episode_length = 250
-    args.num_per_apartment = 10
+    args.num_per_apartment = 20
     args.dataset_path = './dataset/test_env_set_help.pik'
-    args.mode = 'planner'
+    args.mode = 'hp'
     env_task_set = pickle.load(open(args.dataset_path, 'rb'))
 
 
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     random.seed(id_run)
     episode_ids = list(range(len(env_task_set)))
     episode_ids = sorted(episode_ids)
-    num_tries = 5
+
     S = [[] for _ in range(len(episode_ids))]
     L = [[] for _ in range(len(episode_ids))]
     

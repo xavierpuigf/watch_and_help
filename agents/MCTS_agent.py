@@ -507,6 +507,7 @@ class MCTS_agent:
         # ipdb.set_trace()
         if len(plan) > 0:
             action = plan[0]
+            action = action.replace('[walk]', '[walktowards]')
         else:
             action = None
         if self.logging:

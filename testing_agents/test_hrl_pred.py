@@ -19,7 +19,7 @@ import ray
 if __name__ == '__main__':
     args = get_args()
     args.max_episode_length = 250
-    args.num_per_apartment = 10
+    args.num_per_apartment = 20
     args.evaluation = True
     args.mode = 'hrl_predgoal'
     args.dataset_path = './dataset/test_env_set_help.pik'

@@ -285,11 +285,8 @@ def get_args():
     # Exec args
     parser.add_argument(
         '--executable_file', type=str,
-        default='/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.04.27.x86_64')
+        default='../executable/linux_exec_v3.x86_64')
 
-    # parser.add_argument(
-    #     '--executable_file', type=str,
-    #     default = '/data/vision/torralba/frames/data_acquisition/SyntheticStories/MultiAgent/challenge/executables/exec_linux.03.22.x86_64')
 
     parser.add_argument(
         '--base-port', type=int, default=8080)

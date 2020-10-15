@@ -185,7 +185,7 @@ class Random_agent:
         self.sample_belief(obs)
         self.sim_env.reset(self.previous_belief_graph, {0: goal_spec, 1: goal_spec})
 
-        action_name = random.choice(['walk', 'grab', 'put', 'open'])
+        action_name = random.choice(['walktowards', 'grab', 'put', 'open'])
         if action_name == 'walk':
             objects = [(node['class_name'], node['id']) for node in obs['nodes'] if node['class_name'] in object_names]
         elif action_name == 'grab':
@@ -194,13 +194,15 @@ class Random_agent:
             objects = [(node['class_name'], node['id']) for node in obs['nodes'] if node['class_name'] in content['objects_surface'] + content['objects_inside']]
         else:
             objects = [(node['class_name'], node['id']) for node in obs['nodes'] if node['class_name'] in content['objects_inside']]
-        selected_object = random.choice(objects)
-        o1, o1_id = selected_object[0], selected_object[1]
-        print(action_name, o1, o1_id)
 
-        action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, obs, teleport=False)
+        if len(objects) == 0:
+            action = None
+        else:
+            selected_object = random.choice(objects)
+            o1, o1_id = selected_object[0], selected_object[1]
 
-        print(action)
+            action = utils_rl_agent.can_perform_action(action_name, o1, o1_id, self.agent_id, obs, teleport=False)
+
 
         if self.logging:
             info = {

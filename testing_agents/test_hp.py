@@ -18,7 +18,7 @@ if __name__ == '__main__':
     args = get_args()
     
     args.max_episode_length = 250
-    args.num_per_apartment = 10
+    args.num_per_apartment = 20
     args.mode = 'hp_truegoal'
     args.dataset_path = './dataset/test_env_set_help.pik'
 

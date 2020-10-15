@@ -18,7 +18,7 @@ from utils import utils_goals
 if __name__ == '__main__':
     args = get_args()
     args.max_episode_length = 250
-    args.num_per_apartment = 10
+    args.num_per_apartment = 20
     args.mode = 'random_action'
     args.dataset_path = './dataset/test_env_set_help.pik'
 
@@ -33,7 +33,6 @@ if __name__ == '__main__':
     id_run = 0
     random.seed(id_run)
     episode_ids = list(range(len(env_task_set)))
-    #random.shuffle(episode_ids)
     episode_ids = sorted(episode_ids)
     num_tries = 5
     S = [[] for _ in range(len(episode_ids))]

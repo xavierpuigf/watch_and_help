@@ -90,10 +90,10 @@ class ArenaMP(object):
         self.env = self.env_fn(self.arena_id)
 
     def rollout_reset(self, logging=False, record=False, episode_id=None, is_train=True, goals=None):
-        if True:
+        try:
             res = self.rollout(logging, record, episode_id=episode_id, is_train=is_train, goals=goals)
             return res
-        else:
+        except:
             self.env.close()
             self.env = self.env_fn(self.arena_id)
 

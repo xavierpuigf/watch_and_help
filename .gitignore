@@ -17,6 +17,7 @@ __pycache__/
 
 test_results/*
 logdir/*
+dataset/watch_data*
 dataset_*
 init_reward/result/*
 initial_environments/data/init_envs/*
