@@ -37,7 +37,6 @@ wget {simulator_file}
 
 ### Install Requirements
 ```bash
-cd 
 pip install -r requirements.txt
 ```
 
@@ -121,8 +120,13 @@ python training_agents/test_a2c.py  \
 
 ```
 ### Evaluate baselines
-Below is the code to evaluate the different planning-based models.
+Below is the code to evaluate the different planning-based models. The results will be saved in a folder called `test_results`. Make sure you create it first, one level above this repository. 
 
+```bash
+mdir ../test_results
+```
+
+Here is the code to evaluate the baselines proposed in the paper.
 ```bash
 # Alice alone
 python testing_agents/test_single_agent.py
@@ -142,7 +146,7 @@ python testing_agents/test_random_action.py
 
 Below is the code to evaluate the learning-based methods
 
-```
+```bash
 # Hybrid Baseline
 CUDA_VISIBLE_DEVICES=0 python testing_agents/test_hybrid.py \
 --max-num-edges 10 --max-episode-length 250 \
@@ -152,3 +156,6 @@ CUDA_VISIBLE_DEVICES=0 python testing_agents/test_hybrid.py \
 
 ```
 
+## Visualize results
+[Coming Soon]
+You may want to generate a video to visualize the episode you just generated. Here we include a script to view the episodes you generate during the Help phase.
