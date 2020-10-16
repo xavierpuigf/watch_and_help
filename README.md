@@ -25,9 +25,9 @@ pip install -r requirements.txt
 Download the simulator, and put it in an `executable` folder
 
 
-- [Download](http://virtual-home.org/release/simulator/linux_sim.zip) Linux x86-64 version.
-- [Download](http://virtual-home.org/release/simulator/mac_sim.zip) Mac OS X version.
-- [Download](http://virtual-home.org/release/simulator/windows_sim.zip) Windows version.
+- [Download](http://virtual-home.org/release/simulator/v2.0/linux_exec.zip) Linux x86-64 version.
+- [Download](http://virtual-home.org/release/simulator/v2.0/macos_exec.zip) Mac OS X version.
+- [Download](http://virtual-home.org/release/simulator/windows_exec.zip) Windows version.
 
 ```bash
 cd ..
