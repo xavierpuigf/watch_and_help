@@ -39,7 +39,7 @@ pip install -r requirements.txt
 ## Dataset
 We include a dataset of environments and activities that agents have to perform in them. During the **Watch** phase and the training of the **Help** phase, we use a dataset of 5 environments. When evaluating the **Help** phase, we use a dataset of 2 held out environments.
 
-The **Watch** phase consists of a set of episodes in 5 environments showing Alice performing the task. These episodes were generated using a planner, and they can be downloaded [here]((http://virtual-home.org/release/watch_and_help/watch_data.zip). The training and testing split information can be found in `datasets/watch_scenes_split.json`. 
+The **Watch** phase consists of a set of episodes in 5 environments showing Alice performing the task. These episodes were generated using a planner, and they can be downloaded [here](http://virtual-home.org/release/watch_and_help/watch_data.zip). The training and testing split information can be found in `datasets/watch_scenes_split.json`. 
 
 The **Help** phase, contains a set of environments and tasks definitions. You can find the *train* and *test* datasets used in `dataset/train_env_set_help.pik` and `dataset/test_env_set_help.pik`. Note that the *train* environments are independent, whereas the *test* environments match the tasks in the **Watch** test split.
 
