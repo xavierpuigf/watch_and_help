@@ -1,15 +1,28 @@
 # Watch-And-Help: A Challenge for Social Perception and Human-AI Collaboration
 
+This is the official implementation of the paper [*Watch-And-Help: A Challenge for Social Perception and Human-AI Collaboration*](https://arxiv.org/abs/2010.09890). 
 
-
-
-This is the official implementation of the paper *Watch-And-Help: A Challenge for Social Perception and Human-AI Collaboration*. In this work, we introduce Watch-And-Help (WAH), a challenge for testing social intelligence in agents. In WAH, an AI agent needs to help a human-like agent perform a complex household task efficiently. To succeed, the AI agent needs to i) understand the underlying goal of the task by watching a single demonstration of the human-like agent performing the same task (social perception), and ii) coordinate with the human-like agent to solve the task in an unseen environment as fast as possible (human-AI collaboration).
+In this work, we introduce Watch-And-Help (WAH), a challenge for testing social intelligence in agents. In WAH, an AI agent needs to help a human-like agent perform a complex household task efficiently. To succeed, the AI agent needs to i) understand the underlying goal of the task by watching a single demonstration of the human-like agent performing the same task (social perception), and ii) coordinate with the human-like agent to solve the task in an unseen environment as fast as possible (human-AI collaboration).
 
 ![](assets/cover_fig_final.png)
 
 We provide a dataset of tasks to evaluate the challenge, as well as different baselines consisting on learning and planning-based agents.
 
 Check out a video of the work [here](https://youtu.be/lrB4K2i8xPI).
+
+## Cite
+If you use this code in your research, please consider citing.
+
+```
+@misc{puig2020watchandhelp,
+      title={Watch-And-Help: A Challenge for Social Perception and Human-AI Collaboration}, 
+      author={Xavier Puig and Tianmin Shu and Shuang Li and Zilin Wang and Joshua B. Tenenbaum and Sanja Fidler and Antonio Torralba},
+      year={2020},
+      eprint={2010.09890},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI}
+}
+```
 
 ## Setup
 ### Get the VirtualHome Simulator and API
