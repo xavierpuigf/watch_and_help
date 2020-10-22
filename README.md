@@ -26,7 +26,7 @@ If you use this code in your research, please consider citing.
 
 ## Setup
 ### Get the VirtualHome Simulator and API
-Clone the VirtualHome API repository one folder above this repository
+Clone the [VirtualHome API](https://github.com/xavierpuigf/virtualhome.git) repository one folder above this repository
 
 ```bash
 cd ..
