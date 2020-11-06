@@ -236,7 +236,11 @@ class UnityEnvironment(BaseUnityEnvironment):
             return obs
 
         elif obs_type == 'full':
-            return self.get_graph()
+            curr_graph = self.get_graph()
+            curr_graph = utils.inside_not_trans(curr_graph)
+            self.full_graph = curr_graph
+	
+            return curr_graph
 
         elif obs_type == 'visible':
             # Only objects in the field of view of the agent
