@@ -40,7 +40,7 @@ Download the simulator, and put it in an `executable` folder, one folder above t
 
 - [Download](http://virtual-home.org/release/simulator/v2.0/linux_exec.zip) Linux x86-64 version.
 - [Download](http://virtual-home.org/release/simulator/v2.0/macos_exec.zip) Mac OS X version.
-- [Download](http://virtual-home.org/release/simulator/windows_exec.zip) Windows version.
+- [Download](http://virtual-home.org/release/simulator/v2.0/windows_exec.zip) Windows version.
 
 ### Install Requirements
 ```bash
