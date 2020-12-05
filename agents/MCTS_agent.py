@@ -323,16 +323,7 @@ def clean_graph(state, goal_spec, last_opened):
 
 def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, res, last_subgoal, last_action, opponent_subgoal=None, verbose=True):
     init_state = env.state
-    if verbose:
-        print('get plan, ')
-    # ipdb.set_trace()
-    # if mcts.last_opened is not None:
-    #     ipdb.set_trace()
-    #     for node in init_state['nodes']:
-    #          if '()'.format(node['id']) == mcts.last_opened[1]:
-    #             if 'CLOSED' in node['states']:
-    #                 mcts.last_opened = None
-    #                 break
+
     if True: # clean graph
         init_state = clean_graph(init_state, goal_spec, mcts.last_opened)
         init_vh_state = env.get_vh_state(init_state)
@@ -340,13 +331,6 @@ def get_plan(sample_id, root_action, root_node, env, mcts, nb_steps, goal_spec, 
         init_vh_state = env.vh_state
 
     satisfied, unsatisfied = utils_env.check_progress(init_state, goal_spec)
-    # print('get plan:', init_state)
-
-    if env.is_terminal(0, init_state):
-        terminal = True
-        if sample_id is not None:
-            res[sample_id] = None
-        return
 
     remained_to_put = 0
     for predicate, count in unsatisfied.items():
@@ -451,23 +435,8 @@ class MCTS_agent:
 
     def sample_belief(self, obs_graph):
         new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-        # for edge in new_graph['edges']:
-        #     if edge['from_id'] == 272 and edge['to_id'] == 271:
-        #         ipdb.set_trace()
         self.previous_belief_graph = self.filtering_graph(new_graph)
         return new_graph
-
-        # # TODO: probably these 2 cases are not needed
-        # if self.previous_belief_graph is None:
-        #     self.belief.reset_belief()
-        #     new_graph = self.belief.sample_from_belief()
-        #     new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-        #     self.previous_belief_graph = new_graph
-        # else:
-        #     new_graph = self.belief.update_graph_from_gt_graph(obs_graph)
-        #     self.previous_belief_graph = new_graph
-
-        # return new_graph
 
     def get_relations_char(self, graph):
         # TODO: move this in vh_mdp
@@ -485,15 +454,6 @@ class MCTS_agent:
 
         last_action = self.last_action
         last_subgoal = self.last_subgoal
-
-        """TODO: just close fridge, dishwasher?"""
-        
-        # if last_action is not None and last_action.split(' ')[0] == '[putin]': # close the door (may also need to check if it has a door)
-        #     elements = last_action.split(' ')
-        #     action = '[close] {} {}'.format(elements[3], elements[4])
-        #     plan = [action]
-        #     subgoals = [last_subgoal]
-        # else:
             
 
         # TODO: is this correct?
