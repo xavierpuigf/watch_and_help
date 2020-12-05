@@ -130,7 +130,7 @@ python training_agents/test_a2c.py  \
 Below is the code to evaluate the different planning-based models. The results will be saved in a folder called `test_results`. Make sure you create it first, one level above this repository. 
 
 ```bash
-mdir ../test_results
+mkdir ../test_results
 ```
 
 Here is the code to evaluate the baselines proposed in the paper.
