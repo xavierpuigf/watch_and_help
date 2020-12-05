@@ -333,7 +333,7 @@ class MCTS:
 
     def expand(self, leaf_node, t):
         curr_state = leaf_node.id[1][1]
-        if t < self.max_episode_length and not self.env.is_terminal(0, curr_state):
+        if t < self.max_episode_length:
             expanded_leaf_node = self.initialize_children(leaf_node)
             if expanded_leaf_node is not None:
                 leaf_node.is_expanded = True
