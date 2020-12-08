@@ -9,7 +9,7 @@ import sys
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(f'{curr_dir}/../../virtualhome/simulation/')
 
-from evolving_graph.utils import load_graph_dict, load_name_equivalence, graph_dict_helper
+from evolving_graph.utils import load_graph_dict, graph_dict_helper
 from evolving_graph.execution import ScriptExecutor, ExecutionInfo
 from evolving_graph.scripts import read_script_from_string
 
@@ -87,7 +87,7 @@ class VhGraphEnv():
     def __init__(self, n_chars=1, max_nodes=200):
         self.graph_helper = graph_dict_helper()
         self.n_chars = n_chars
-        self.name_equivalence = load_name_equivalence()
+        self.name_equivalence = None
         
         self.state = None
         self.observable_state_n = [None for i in range(self.n_chars)]
