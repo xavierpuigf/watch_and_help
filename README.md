@@ -47,6 +47,13 @@ Download the simulator, and put it in an `executable` folder, one folder above t
 pip install -r requirements.txt
 ```
 
+### Download Checkpoints
+Download the checkpoints for the weights to the hybrid help model and the watching model. Use
+
+```bash
+sh scripts/download_ckpts.sh
+```
+
 
 
 ## Dataset
@@ -82,13 +89,13 @@ First, download the dataset for the **Watch** phase and put it under `dataset`.
 You can train the goal prediction model for the **Watch** phase as follows:
 
 ```bash
-sh train_watch.sh
+sh scripts/train_watch.sh
 ```
 
 To test the goal prediction model, run:
 
 ```bash
-sh test_watch.sh
+sh scripts/test_watch.sh
 ```
 
 ## Help
