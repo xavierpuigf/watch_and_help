@@ -74,7 +74,7 @@ pyparsing==2.4.7
 pyrsistent==0.17.3
 python-dateutil==2.8.1
 pytz==2020.1
-PyYAML==5.3.1
+PyYAML>=5.4
 ray==1.0.0
 redis==3.4.1
 requests==2.21.0
