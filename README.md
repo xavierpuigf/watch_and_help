@@ -14,13 +14,13 @@ Check out a video of the work [here](https://youtu.be/lrB4K2i8xPI).
 If you use this code in your research, please consider citing.
 
 ```
-@misc{puig2020watchandhelp,
-      title={Watch-And-Help: A Challenge for Social Perception and Human-AI Collaboration}, 
-      author={Xavier Puig and Tianmin Shu and Shuang Li and Zilin Wang and Joshua B. Tenenbaum and Sanja Fidler and Antonio Torralba},
-      year={2020},
-      eprint={2010.09890},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI}
+@inproceedings{
+      puig2021watchandhelp,
+      title={Watch-And-Help: A Challenge for Social Perception and Human-{\{}AI{\}} Collaboration},
+      author={Xavier Puig and Tianmin Shu and Shuang Li and Zilin Wang and Yuan-Hong Liao and Joshua B. Tenenbaum and Sanja Fidler and Antonio Torralba},
+      booktitle={International Conference on Learning Representations},
+      year={2021},
+      url={https://openreview.net/forum?id=w_7JMpGZRh0}
 }
 ```
 
