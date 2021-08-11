@@ -133,13 +133,14 @@ class Belief():
         return state
 
     def init_belief(self):
-        # Set belief on object states
+        # Set belief on object states, all states are binary and happen with a 50% chance
         for node in self.sampled_graph['nodes']:
             object_name = node['class_name']
             bin_vars = self.graph_helper.get_object_binary_variables(object_name)
             bin_vars = [x for x in bin_vars if x.default in self.states_consider]
             belief_dict = {}
             for bin_var in bin_vars:
+                # 50% probablity of the state being positive (ON/OPEN) vs negative (OFF/CLOSED)
                 belief_dict[bin_var.positive] = 0.5
 
             self.node_to_state_belief[node['id']] = belief_dict
@@ -160,9 +161,7 @@ class Belief():
         objects_inside_something = set([edge['from_id'] for edge in self.sampled_graph['edges'] if edge['relation_type'] == 'INSIDE'])
         
         # Set belief for edges
-        # TODO: this should be specified in the properties
         object_containers = [node for node in self.sampled_graph['nodes'] if node['class_name'] in container_classes]
-        # object_containers = [node for node in self.sampled_graph['nodes'] if 'CAN_OPEN' in node['properties'] and 'CONTAINERS' in node['properties']]
         
 
 
@@ -208,8 +207,11 @@ class Belief():
             self.edge_belief[id1] = {}
             
 
-
+            # Objects are inside containers with uniform probability, that is 1 / (1 + num_containers)
+            # the 1 corresponds to the object not being inside any container
             init_values = np.ones(len(container_ids)+1)/(1.+len(container_ids))
+            
+            # Special case for some object relationships that should not happen, just to encode some common sense
             if node['class_name'] in self.id_restrictions_inside.keys():
                 init_values[self.id_restrictions_inside[node['class_name']]] = self.low_prob
 
@@ -220,6 +222,8 @@ class Belief():
             self.edge_belief[id1]['INSIDE'] = [[None]+container_ids, init_values]
         
         # Room belief. Will be used for nodes that are not in the belief
+        # Objects that are not inside anything, have probability 1/num_rooms to be in any of the rooms. We do not
+        # divide here because we will be using a softmax later.
         for node in self.sampled_graph['nodes']:
             if node['class_name'] in self.class_nodes_delete or node['category'] in self.categories_delete:
                 continue
