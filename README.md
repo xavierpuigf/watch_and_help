@@ -42,6 +42,9 @@ Download the simulator, and put it in an `executable` folder, one folder above t
 - [Download](http://virtual-home.org/release/simulator/v2.0/macos_exec.zip) Mac OS X version.
 - [Download](http://virtual-home.org/release/simulator/v2.0/windows_exec.zip) Windows version.
 
+
+[IMPORTANT] Please make sure to use the [wah](https://github.com/xavierpuigf/virtualhome/tree/wah) branch of the VirtualHome repo and the v2.2.0 version of the executable.
+
 ### Install Requirements
 ```bash
 pip install -r requirements.txt
