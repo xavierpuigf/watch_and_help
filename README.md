@@ -30,7 +30,7 @@ Clone the [VirtualHome API](https://github.com/xavierpuigf/virtualhome.git) repo
 
 ```bash
 cd ..
-git clone https://github.com/xavierpuigf/virtualhome.git
+git clone --branch wah https://github.com/xavierpuigf/virtualhome.git
 cd virtualhome
 pip install -r requirements.txt
 ```
