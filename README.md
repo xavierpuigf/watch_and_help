@@ -124,14 +124,14 @@ python training_agents/train_a2c.py \
 --agent_type hrl_mcts --num_steps_mcts 24
 
 #Second stage
-python training_agents/test_a2c.py  \
+python training_agents/train_a2c.py  \
 --max-num-edges 10 --max-episode-length 250 \
 --batch_size 32 --obs_type partial --gamma 0.95 \
 --lr 1e-4 --nb_episodes 100000 --save-interval 200 \
 --simulator-type unity --base_net TF --log-interval 1 \
 --long-log 50 --logging --base-port 8681 \
 --num-processes 5 \
---executable_file ../executable/linux_exec_v3.x86_64 
+--executable_file ../executable/linux_exec_v3.x86_64 \
 --agent_type hrl_mcts --num_steps_mcts 50 \
 --load-model {path to previous model}
 
